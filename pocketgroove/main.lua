@@ -23,13 +23,54 @@ local function handleGlobalCombos()
     local controlsBlocked = false
     local activeDef, activeState, activeTrack = Instruments:getTrackInstrument(Looper.activeTrack)
 
-    -- Begin a new Take ID whenever L2 is freshly pressed
+    -- ------------------------------------------------------------------------
+    -- 1. Hybrid L2 Record (Tap to Latch, Hold for Momentary Punch-In)
+    -- ------------------------------------------------------------------------
     if Input.pressed.L2 then
         Looper:beginRecordingTake()
     end
 
-    -- 1. L2 + R2 HELD TOGETHER = PER-PAD ERASE & UNDO MODE
+    if Input.released.L2 then
+        if not Input.l2ComboUsed and Input.l2HoldTime < 0.25 then
+            Input.recLatched = not Input.recLatched
+            if Input.recLatched then
+                Looper:showToast("● RECORD LATCHED (TAP L2 TO STOP)")
+            else
+                Looper:showToast("RECORD STOPPED")
+            end
+        elseif Input.recLatched and Input.l2HoldTime >= 0.25 then
+            -- Releasing a held punch-in also clears latch
+            Input.recLatched = false
+            Looper:showToast("PUNCH-IN COMPLETE")
+        end
+        Input.l2ComboUsed = false
+    end
+
+    -- ------------------------------------------------------------------------
+    -- 2. Determine Explicit Global UI Mode (Strict Priority)
+    -- ------------------------------------------------------------------------
+    local mode = "NORMAL"
     if Input.down.L2 and Input.down.R2 then
+        mode = "ERASE"
+    elseif Input.down.SELECT and Input.down.R2 then
+        mode = "MIX"
+    elseif Input.down.SELECT and Input.selectHoldTime >= 0.18 then
+        mode = "TRACK"
+    elseif Input.down.START and Input.startHoldTime >= 0.22 then
+        mode = "TRANSPORT"
+    elseif Input.down.R2 then
+        mode = "FX"
+    elseif Input.down.L2 and not Input.down.R2 and not Input.l2ComboUsed then
+        mode = "REC_HOLD"
+    elseif Input.recLatched then
+        mode = "REC_LATCH"
+    end
+    Looper.uiMode = mode
+
+    -- ------------------------------------------------------------------------
+    -- 3. ERASE MODE: L2 + R2 Held Together
+    -- ------------------------------------------------------------------------
+    if mode == "ERASE" then
         controlsBlocked = true
         Input.l2ComboUsed = true
         Input.r2ComboUsed = true
@@ -59,43 +100,84 @@ local function handleGlobalCombos()
         return controlsBlocked
     end
 
-    -- 2. SELECT HELD = CONFIGURE, BPM, KEY/SCALE, 2/4 BARS, & INSTRUMENT SOUND PICKER
-    if Input.down.SELECT then
+    -- ------------------------------------------------------------------------
+    -- 4. MIX MODE: SELECT + R2 Held Together
+    -- ------------------------------------------------------------------------
+    if mode == "MIX" then
         controlsBlocked = true
-        if not Input.down.L2 then
-            if Input.pressed.UP then
-                Looper.bpm = clamp(Looper.bpm + 5, Config.MIN_BPM, Config.MAX_BPM)
-                Looper:showToast("MASTER BPM: " .. Looper.bpm)
-                Input.selectComboUsed = true
-            elseif Input.pressed.DOWN then
-                Looper.bpm = clamp(Looper.bpm - 5, Config.MIN_BPM, Config.MAX_BPM)
-                Looper:showToast("MASTER BPM: " .. Looper.bpm)
-                Input.selectComboUsed = true
-            elseif Input.pressed.RIGHT then
-                Theory:cycleRoot(1)
-                Looper:showToast("KEY: " .. Theory:getKeyLabel())
-                Input.selectComboUsed = true
-            elseif Input.pressed.LEFT then
-                Theory:cycleScale(1)
-                Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName .. " (" .. Theory:getKeyLabel() .. ")")
-                Input.selectComboUsed = true
-            elseif Input.pressed.START then
-                Looper:toggleBars()
-                Input.selectComboUsed = true
-            end
+        Input.selectComboUsed = true
+        Input.r2ComboUsed = true
 
-            -- Delegate instrument-specific SELECT combos (e.g. Drum Pad Sound Browser)
-            if activeDef and activeDef.handleSelectCombo then
-                if activeDef:handleSelectCombo(activeState, activeTrack) then
-                    Input.selectComboUsed = true
-                end
+        if Input.pressed.LEFT then
+            Looper.mixTrack = ((Looper.mixTrack - 2 + 5) % 5) + 1
+        elseif Input.pressed.RIGHT then
+            Looper.mixTrack = (Looper.mixTrack % 5) + 1
+        end
+
+        local step = 0.08
+        if Looper.mixTrack <= 4 then
+            local trk = Looper.tracks[Looper.mixTrack]
+            if Input.pressed.UP or Input.down.UP then
+                trk.volume = clamp(trk.volume + step, 0.0, 1.0)
+            elseif Input.pressed.DOWN or Input.down.DOWN then
+                trk.volume = clamp(trk.volume - step, 0.0, 1.0)
+            end
+        else
+            if Input.pressed.UP or Input.down.UP then
+                Synth.masterVolume = clamp(Synth.masterVolume + step, 0.0, 1.0)
+            elseif Input.pressed.DOWN or Input.down.DOWN then
+                Synth.masterVolume = clamp(Synth.masterVolume - step, 0.0, 1.0)
             end
         end
+
+        -- Mute toggles in mixer
+        if Input.pressed.B then Looper:toggleMute(1) end
+        if Input.pressed.A then Looper:toggleMute(2) end
+        if Input.pressed.Y then Looper:toggleMute(3) end
+        if Input.pressed.X then Looper:toggleMute(4) end
+
+        -- L1 / R1 master volume quick trim
+        if Input.pressed.L1 then
+            Synth.masterVolume = clamp(Synth.masterVolume - 0.1, 0.0, 1.0)
+            Looper:showToast(string.format("MASTER VOL: %d%%", math.floor(Synth.masterVolume * 100)))
+        elseif Input.pressed.R1 then
+            Synth.masterVolume = clamp(Synth.masterVolume + 0.1, 0.0, 1.0)
+            Looper:showToast(string.format("MASTER VOL: %d%%", math.floor(Synth.masterVolume * 100)))
+        end
+
+        return controlsBlocked
     end
 
-    -- Only switch tracks on a QUICK TAP of SELECT (< 0.28s), not when held to read hints!
+    -- ------------------------------------------------------------------------
+    -- 5. TRACK PAGE: SELECT Held Alone (>= 0.18s)
+    -- ------------------------------------------------------------------------
+    if mode == "TRACK" then
+        controlsBlocked = true
+        Input.selectComboUsed = true
+
+        if Input.pressed.LEFT then
+            Instruments:cycleTrackInstrument(Looper.activeTrack, -1)
+        elseif Input.pressed.RIGHT then
+            Instruments:cycleTrackInstrument(Looper.activeTrack, 1)
+        end
+
+        if Input.pressed.UP then
+            Looper:cycleGridMode(Looper.activeTrack)
+        elseif Input.pressed.DOWN then
+            Looper:cycleGridMode(Looper.activeTrack)
+        end
+
+        -- Delegate instrument-specific sound selection (e.g. Drums / Bass / Grain)
+        if activeDef and activeDef.handleSelectCombo then
+            activeDef:handleSelectCombo(activeState, activeTrack)
+        end
+
+        return controlsBlocked
+    end
+
+    -- Quick tap of SELECT (< 0.25s) switches track slot 1->2->3->4
     if Input.released.SELECT then
-        if not Input.selectComboUsed and not Input.l2ComboUsed and Input.selectHoldTime < 0.28 then
+        if not Input.selectComboUsed and not Input.l2ComboUsed and Input.selectHoldTime < 0.25 then
             Looper.activeTrack = (Looper.activeTrack % 4) + 1
             local nextTrack = Looper.tracks[Looper.activeTrack]
             Looper:showToast(string.format("TRACK %d: %s", Looper.activeTrack, nextTrack and nextTrack.name or ""))
@@ -103,24 +185,33 @@ local function handleGlobalCombos()
         Input.selectComboUsed = false
     end
 
-    -- 3. L2 RECORD CLUTCH COMBOS: L2 + START (Clear Track), L2 + SELECT (Cycle Grid Mode)
-    if Input.down.L2 then
-        if Input.pressed.START then
-            Looper:clearTrack(Looper.activeTrack)
-            Input.l2ComboUsed = true
-            controlsBlocked = true
-        elseif Input.pressed.SELECT then
-            Looper:cycleGridMode(Looper.activeTrack)
-            Input.l2ComboUsed = true
-            Input.selectComboUsed = true
-            controlsBlocked = true
+    -- ------------------------------------------------------------------------
+    -- 6. TRANSPORT PAGE: START Held Alone (>= 0.22s)
+    -- ------------------------------------------------------------------------
+    if mode == "TRANSPORT" then
+        controlsBlocked = true
+
+        if Input.pressed.UP then
+            Looper.bpm = clamp(Looper.bpm + 5, Config.MIN_BPM, Config.MAX_BPM)
+            Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
+        elseif Input.pressed.DOWN then
+            Looper.bpm = clamp(Looper.bpm - 5, Config.MIN_BPM, Config.MAX_BPM)
+            Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
+        elseif Input.pressed.RIGHT then
+            Theory:cycleRoot(1)
+            Looper:showToast("KEY: " .. Theory:getKeyLabel())
+        elseif Input.pressed.LEFT then
+            Theory:cycleScale(1)
+            Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
+        elseif Input.pressed.B then
+            Looper:toggleBars()
         end
-    else
-        Input.l2ComboUsed = false
+
+        return controlsBlocked
     end
 
-    -- 4. START (Tap / Double-Tap): Play / Pause Master Loop Clock
-    if Input.pressed.START and not Input.down.L2 and not Input.down.SELECT then
+    -- Tap START (< 0.25s): Play / Pause, 2x tap = reset playhead
+    if Input.released.START and not Input.down.L2 and not Input.down.SELECT and Input.startHoldTime < 0.25 then
         local now = love.timer.getTime()
         if (now - Input.lastStartTapTime) < 0.32 then
             Looper.phase = 0.0
@@ -134,8 +225,10 @@ local function handleGlobalCombos()
         Input.lastStartTapTime = now
     end
 
-    -- 5. R2 ALONE: Track Mutes (R2 + B/A/Y/X) & Live Performance FX (R2 + D-Pad)
-    if Input.down.R2 then
+    -- ------------------------------------------------------------------------
+    -- 7. FX / MUTE MODE: R2 Held Alone
+    -- ------------------------------------------------------------------------
+    if mode == "FX" then
         controlsBlocked = true
         if Input.pressed.B then Looper:toggleMute(1) end
         if Input.pressed.A then Looper:toggleMute(2) end
@@ -152,6 +245,17 @@ local function handleGlobalCombos()
         Synth.fxHalfSpeed  = false
         Synth.fxLowPass    = false
         Synth.fxBitcrush   = false
+    end
+
+    -- ------------------------------------------------------------------------
+    -- 8. L2 Record Combos while Recording: L2 + START (Clear Track)
+    -- ------------------------------------------------------------------------
+    if Input.down.L2 then
+        if Input.pressed.START then
+            Looper:clearTrack(Looper.activeTrack)
+            Input.l2ComboUsed = true
+            controlsBlocked = true
+        end
     end
 
     return controlsBlocked

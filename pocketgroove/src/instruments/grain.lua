@@ -6,6 +6,7 @@ local Config = require("src.config")
 local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
+local Looper = require("src.looper")
 
 local clamp      = Config.clamp
 local math_sin   = math.sin
@@ -130,7 +131,9 @@ function Grain:triggerEvent(ev, state)
     local decay = ev.decayMod or 1.0
     local slot  = self.SLOT_MAP[act]
     if slot then
-        Synth:trigger(slot.sound, semis, 0.55, decay)
+        local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
+        local trkVol = track and track.volume or 1.0
+        Synth:trigger(slot.sound, semis, 0.55, decay, nil, trkVol)
         self:spawnParticle(state, act, semis, ev.scanPos or state.scanPos)
     end
 end

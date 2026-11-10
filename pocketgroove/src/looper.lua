@@ -19,6 +19,8 @@ local Looper = {
     currentStep = 1,
     stutterAnchorPhase = 0.0,
     activeTrack = 1,   -- Active track slot (1..4)
+    uiMode = "NORMAL", -- NORMAL, REC_LATCH, REC_HOLD, TRACK, MIX, TRANSPORT, ERASE, FX
+    mixTrack = 1,      -- 1..4 selected track in Mix page, 5 = Master
     currentTakeId = 0,
     takeStack = {},    -- Stack of takeIds for Undo Last Take
     tracks = {},
@@ -50,6 +52,8 @@ function Looper:init(Instruments)
             name = instDef.name,
             shortName = instDef.shortName,
             gridIndex = instDef.defaultGridIndex or 3,
+            volume = 0.80,
+            meterPeak = 0.0,
             muted = false,
             events = {},
             state = instDef:newState(),
@@ -313,11 +317,13 @@ function Looper:update(dt, triggerCallback)
                     if ev.justRecorded then
                         ev.justRecorded = false
                     else
+                        track.meterPeak = math_max(track.meterPeak, ev.velocity or 0.85)
                         triggerCallback(ev, track, true)
                     end
                 end
             end
         end
+        track.meterPeak = math_max(0.0, track.meterPeak - dt * 3.5)
     end
 end
 

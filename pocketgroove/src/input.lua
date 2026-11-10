@@ -15,8 +15,11 @@ local Input = {
     selectComboUsed = false,
     selectHoldTime = 0.0,
     l2ComboUsed = false,
+    l2HoldTime = 0.0,
+    recLatched = false,
     r2ComboUsed = false,
     lastStartTapTime = -10.0,
+    startHoldTime = 0.0,
 }
 
 for _, btn in ipairs(Input.BUTTON_LIST) do
@@ -108,6 +111,24 @@ function Input:update(dt)
     elseif self.down.SELECT then
         self.selectHoldTime = self.selectHoldTime + (dt or 0.016)
     end
+
+    if self.pressed.L2 then
+        self.l2HoldTime = 0.0
+    elseif self.down.L2 then
+        self.l2HoldTime = self.l2HoldTime + (dt or 0.016)
+    end
+
+    if self.pressed.START then
+        self.startHoldTime = 0.0
+    elseif self.down.START then
+        self.startHoldTime = self.startHoldTime + (dt or 0.016)
+    end
+end
+
+function Input:isRecording()
+    if self.recLatched then return true end
+    if self.down.L2 and not self.down.R2 and not self.l2ComboUsed then return true end
+    return false
 end
 
 function Input:get8WayDirection()

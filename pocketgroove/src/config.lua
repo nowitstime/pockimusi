@@ -14,19 +14,19 @@ local Config = {
     TWO_PI = math_pi * 2.0,
 
     COLORS = {
-        BG         = { 0x12 / 255, 0x13 / 255, 0x16 / 255, 1.0 }, -- #121316
-        PANEL      = { 0x1B / 255, 0x1D / 255, 0x22 / 255, 1.0 }, -- #1B1D22
-        PANEL_HI   = { 0x25 / 255, 0x28 / 255, 0x30 / 255, 1.0 }, -- #252830
-        GRID       = { 0x2E / 255, 0x32 / 255, 0x3C / 255, 1.0 }, -- #2E323C
-        TEXT       = { 0xF4 / 255, 0xF4 / 255, 0xF6 / 255, 1.0 }, -- #F4F4F6
-        MUTED      = { 0x8A / 255, 0x8F / 255, 0x9E / 255, 1.0 }, -- #8A8F9E
-        DIM        = { 0x4B / 255, 0x50 / 255, 0x5E / 255, 1.0 }, -- #4B505E
-        ORANGE     = { 0xFF / 255, 0x5E / 255, 0x36 / 255, 1.0 }, -- #FF5E36 (Drums / Rec)
-        CYAN       = { 0x38 / 255, 0xBD / 255, 0xF8 / 255, 1.0 }, -- #38BDF8 (Chord Harp)
-        VIOLET     = { 0xA7 / 255, 0x8B / 255, 0xFA / 255, 1.0 }, -- #A78BFA (Ribbon Bass)
-        MINT       = { 0x34 / 255, 0xD3 / 255, 0x99 / 255, 1.0 }, -- #34D399 (Granular Pad)
-        AMBER      = { 0xFB / 255, 0xBF / 255, 0x24 / 255, 1.0 }, -- #FBBF24 (FX / Accent)
-        RED        = { 0xF8 / 255, 0x71 / 255, 0x71 / 255, 1.0 }, -- #F87171 (Erase / Mute)
+        BG         = { 0x09 / 255, 0x0A / 255, 0x0F / 255, 1.0 }, -- #090A0F (Obsidian Space)
+        PANEL      = { 0x0F / 255, 0x12 / 255, 0x1B / 255, 1.0 }, -- #0F121B (Deep Space Panel)
+        PANEL_HI   = { 0x16 / 255, 0x1B / 255, 0x28 / 255, 1.0 }, -- #161B28 (Astral Highlight)
+        GRID       = { 0x22 / 255, 0x29 / 255, 0x3C / 255, 1.0 }, -- #22293C (Starlight Wireframe Line)
+        TEXT       = { 0xF2 / 255, 0xF5 / 255, 0xFC / 255, 1.0 }, -- #F2F5FC (Pure Starlight)
+        MUTED      = { 0x7E / 255, 0x88 / 255, 0xA4 / 255, 1.0 }, -- #7E88A4 (Stardust Muted)
+        DIM        = { 0x34 / 255, 0x3C / 255, 0x52 / 255, 1.0 }, -- #343C52 (Cosmic Dim)
+        ORANGE     = { 0xFF / 255, 0x6B / 255, 0x4A / 255, 1.0 }, -- #FF6B4A (Sunset Ember / Rec / Drums)
+        CYAN       = { 0x38 / 255, 0xBD / 255, 0xF8 / 255, 1.0 }, -- #38BDF8 (Moonlight Azure / Chord Harp)
+        VIOLET     = { 0xB8 / 255, 0x9B / 255, 0xFA / 255, 1.0 }, -- #B89BFA (Nebula Lavender / Bass)
+        MINT       = { 0x4E / 255, 0xE1 / 255, 0xA0 / 255, 1.0 }, -- #4EE1A0 (Aurora Mint / Grain Pad)
+        AMBER      = { 0xFC / 255, 0xD3 / 255, 0x4D / 255, 1.0 }, -- #FCD34D (Golden Star / Mix / Accent)
+        RED        = { 0xFB / 255, 0x71 / 255, 0x85 / 255, 1.0 }, -- #FB7185 (Sakura Crimson / Erase / Mute)
     }
 }
 

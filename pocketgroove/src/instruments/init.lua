@@ -60,7 +60,7 @@ function Instruments:triggerEvent(ev, track, isPlayback)
     local def = self:getDefinition(instId)
     def:triggerEvent(ev, track.state, isPlayback)
 
-    if not isPlayback and Input.down.L2 and not Input.down.R2 and not Input.l2ComboUsed then
+    if not isPlayback and Input:isRecording() then
         Looper:recordEvent({
             phase             = Looper.phase,
             step              = Looper.currentStep,

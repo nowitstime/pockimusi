@@ -6,6 +6,7 @@ local Config = require("src.config")
 local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
+local Looper = require("src.looper")
 
 local TWO_PI     = Config.TWO_PI
 local math_sin   = math.sin
@@ -126,8 +127,10 @@ function Bass:triggerEvent(ev, state, isPlayback)
     local decay     = ev.decayMod or 1.0
     local vel       = ev.velocity or 0.85
     local glideFrom = ev.glideFromSemis
+    local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
+    local trkVol = track and track.volume or 1.0
 
-    local voice = Synth:trigger("bass", semis, vel, decay, glideFrom)
+    local voice = Synth:trigger("bass", semis, vel, decay, glideFrom, trkVol)
     if voice and act == "X" then
         voice.vibrato = true
     end

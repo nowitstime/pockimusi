@@ -102,46 +102,31 @@ function Theory:getChordForDirection(dirKey, l1, r1)
     local absRoot = rootBase + chordRootOffset
     local noteName = self.NOTE_NAMES[(absRoot % 12) + 1]
     local extLabel = ""
-    local voicings
+    local octShift = 0
+    if l1 and not r1 then
+        octShift = -12
+    elseif r1 and not l1 then
+        octShift = 12
+    end
+
+    local baseVoicings = {
+        absRoot + octShift,
+        absRoot + thirdInterval + octShift,
+        absRoot + fifthInterval + octShift,
+        absRoot + 12 + octShift
+    }
 
     if l1 and r1 then
-        extLabel = quality .. "add9+"
+        extLabel = quality .. " (WIDE)"
         voicings = {
-            absRoot,
+            absRoot - 12,
             absRoot + fifthInterval,
-            absRoot + ninthInterval,
-            absRoot + thirdInterval + 12
-        }
-    elseif l1 then
-        if quality == "m" then
-            extLabel = "m9"
-        elseif seventhInterval == 11 then
-            extLabel = "maj9"
-        else
-            extLabel = "9"
-        end
-        voicings = {
-            absRoot,
-            absRoot + thirdInterval,
-            absRoot + seventhInterval,
-            absRoot + ninthInterval
-        }
-    elseif r1 then
-        extLabel = "sus4"
-        voicings = {
-            absRoot + 5,
-            absRoot + fifthInterval,
-            absRoot + 12,
-            absRoot + 12 + 5
+            absRoot + thirdInterval + 12,
+            absRoot + ninthInterval + 12
         }
     else
         extLabel = quality
-        voicings = {
-            absRoot,
-            absRoot + thirdInterval,
-            absRoot + fifthInterval,
-            absRoot + 12
-        }
+        voicings = baseVoicings
     end
 
     return {
@@ -149,6 +134,8 @@ function Theory:getChordForDirection(dirKey, l1, r1)
         roman = roman,
         dirKey = dirKey,
         notes = voicings,
+        octShift = octShift,
+        isWide = (l1 and r1),
     }
 end
 

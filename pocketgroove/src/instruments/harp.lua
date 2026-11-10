@@ -6,6 +6,7 @@ local Config = require("src.config")
 local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
+local Looper = require("src.looper")
 
 local math_sin   = math.sin
 local math_cos   = math.cos
@@ -73,8 +74,10 @@ function Harp:triggerEvent(ev, state)
     local semis = ev.pitchSemis or 0
     local decay = ev.decayMod or 1.0
     local vel   = ev.velocity or 0.85
+    local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
+    local trkVol = track and track.volume or 1.0
 
-    Synth:trigger("harp", semis, vel, decay)
+    Synth:trigger("harp", semis, vel, decay, nil, trkVol)
     local sIdx = self.BUTTON_TO_INDEX[act] or 1
     local str = state.strings[sIdx]
     if str then

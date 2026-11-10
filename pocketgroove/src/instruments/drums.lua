@@ -211,7 +211,9 @@ function Drums:triggerEvent(ev, state)
     local decay = ev.decayMod or 1.0
     local vel   = ev.velocity or 0.85
     local soundId = ev.soundId or self:getPadSound(state, act).id
-    Synth:trigger(soundId, semis, vel, decay)
+    local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
+    local trkVol = track and track.volume or 1.0
+    Synth:trigger(soundId, semis, vel, decay, nil, trkVol)
     state.padFlash[act] = clamp(vel, 0.35, 1.0)
 end
 

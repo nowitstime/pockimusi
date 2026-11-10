@@ -21,6 +21,7 @@ local Synth = {
     fxLowPass    = false,
     fxBitcrush   = false,
     duckEnvelope = 1.0,
+    masterVolume = 0.85,
 }
 
 function Synth:createBuffer(durationSec, generatorFn)
@@ -57,7 +58,7 @@ function Synth:init()
     SynthsBank.build(self, whiteNoise)
 end
 
-function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis)
+function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume)
     local pool = self.pools[soundName]
     if not pool then return nil end
 
@@ -67,6 +68,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis)
     pitchSemis = pitchSemis or 0
     volume = volume or 0.85
     decayMod = decayMod or 1.0
+    local trkVol = trackVolume or 1.0
 
     local fxPitchOffset = self.fxHalfSpeed and -7.0 or 0.0
     if self.fxBitcrush then
@@ -74,7 +76,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis)
         volume = math_min(1.0, volume * 1.15)
     end
 
-    local effectiveVolume = clamp(volume * self.duckEnvelope, 0.0, 1.0)
+    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope, 0.0, 1.0)
     local startSemis = glideFromSemis or pitchSemis
     local pitchRatio = clamp(2.0 ^ ((startSemis + fxPitchOffset) / 12.0), 0.125, 8.0)
 
@@ -96,6 +98,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis)
         elapsed = 0.0,
         maxLife = pool.baseDuration * clamp(decayMod, 0.15, 2.5),
         baseVolume = clamp(volume, 0.05, 1.0),
+        trackVolume = trkVol,
         targetSemis = pitchSemis,
         currentSemis = startSemis,
         hasGlide = (glideFromSemis ~= nil and glideFromSemis ~= pitchSemis),
@@ -132,7 +135,7 @@ function Synth:update(dt)
 
             local remaining = v.maxLife - v.elapsed
             local fade = (remaining < 0.04) and (remaining / 0.04) or 1.0
-            v.source:setVolume(clamp(v.baseVolume * fade * self.duckEnvelope, 0.0, 1.0))
+            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * fade * self.duckEnvelope, 0.0, 1.0))
         end
     end
 end
