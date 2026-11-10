@@ -16,6 +16,7 @@ local math_min   = math.min
 local math_max   = math.max
 local math_sin   = math.sin
 local math_cos   = math.cos
+local math_abs   = math.abs
 local math_pi    = math.pi
 
 local Chrome = {
