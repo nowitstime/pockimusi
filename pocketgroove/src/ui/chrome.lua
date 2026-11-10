@@ -189,25 +189,36 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
 
     -- Center core sparkle
     local anyActive = (activeDirKey and activeDirKey ~= "NEUTRAL")
-    self:drawStarGlint(cx, cy, anyActive and 11 or 7, anyActive and col or C.MUTED, anyActive and 0.9 or 0.45)
+    self:drawStarGlint(cx, cy, anyActive and 10 or 7, anyActive and col or C.MUTED, anyActive and 0.9 or 0.45)
 
-    -- Draw tips, labels, and active glow
+    -- Draw tips, labels, and active star point outlines
     love.graphics.setFont(self.fontSmall)
-    for _, d in ipairs(dirDefs) do
+    for i, d in ipairs(dirDefs) do
         local coord = tipCoords[d.k]
         local has = labels and labels[d.k] and labels[d.k] ~= ""
         local isActive = (activeDirKey == d.k)
 
         if isActive then
-            -- Active ray beam and star glint (clean line without solid circle behind it)
-            self:setColor(C.TEXT)
-            love.graphics.setLineWidth(1.8)
-            love.graphics.line(cx, cy, coord.tx, coord.ty)
+            -- Light up the two edges of the star forming this directional point in instrument color
+            local tipIdx = (i - 1) * 2 + 1
+            local leftValleyIdx = ((tipIdx - 2 + nVerts) % nVerts) + 1
+            local rightValleyIdx = (tipIdx % nVerts) + 1
+            local vLeft = ringVerts[leftValleyIdx]
+            local vTip = ringVerts[tipIdx]
+            local vRight = ringVerts[rightValleyIdx]
+
+            -- Soft subtle point fill glow
+            self:setColor(col, 0.22)
+            love.graphics.polygon("fill", cx, cy, vLeft.x, vLeft.y, vTip.x, vTip.y, vRight.x, vRight.y)
+
+            -- Glowing star outline in the direction pressed
+            self:setColor(col)
+            love.graphics.setLineWidth(2.2)
+            love.graphics.line(vLeft.x, vLeft.y, vTip.x, vTip.y, vRight.x, vRight.y)
             love.graphics.setLineWidth(1)
-            self:drawStarGlint(coord.tx, coord.ty, 12, col, 1.0)
         end
 
-        -- Tip diamond vertex
+        -- Tip diamond vertex (lights up white when pressed, instrument color when idle)
         self:drawDiamond(coord.tx, coord.ty, isActive and 3.5 or (has and 2.5 or 1.5),
             isActive and C.TEXT or (has and col or C.DIM))
 
@@ -218,7 +229,7 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
             local ly = cy + math_sin(d.ang) * d.lr
             local tw = self.fontSmall:getWidth(text)
             local th = self.fontSmall:getHeight()
-            self:setColor(isActive and col or C.TEXT)
+            self:setColor(isActive and C.TEXT or C.MUTED)
             love.graphics.print(text, math_floor(lx - tw * 0.5), math_floor(ly - th * 0.5))
         end
     end
