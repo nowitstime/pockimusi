@@ -108,8 +108,8 @@ function Chrome:drawTag(x, y, w, h, text, strokeCol, fillCol, textCol, font, fil
     love.graphics.print(text, math_floor(x + (w - tw) * 0.5), math_floor(y + (h - th) * 0.5))
 end
 
--- Architectural frame with corner accent diamonds (rx=6)
-function Chrome:drawFrame(x, y, w, h, strokeCol, lineWidth, accentCol)
+-- Architectural frame (rx=6)
+function Chrome:drawFrame(x, y, w, h, strokeCol, lineWidth)
     local C = Config.COLORS
     self:setColor(C.PANEL)
     love.graphics.rectangle("fill", x, y, w, h, 6, 6)
@@ -118,13 +118,6 @@ function Chrome:drawFrame(x, y, w, h, strokeCol, lineWidth, accentCol)
     love.graphics.setLineWidth(lineWidth or 1)
     love.graphics.rectangle("line", x, y, w, h, 6, 6)
     love.graphics.setLineWidth(1)
-
-    if accentCol then
-        self:drawDiamond(x + 6, y + 6, 2.0, accentCol)
-        self:drawDiamond(x + w - 6, y + 6, 2.0, accentCol)
-        self:drawDiamond(x + 6, y + h - 6, 2.0, accentCol)
-        self:drawDiamond(x + w - 6, y + h - 6, 2.0, accentCol)
-    end
 end
 
 -- ============================================================================
@@ -389,11 +382,10 @@ function Chrome:drawTopBar()
     love.graphics.rectangle("fill", 12, 10, 126, 30, 4, 4)
     self:setColor(instCol)
     love.graphics.rectangle("fill", 12, 10, 3.5, 30, 1.5, 1.5)
-    self:drawStarGlint(23, 25, 4.5, instCol, 0.95)
 
     self:setColor(C.TEXT)
     love.graphics.setFont(self.fontSmall)
-    love.graphics.print(string.format("%d · %s", sl, track and track.name or "TRK"), 33, 17)
+    love.graphics.print(string.format("%d · %s", sl, track and track.name or "TRK"), 24, 17)
 
     -- Hairline dividers & Metadata
     self:setColor(C.GRID)
@@ -479,14 +471,12 @@ function Chrome:drawCenterStage()
     elseif mode == "ERASE" then borderCol = C.RED
     end
 
-    self:drawFrame(8, 50, 624, 306, borderCol, (mode == "NORMAL") and 1 or 1.6, instCol)
+    self:drawFrame(8, 50, 624, 306, borderCol, (mode == "NORMAL") and 1 or 1.6)
 
-    -- Subtle vertical hairline dividers with diamond midpoints
+    -- Clean vertical hairline dividers separating Left Zone | Center | Right Zone
     self:setColor(C.GRID, 0.55)
     love.graphics.line(198, 62, 198, 312)
     love.graphics.line(442, 62, 442, 312)
-    self:drawDiamond(198, 188, 2.5, C.GRID)
-    self:drawDiamond(442, 188, 2.5, C.GRID)
 
     -- Astrolabe zone motifs in normal or recording modes
     if mode == "NORMAL" or mode == "REC_LATCH" or mode == "REC_HOLD" then
@@ -523,12 +513,10 @@ function Chrome:drawCenterStage()
     elseif mode == "FX" then titleStr = "LIVE PERFORMANCE FX"
     end
 
-    self:drawStarGlint(218, 69, 4.5, instCol, 0.85)
     self:setColor(C.TEXT)
     love.graphics.setFont(self.fontMed)
     local tw = self.fontMed:getWidth(titleStr)
     love.graphics.print(titleStr, math_floor(320 - tw * 0.5), 62)
-    self:drawStarGlint(422, 69, 4.5, instCol, 0.85)
 
     self:setColor(C.GRID, 0.6)
     love.graphics.line(212, 82, 428, 82)
@@ -928,10 +916,9 @@ function Chrome:drawFooterStrip(def)
     self:setColor(C.BG)
     love.graphics.rectangle("fill", 9, 323, 622, 32, 4, 4)
 
-    self:drawStarGlint(24, 339, 4.5, hintCol, 0.9)
     self:setColor(hintCol)
     love.graphics.setFont(self.fontSmall)
-    love.graphics.print(hintText, 36, 331)
+    love.graphics.print(hintText, 24, 331)
 end
 
 -- ============================================================================
