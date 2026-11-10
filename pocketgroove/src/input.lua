@@ -59,7 +59,7 @@ Input.GAMEPAD_MAP = {
     START  = { "start" },
 }
 
-function Input:pollRawButton(btn)
+function Input:pollRawButton(btn, joysticks)
     local keys = self.KEY_MAP[btn]
     if keys then
         for i = 1, #keys do
@@ -69,23 +69,24 @@ function Input:pollRawButton(btn)
         end
     end
 
-    local joysticks = love.joystick.getJoysticks()
-    for _, js in ipairs(joysticks) do
-        if js:isGamepad() then
-            local gpButtons = self.GAMEPAD_MAP[btn]
-            if gpButtons then
-                for i = 1, #gpButtons do
-                    if js:isGamepadDown(gpButtons[i]) then
-                        return true
+    if joysticks then
+        for _, js in ipairs(joysticks) do
+            if js:isGamepad() then
+                local gpButtons = self.GAMEPAD_MAP[btn]
+                if gpButtons then
+                    for i = 1, #gpButtons do
+                        if js:isGamepadDown(gpButtons[i]) then
+                            return true
+                        end
                     end
                 end
+                if btn == "LEFT" and js:getGamepadAxis("leftx") < -0.45 then return true end
+                if btn == "RIGHT" and js:getGamepadAxis("leftx") > 0.45 then return true end
+                if btn == "UP" and js:getGamepadAxis("lefty") < -0.45 then return true end
+                if btn == "DOWN" and js:getGamepadAxis("lefty") > 0.45 then return true end
+                if btn == "L2" and js:getGamepadAxis("triggerleft") > 0.45 then return true end
+                if btn == "R2" and js:getGamepadAxis("triggerright") > 0.45 then return true end
             end
-            if btn == "LEFT" and js:getGamepadAxis("leftx") < -0.45 then return true end
-            if btn == "RIGHT" and js:getGamepadAxis("leftx") > 0.45 then return true end
-            if btn == "UP" and js:getGamepadAxis("lefty") < -0.45 then return true end
-            if btn == "DOWN" and js:getGamepadAxis("lefty") > 0.45 then return true end
-            if btn == "L2" and js:getGamepadAxis("triggerleft") > 0.45 then return true end
-            if btn == "R2" and js:getGamepadAxis("triggerright") > 0.45 then return true end
         end
     end
 
@@ -93,8 +94,9 @@ function Input:pollRawButton(btn)
 end
 
 function Input:update(dt)
+    local joysticks = love.joystick and love.joystick.getJoysticks()
     for _, btn in ipairs(self.BUTTON_LIST) do
-        local isNowDown = self:pollRawButton(btn)
+        local isNowDown = self:pollRawButton(btn, joysticks)
         local wasDown = self.down[btn]
         self.pressed[btn]  = (isNowDown and not wasDown)
         self.released[btn] = (not isNowDown and wasDown)

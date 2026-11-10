@@ -125,11 +125,15 @@ function Looper:recordEvent(ev)
             ev.justRecorded = true
         end
 
-        -- Deduplicate same action at same quantized phase window
+        -- Deduplicate same action at same quantized phase window (handling 1.0 circular wrap)
         for i = #track.events, 1, -1 do
             local existing = track.events[i]
-            if existing.action == ev.action and math_abs(existing.phase - snappedPhase) < (0.4 / snapSteps) then
-                table.remove(track.events, i)
+            if existing.action == ev.action then
+                local diff = math_abs(existing.phase - snappedPhase)
+                if diff > 0.5 then diff = 1.0 - diff end
+                if diff < (0.4 / snapSteps) then
+                    table.remove(track.events, i)
+                end
             end
         end
     else
@@ -210,15 +214,19 @@ function Looper:toggleBars()
     if self.bars == 2 then
         -- Expand 2 Bars -> 4 Bars by duplicating Bars 1-2 into Bars 3-4!
         self.bars = 4
+        local totalSteps = self:getTotalSixteenths()
         for tIdx = 1, 4 do
             local track = self.tracks[tIdx]
             local origCount = #track.events
             for i = 1, origCount do
                 local ev = track.events[i]
                 ev.phase = ev.phase * 0.5
+                ev.step = math_floor(ev.phase * totalSteps) + 1
+                if ev.gridSteps then ev.gridSteps = ev.gridSteps * 2 end
                 local copy = {}
                 for k, v in pairs(ev) do copy[k] = v end
                 copy.phase = ev.phase + 0.5
+                copy.step = math_floor(copy.phase * totalSteps) + 1
                 copy.justRecorded = false
                 table.insert(track.events, copy)
             end
@@ -229,12 +237,15 @@ function Looper:toggleBars()
     else
         -- Contract 4 Bars -> 2 Bars (keep Bars 1-2)
         self.bars = 2
+        local totalSteps = self:getTotalSixteenths()
         for tIdx = 1, 4 do
             local track = self.tracks[tIdx]
             for i = #track.events, 1, -1 do
                 local ev = track.events[i]
                 if ev.phase < 0.5 then
                     ev.phase = ev.phase * 2.0
+                    ev.step = math_floor(ev.phase * totalSteps) + 1
+                    if ev.gridSteps then ev.gridSteps = math_max(1, math_floor(ev.gridSteps * 0.5)) end
                 else
                     table.remove(track.events, i)
                 end

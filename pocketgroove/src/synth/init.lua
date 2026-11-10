@@ -78,6 +78,13 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis)
     local startSemis = glideFromSemis or pitchSemis
     local pitchRatio = clamp(2.0 ^ ((startSemis + fxPitchOffset) / 12.0), 0.125, 8.0)
 
+    -- Evict any old active voice using this source before reusing it
+    for i = #self.activeVoices, 1, -1 do
+        if self.activeVoices[i].source == src then
+            table.remove(self.activeVoices, i)
+        end
+    end
+
     src:stop()
     src:setPitch(pitchRatio)
     src:setVolume(effectiveVolume)

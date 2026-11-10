@@ -124,7 +124,7 @@ local function handleGlobalCombos()
         local now = love.timer.getTime()
         if (now - Input.lastStartTapTime) < 0.32 then
             Looper.phase = 0.0
-            Looper.prevPhase = 0.0
+            Looper.prevPhase = 1.0 - 0.0001
             Looper.playing = true
             Looper:showToast("PLAYHEAD RESET TO BAR 1.1")
         else

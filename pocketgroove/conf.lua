@@ -4,7 +4,7 @@
 function love.conf(t)
     t.identity = "pocketgroove"
     t.appendidentity = true
-    t.version = "11.4"
+    t.version = "11.5"
     t.console = false
 
     t.audio.mixwithsystem = true

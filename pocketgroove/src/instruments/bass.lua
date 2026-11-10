@@ -60,6 +60,10 @@ function Bass:updateInput(dt, state, track, emitEvent)
     if Input.down.R1 then octShift = octShift + 12 end
     local baseSemis = Theory:getScaleDegreeSemis(deg) + octShift
 
+    if state.sustainedVoice and (not state.sustainedVoice.source or not state.sustainedVoice.source:isPlaying()) then
+        state.sustainedVoice = nil
+    end
+
     if Input.down.A and state.sustainedVoice then
         state.sustainedVoice.hasGlide = true
         state.sustainedVoice.targetSemis = baseSemis
