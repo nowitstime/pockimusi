@@ -52,7 +52,6 @@ end
 function Chrome:drawStarGlint(cx, cy, r, col, alpha)
     alpha = alpha or 1.0
     self:setColor(col, alpha)
-    -- Approximate concave 4-point star with 8 points
     local inner = r * 0.22
     local pts = {
         cx, cy - r,
@@ -64,7 +63,15 @@ function Chrome:drawStarGlint(cx, cy, r, col, alpha)
         cx - r, cy,
         cx - inner, cy - inner,
     }
-    love.graphics.polygon("fill", pts)
+    -- Fill as 8 convex triangles from center to avoid non-convex triangulation overlapping
+    for i = 1, 8 do
+        local p1x = pts[(i - 1) * 2 + 1]
+        local p1y = pts[(i - 1) * 2 + 2]
+        local nextIdx = (i % 8) + 1
+        local p2x = pts[(nextIdx - 1) * 2 + 1]
+        local p2y = pts[(nextIdx - 1) * 2 + 2]
+        love.graphics.polygon("fill", cx, cy, p1x, p1y, p2x, p2y)
+    end
 end
 
 -- Crisp 4-vertex diamond (◇ / ◆)
@@ -148,9 +155,10 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
         { k = "UP_LEFT",    ang = -math_pi * 0.75, r = diagR, lr = diagR + 15, short = "UL" },
     }
 
-    -- Build star polygon points
+    -- Build star polygon points and decompose fill into convex triangles
     local starPts = {}
     local tipCoords = {}
+    local ringVerts = {}
     for i, d in ipairs(dirDefs) do
         local tx = cx + math_cos(d.ang) * d.r
         local ty = cy + math_sin(d.ang) * d.r
@@ -161,12 +169,21 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
         table.insert(starPts, ty)
         table.insert(starPts, vx)
         table.insert(starPts, vy)
+        table.insert(ringVerts, { x = tx, y = ty })
+        table.insert(ringVerts, { x = vx, y = vy })
         tipCoords[d.k] = { tx = tx, ty = ty, vx = vx, vy = vy, d = d }
     end
 
-    -- Star fill and line outline
+    -- Star fill rendered as 16 convex triangles from center to avoid triangulation overlap at vertex 1 (UP)
     self:setColor(C.PANEL_HI, 0.38)
-    love.graphics.polygon("fill", starPts)
+    local nVerts = #ringVerts
+    for i = 1, nVerts do
+        local v1 = ringVerts[i]
+        local v2 = ringVerts[(i % nVerts) + 1]
+        love.graphics.polygon("fill", cx, cy, v1.x, v1.y, v2.x, v2.y)
+    end
+
+    -- Clean single wireframe outline
     self:setColor(C.GRID)
     love.graphics.polygon("line", starPts)
 
@@ -189,9 +206,7 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
         local isActive = (activeDirKey == d.k)
 
         if isActive then
-            -- Active ray beam and star glint
-            self:setColor(col, 0.28)
-            love.graphics.circle("fill", coord.tx, coord.ty, 14)
+            -- Active ray beam and star glint (clean line without solid circle behind it)
             self:setColor(C.TEXT)
             love.graphics.setLineWidth(1.8)
             love.graphics.line(cx, cy, coord.tx, coord.ty)
