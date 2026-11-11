@@ -58,15 +58,15 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ---
 
-## Phase A · Foundation ← **next up** (detailed plan below)
+## Phase A · Foundation ← **next up** — working plan in [PHASE_A.md](PHASE_A.md)
 
-- [ ] A1 Quick fixes
-- [ ] A2 Setting rows + safe instrument swap
-- [ ] A3 Real tests that run the Lua
-- [ ] A4 Clock from absolute time + integer ticks
-- [ ] A5 Event format v2 + note-on/note-off playback
-- [ ] A6 Sustained voice engine
-- [ ] A7 Modes module (move combo handling out of `main.lua`)
+- [ ] A1 Quick fixes + build script packs every file
+- [ ] A2 Real tests (characterise today's looper first)
+- [ ] A3 Modes module (move combo handling out of `main.lua`)
+- [ ] A4 Setting rows + safe instrument swap (first row: Harp `COLOUR`)
+- [ ] A5 Clock from absolute time + integer ticks
+- [ ] A6 Event format v2 + note-on/note-off playback
+- [ ] A7 Sustained voice engine
 
 ## Phase B · Bass pass
 
@@ -148,74 +148,6 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ---
 
-## Immediate plan: Phase A in detail
+## Immediate plan
 
-Goal: when Phase A is done, the app plays exactly as today, but the engine stores v2 events on integer ticks, can hold notes, and the Track page has room for every setting we planned. Do the steps in this order; each one leaves the app working.
-
-### A1 · Quick fixes (small, do first)
-
-| Fix | Where |
-| :-- | :-- |
-| Mix page level changes once per press (+ key repeat), not every frame | `main.lua` MIX block (`pressed or down` adds 0.08 per frame) |
-| START tap toggles play after a 0.22–0.25 s hold that opened Transport | `main.lua` START tap check (use a "combo used" flag like SELECT) |
-| Grain uses a fixed major pentatonic and ignores minor scales (stop-gap until it's replaced) | `instruments/grain.lua` |
-
-Done when: each fix checked on desktop, then once on the device.
-
-### A2 · Setting rows + safe swap
-
-1. Extend `Instruments:getSoundRows` so an instrument can return setting rows after its sound rows: `{ id, label, kind = "setting", values, get, set }`. `L1/R1` on a setting row steps its value (no sound preview).
-2. Draw setting rows in the constellation in a second style so sounds and settings read differently.
-3. Instrument swap: `LEFT/RIGHT` sets `page.pendingInstrument` (shown in the badge); on `SELECT` release, apply it.
-4. Apply = push `{ kind = "swap", slot, instrumentId, state, events, fx, swing, grid }` onto the undo stack, so `L2 + R2 + LEFT` restores the track.
-5. Add one real setting row as the test case: Harp `COLOUR`, replacing its `L1/R1` 7th/9th and sus4/add9.
-
-Done when: Harp colour works from the Track page, a swap can be undone, and drum rows behave as today.
-
-### A3 · Real tests
-
-1. Make `looper.lua`, `theory.lua` and the future `harmony.lua` loadable without LÖVE (inject `love.timer` and the synth where needed).
-2. Add `tests/` run with plain `luajit` (or `busted` if available): snapping, dedup across the loop seam, 2↔4 bars, swing offsets, take undo, chord building per scale.
-3. Retire `test_looper_logic.py`.
-
-Done when: `luajit tests/run.lua` passes and fails if looper maths are broken.
-
-### A4 · Clock + ticks
-
-1. `Looper` keeps `anchorTime` and `anchorTick`; current tick = `anchorTick + (now − anchorTime) × ticksPerSecond`, wrapped to the loop length. Re-anchor on BPM change, pause/resume, half-speed and stutter.
-2. Playback fires events whose tick (plus swing offset) lies in `(prevTick, tick]`, with wraparound — the same logic as today, on integers.
-3. Grids become tick steps: 1/4 = 96, 1/8 = 48, 1/16 = 24, 1/12T = 32, FREE = 1 tick. Swing offsets in ticks. Flam stays a fixed 28 ms before the hit.
-4. 2↔4 bars: multiply/divide ticks exactly; no float drift.
-5. Grid-locked note repeat and the click use the same tick clock.
-6. `phase` = `tick / loopTicks` for drawing only.
-
-Done when: tempo stays exact while frames drop (test by forcing a slow frame), and drums, repeats, swing and the click behave the same.
-
-### A5 · Event format v2
-
-1. Events as in SPEC §8.2. Track-level `instrumentId` moves to the track.
-2. Recording: note-on creates the event with `len = 0`; note-off sets `len`. ❓ A note held across the loop seam: close at the seam and continue as a new event, or wrap — decide in testing.
-3. Playback calls `def:noteOn(ev)` at `tick` and `def:noteOff(ev)` at `tick + len`; one-shots (`len = 0`) only get `noteOn`.
-4. Pitched instruments record `degree`, `octave` and `semis` (and `chordRef`, tonic for now).
-5. Port Drums, Harp, Bass and Grain to v2 at their *current* behaviour (no new features). Grain emits one event per press with `len`, not one per grain.
-6. Undo, erase, dedup and the drum lanes work on v2.
-
-Done when: every instrument records and replays as today, and a held Grain/Bass press shows as one event.
-
-### A6 · Sustained voices
-
-1. `synths_bank.lua`: generate attack + seamless-loop layers for the harp, bass and pad patches.
-2. `src/synth/voice.lua`: `Synth:noteOn(patch, semis, vel, opts)` → voice with `setPitch`, `noteOff` (release envelope), driven in `Synth:update`, routed through the track's tone filter and EFX sends.
-3. Voice stealing per patch pool, as today.
-4. Measure boot time on the device before and after; if it grows past ~3 s, add a loading screen or generate lazily.
-
-Done when: a test key holds a bass note for 4 s without clicks and releases cleanly, with track effects on, on desktop and on the device.
-
-### A7 · Modes module
-
-1. Move `handleGlobalCombos` into `src/modes.lua` with an explicit mode enum and one "combo used" flag per modifier.
-2. Chrome reads `Modes.current` instead of re-deriving modes.
-
-Done when: `main.lua` is just the LÖVE callbacks, and every combo in SPEC §3.4–3.6 still works.
-
-**Then:** Phase B, the Bass pass, uses A5 + A6 directly.
+Phase A is next. The step-by-step plan, tests and exit checklist live in [PHASE_A.md](PHASE_A.md).
