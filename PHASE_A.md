@@ -220,55 +220,51 @@ No `trackSlot`, `instrumentId`, `phase`, `velocity`, `pitchSemis` or `decayMod` 
 
 ## A7 · Sustained voices 📱
 
-**Patch layers** (`synths_bank.lua`):
+**Status:** ✅ done (114 tests). ⬜ Device check.
 
-- **Attack layer:** the existing one-shot buffer.
-- **Loop layer:** a whole number of waveform periods.
-  - The frequency is snapped to `44100 / periodSamples`, and `patch.tuneSemis` corrects the tiny detune in `setPitch`.
-  - The loop plays with `setLooping(true)`, which is click-free.
-- Patches to build: bass, harp, and the four grain textures (which become Pad patches in Phase F).
+**Loop layers** (`Synth:createLoop(freq, periods, wave)`): `wave(angle)` is a function of the fundamental's angle containing only whole harmonics; the buffer holds `periods` whole periods of `round(44100 / freq)` samples, so `setLooping(true)` repeats without a click. The loop's real frequency is `44100 / period`; the returned `tune` (a few thousandths of a semitone) corrects it in `setPitch`.
 
-**Voice** (`src/synth/voice.lua`):
+| Patch | Attack layer | Loop | Sustain / fade-in / release |
+| :-- | :-- | :-- | :-- |
+| `bass` | `bass` one-shot | saw (9 harmonics) + square sub, fundamental C2 | 0.55 / 0.18 s / 0.10 s |
+| `grain_pad`, `grain_bell`, `grain_choir`, `grain_drone` | the Grain one-shots | harmonic re-voicings, fundamental C3 | 0.6 / 0.12 s / 0.35 s |
+
+The loop versions leave out the one-shots' detune, noise and inharmonic FM, which can't loop seamlessly in a short buffer. Pad (Phase F) can add movement back (chorus between two loop sources, brightness crossfade). The harp stays a pluck (no loop).
+
+**Voices** (`src/synth/voice.lua`, installed into `Synth`):
 
 ```lua
-local v = Synth:noteOn(patchId, semis, vel, { track = track, attack = 0.005, release = 0.12, glide = nil })
-v:setPitch(semis)   -- glide/bend target
-v:noteOff()         -- start release; voice frees itself when silent
+local v = Synth:noteOn("bass", semis, vel, { track = track, glideFrom = prev, vibrato = false })
+v:setPitch(semis)   -- glide (loop and attack layers)
+v:noteOff()         -- release; frees itself when silent
 ```
 
-- Envelope states are `attack → sustain → release → free`, with the level set per frame in `Synth:update` through `setVolume`.
-- The attack layer plays once, and the loop layer fades in underneath it (each patch sets the crossfade time).
-- Both sources get the track's tone filter and EFX sends through `Synth:applyTrackFx`.
-- Each patch has its own pool of loop sources; when one runs out, the oldest voice is stolen with a 10 ms fade.
+- The attack layer is the patch's one-shot via `Synth:trigger`, so it gets glide, track FX and the existing fade; the loop fades in under it over `xfade`, then holds at `sustain`.
+- `noteOff` fades the loop over `release` and cuts the attack layer to the same time.
+- Per frame (`Synth:update` → `updateVoices`): glide, vibrato, half-speed −7 st, and level = envelope × velocity × track volume × master × duck.
+- Each patch has 6 loop sources; running out steals that patch's oldest voice.
+- Not yet used by any instrument: Bass keeps its one-shot feel until Phase B, as planned.
 
-**Hooks for Phase B:**
+**Test keys (desktop):** hold `H` for a bass voice (track 3's volume and FX), `G` for the warm pad (track 4).
 
-- Bass `noteOn` uses `Synth:noteOn` when the patch has a loop layer; otherwise it falls back to the one-shot.
-- The Bass *feel* stays the same in A7. Real held notes and articulations are the Phase B work.
+**Boot time:** `Synth:init` prints `[PocketGroove] sound generation: ...` to the PortMaster `log.txt` and keeps `Synth.bootTimes`. Headless here the loops add about 10 % (4 ms of 45 ms); the device will be slower in absolute terms.
 
-**Dev check:**
-
-- A desktop-only key (`H`) holds a bass voice while pressed.
-- Boot time is logged in `Synth:init` (`love.timer` before and after). If it goes over ~3 s on device, add a loading screen or build patches lazily.
-
-**Done when:** `H` holds a bass note for 4 s without clicks and releases cleanly, with track effects on, on desktop and on the device. Boot time is noted in this file.
-
----
+**New tests** (`tests/test_voices.lua`): a loop is whole periods, its seam is no rougher than any step inside it, and its tune correction is tiny; the seam check catches a non-harmonic wave; every real patch loop is seamless and in tune; noteOn plays the attack and fades the loop in; a voice sustains 4 s at a constant level; noteOff releases over the release time and frees the source; glide and `glideFrom`; half-speed; stealing; the H/G keys in the running game.
 
 ## Exit checklist for Phase A
 
-- [ ] `python3 tests/run.py` green
-- [ ] All SPEC §3.4–3.6 combos work (manual checklist)
+- [x] `python3 tests/run.py` green (114)
+- [x] All SPEC §3.4–3.6 combos work (`tests/test_modes.lua` replaces the manual checklist)
 - [ ] Drums feel identical on device: repeats, flam, ratchet, swing, choke, click
-- [ ] No tempo drift with forced frame drops
-- [ ] Harp `COLOUR` row works; instrument swap is undoable
-- [ ] A held Grain press = one event; a held voice sustains and releases cleanly
+- [x] No tempo drift with forced frame drops (tested headless; ⬜ feel it on device)
+- [x] Harp `COLOUR` row works; instrument swap is undoable
+- [x] A held Grain press = one event; a held voice sustains and releases cleanly (⬜ listen on device: `H` / `G` on a keyboard, or Phase B)
 - [ ] Boot time and EFX cost on the RG35XX recorded here
 
 ## Notes / measurements
 
 | Date | Item | Result |
 | :-- | :-- | :-- |
-| | Boot time (before A7) | |
-| | Boot time (after A7) | |
+| 2026-11-11 | Sound generation, headless LuaJIT (fake SoundData) | drums 0.020 s, synths 0.021 s, sustain loops 0.004 s, total 0.045 s |
+| | Boot time on the RG35XX (from `log.txt`) | |
 | | EFX on device (supported? sends?) | |

@@ -35,6 +35,10 @@ SCENES = {
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
     "grain-hold": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("B", "RIGHT"); H.play(0.8)',
+    "grain-recording": 'for _ = 1, 3 do H.tap("SELECT") end; H.play(1.0); H.tap("L2"); H.hold("B"); H.play(1.0)',
+    "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'
+                  ' H.play(0.6); H.hold("Y"); H.play(0.4); H.release("Y"); H.play(1.6); H.hold("X"); H.play(1.2);'
+                  ' H.release("X"); H.tap("L2"); H.play(1.1)',
     "grain-playback": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("A"); H.play(1.2); H.release("A");'
                       ' H.play(0.05); H.tap("L2"); H.play(3.4)',
 }

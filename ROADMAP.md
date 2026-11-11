@@ -58,7 +58,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ---
 
-## Phase A · Foundation ← **next up** — working plan in [PHASE_A.md](PHASE_A.md)
+## Phase A · Foundation ✅ (device checks pending) — details in [PHASE_A.md](PHASE_A.md)
 
 - [x] A1 Quick fixes + build script packs every file (device check pending)
 - [x] A2 Real tests (characterise today's looper first) — `python3 tests/run.py`
@@ -66,19 +66,16 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] A4 Setting rows + safe instrument swap (first row: Harp `COLOUR`)
 - [x] A5 Clock from real time + integer ticks (480 PPQN; device check pending)
 - [x] A6 Event format v2 + note-on/note-off playback (Grain = held notes)
-- [ ] A7 Sustained voice engine
+- [x] A7 Sustained voice engine (device listen pending)
 
-## Phase B · Bass pass
+## Phase B · Bass pass ← **next up** — working plan in [PHASE_B.md](PHASE_B.md)
 
-- [ ] Bass plays sustained notes: sound while held, release on button-up
-- [ ] Face buttons = articulations (`B` normal, `A` legato/glide, `Y` staccato, `X` accent + vibrato) ❓ confirm after playtest
-- [ ] D-pad move while holding = glide to the new degree, recorded as `bend`
-- [ ] Records `degree`, `octave`, `semis`, `len`, `bend`
-- [ ] Rows: `PATCH`, `FOLLOW` (inactive until D), `GLIDE`
-- [ ] 2–3 bass patches in the pitched pool (saw, sub, pluck)
-- [ ] Stage view fitted to the template (keep the wave display character)
-- [ ] Tape deck shows bass notes as ribbons (first use of held-note drawing)
-- [ ] Device check
+- [x] B1 Held-note handles: end early, record bends incl. the release tail (shared by Bass, Pad, Lead)
+- [ ] B2 Bass sounds: `SAW`, `SUB`, `PLUCK` patches + `PATCH` and `GLIDE` rows
+- [ ] B3 Held notes: `B` hold, `Y` staccato, `X` accent + vibrato; monophonic
+- [ ] B4 Legato `A`: glide without a new attack, live and on playback
+- [ ] B5 Bends: D-pad and shoulders while holding glide, record, replay
+- [ ] B6 Stage view (pitch trace, live scope) + bend marks on the tape deck; device check
 
 ## Phase C · Autosave
 
@@ -150,4 +147,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is next. The step-by-step plan, tests and exit checklist live in [PHASE_A.md](PHASE_A.md).
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B, the Bass pass, is next: step-by-step plan, decisions and open questions in [PHASE_B.md](PHASE_B.md).

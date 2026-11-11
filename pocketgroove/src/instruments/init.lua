@@ -125,16 +125,75 @@ function Instruments:playNote(track, ev)
     end
 end
 
--- Held note from a live press; released by Instruments:update
+-- ---------------------------------------------------------------------------
+-- Held-note handles (returned by hold(ev))
+--   h:release()      end the note now (otherwise it ends on button-up)
+--   h:bend(fields)   pitch change { degree, octave, semis }: the live voice
+--                    follows (def:bendTo) and the recording gets a keyframe
+--                    { dt, degree, octave, semis }. Works after release too,
+--                    for as long as the instrument keeps bending the fading
+--                    note; those keyframes land after len.
+--   h:isHeld()
+-- Time is counted in ticks since the press, frame by frame, so a note held
+-- across the loop seam (or longer than half a loop) still measures right.
+-- ---------------------------------------------------------------------------
+local Handle = {}
+Handle.__index = Handle
+
+-- Ticks since the press; backward jumps (stutter FX) don't count
+function Handle:advance()
+    local loop = Looper:getLoopTicks()
+    local d = (Looper.tick - self.lastTick) % loop
+    if d < loop * 0.5 then self.elapsed = self.elapsed + d end
+    self.lastTick = Looper.tick
+    return self.elapsed
+end
+
+function Handle:isHeld()
+    return self.held
+end
+
+function Handle:release()
+    if not self.held then return end
+    self.held = false
+    local list = Instruments.held[self.track.slot]
+    for i = #list, 1, -1 do
+        if list[i] == self then table.remove(list, i) break end
+    end
+    Instruments:releaseNote(self.track, self)
+end
+
+function Handle:bend(fields)
+    local def = defOf(Instruments, self.track)
+    if def.bendTo then def:bendTo(self.ev, fields, self.track.state, self.track) end
+
+    local rec = self.rec
+    if not rec then return end
+    local loop = Looper:getLoopTicks()
+    local e = self:advance()
+    if e >= loop - 1 then return end           -- longer than a loop: stop recording bends
+    local dt = math.floor(e + 0.5)
+    rec.bend = rec.bend or {}
+    local kf = { dt = dt, degree = fields.degree, octave = fields.octave, semis = fields.semis }
+    local last = rec.bend[#rec.bend]
+    if last and last.dt == dt then
+        rec.bend[#rec.bend] = kf                 -- several changes in one tick: keep the latest
+    else
+        table.insert(rec.bend, kf)
+    end
+end
+
+-- Held note from a live press; returns its handle
 function Instruments:holdNote(track, ev)
     defOf(self, track):noteOn(ev, track.state, track, false)
-    local h = { ev = ev, pressTick = Looper.tick }
+    local h = setmetatable({ ev = ev, track = track, held = true, elapsed = 0.0, lastTick = Looper.tick }, Handle)
     if Input:isRecording() then
         local rec = copyEvent(ev)
         rec.open = true                    -- not played back until released
         h.rec = Looper:recordEvent(track.slot, rec)
     end
     table.insert(self.held[track.slot], h)
+    return h
 end
 
 function Instruments:releaseNote(track, h)
@@ -142,8 +201,7 @@ function Instruments:releaseNote(track, h)
     if def.noteOff then def:noteOff(h.ev, track.state, track, false) end
     if h.rec then
         local loop = Looper:getLoopTicks()
-        local held = (Looper.tick - h.pressTick) % loop
-        h.rec.len = math.max(1, math.min(loop - 1, math.floor(held + 0.5)))
+        h.rec.len = math.max(1, math.min(loop - 1, math.floor(h:advance() + 0.5)))
         h.rec.open = nil
     end
 end
@@ -151,12 +209,23 @@ end
 -- Release every live held note on a track (or all tracks)
 function Instruments:releaseAll(slot)
     for s = slot or 1, slot or 4 do
-        local track = Looper.tracks[s]
         local list = self.held[s]
         for i = #list, 1, -1 do
-            self:releaseNote(track, table.remove(list, i))
+            list[i]:release()
         end
     end
+end
+
+-- The bend keyframe in effect `elapsed` ticks after a note's start, or nil
+-- (no bend yet: the note's own pitch)
+function Instruments:bendAt(ev, elapsed)
+    local bend = ev.bend
+    if not bend then return nil end
+    local found
+    for i = 1, #bend do
+        if bend[i].dt <= elapsed then found = bend[i] else break end
+    end
+    return found
 end
 
 -- Playback from the looper: kind = "on", "off" or "grace"
@@ -186,7 +255,7 @@ function Instruments:update(dt, controlsBlocked)
     if not controlsBlocked and def.updateInput then
         def:updateInput(dt, state, track,
             function(ev) self:playNote(track, ev) end,
-            function(ev) self:holdNote(track, ev) end)
+            function(ev) return self:holdNote(track, ev) end)
     end
 
     -- Held notes end when their button goes up, a page takes the controls,
@@ -195,9 +264,9 @@ function Instruments:update(dt, controlsBlocked)
         local list = self.held[s]
         for i = #list, 1, -1 do
             local h = list[i]
+            h:advance()
             if controlsBlocked or s ~= Looper.activeTrack or not Input.down[h.ev.action] then
-                table.remove(list, i)
-                self:releaseNote(Looper.tracks[s], h)
+                h:release()
             end
         end
     end

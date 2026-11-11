@@ -225,13 +225,13 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ Shoulders = voicing octave; both = wide voicing. ✅ Colour on the `COLOUR` row.
 - 📐 Records `chord` events that drive Harmony (§5).
 
-### 7.3 Bass 🔧 — *next instrument pass*
+### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
 
-- ✅ D-pad = scale degrees 1–8; `L1/R1` = octave.
-- 📐 **Sustained notes:** a note sounds while its button is held and releases on button-up (needs §9.2).
-- 📐 Face buttons = articulations only: `B` normal (held), `A` glide/legato from previous note, `Y` short staccato, `X` accent with vibrato. ❓ (Today `Y`/`X` are +octave/+fifth, which mixes *which note* with *how*.)
-- 📐 Moving the D-pad while holding a note **bends** to the new degree (glide); recorded as `bend` keyframes.
-- 📐 Follows chords (§5). Rows: `PATCH`, `FOLLOW`, `GLIDE`.
+- ✅ D-pad = scale degrees 1–8 (neutral = 1); `L1/R1` = octave.
+- 📐 **Monophonic, held notes:** a note sounds while its button is held and releases on button-up (§9.2); a new press ends the previous note.
+- 📐 Face buttons = articulations only: `B` hold, `A` legato (glides from the held or last note without a new attack), `Y` staccato (short, fixed), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
+- 📐 Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed.
+- 📐 Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`), `GLIDE` (fast / medium / slow). `FOLLOW` comes with chord-follow (§5, Phase D).
 
 ### 7.4 Pad 📐 (replaces Grain)
 
@@ -281,7 +281,8 @@ Event = {
   octave   = 0,            -- shoulder octave offset
   semis    = 7,            -- absolute pitch at record time (used when FOLLOW = off)
   chordRef = "V",          -- chord that was current at record time (display)
-  bend     = { {dt = 60, degree = 6} },  -- keyframes while held (ticks after start)
+  bend     = { {dt = 60, degree = 6, octave = 0, semis = 9} },  -- pitch changes, ticks after start; ✅ format
+                                         -- (keyframes after len = bends in the release tail)
 
   -- drums only
   soundId  = "kick_808",
@@ -307,11 +308,12 @@ Event = {
 - 44.1 kHz, 16-bit mono `SoundData` generated at boot; pools of cloned `Source`s for polyphony; voice stealing.
 - Live FX: beat repeat, half-speed, duck, bitcrush-style pitch quantize.
 
-### 9.2 Sustained voices 📐
+### 9.2 Sustained voices ✅ (engine; instruments start using it in Phase B)
 
-- Each pitched patch is generated as an **attack layer** (one-shot) plus a **seamless loop layer** (whole number of cycles, so `setLooping(true)` is click-free).
+- Each sustaining patch is generated as an **attack layer** (one-shot) plus a **seamless loop layer** (whole number of cycles, so `setLooping(true)` is click-free).
 - A voice = attack + loop sources with an envelope (attack / release, and crossfade for Pad brightness) driven in `Synth:update` via `setVolume`; pitch and glide via `setPitch`. Voices route through the track's effects like one-shots do.
 - API: `Synth:noteOn(patch, semis, vel, opts) → voice`, `voice:setPitch(semis)`, `voice:noteOff()`. One-shots keep using `Synth:trigger`.
+- Patches so far: `bass`, `grain_pad`, `grain_bell`, `grain_choir`, `grain_drone`. Loops contain only whole harmonics; each patch has 6 loop sources and steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
 
 ### 9.3 Effects & mix
 
