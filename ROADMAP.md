@@ -1,124 +1,220 @@
-# PocketGroove — UI & Interaction Roadmap
+# PocketGroove — Roadmap
 
-Companion to [SPEC.md](SPEC.md). The spec says *what the controls mean*; this file says *in what order we build and refine the UI* and what is still undecided.
+Companion to [SPEC.md](SPEC.md). The spec says *what things should be*; this file says *in what order we build them* and what comes next.
 
 Legend: `[x]` done · `[ ]` to do · ❓ needs a decision
 
 ---
 
+## Where we are
+
+Running on the RG35XX Plus and it feels fine. Built so far:
+
+- [x] 4-track looper, quantize grids, 2/4 bars, undo last take, per-pad/track erase
+- [x] Drums (expression, rolls, 24-sound catalogue), Chord Harp, Bass, Grain
+- [x] Record latch/hold on `L2`, Transport on `START` hold, Track page on `SELECT` hold (basic), Mix page on `SELECT + R2`
+- [x] Master punch-in FX, per-track + master volume
+- [x] Base celestial visual language started (D-pad star, face buttons, drum stage)
+
 ## Decisions so far
 
 | Topic | Decision |
 | :-- | :-- |
-| Layout | One **fixed stage template** for every instrument: shoulder badges on top, **faceted star-compass D-pad** left, **faceted diamond button pods** right, instrument signature display in the middle, hint strip at the bottom |
-| Pizzazz & Motifs | **Per-instrument geometric visual halos/auras** behind the D-pad and face controls: rhythmic reticles for Drums, celestial orbit rings for Harp, cyber-grid brackets for Bass, and orbital dust rings for Grain |
-| Labels | Widgets never move. Their **labels change** with the mode or held modifier |
-| Mix | A **mix page** opened with a SELECT combination (proposed: `SELECT + R2`) |
-| Hints | Show hints **for the modifier currently held**, not a permanent legend |
-| Record | Hybrid **tap-to-latch / hold-for-momentary** on `L2` |
-| Audio feedback | Try a short **audio tick** for mode changes and record on/off |
-| Saving | **Autosave** first. A **song / pattern saving system** later |
-| Latency | Not a concern right now. Revisit if it gets worse during testing |
-| Instrument looks | Keep the character of the harp view and the bass wave display, but fit them into the template |
+| Tracks | **Four**, fixed. Instruments are swappable per slot |
+| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp** (new). Sample chop parked |
+| Drums randomness | **Variation** setting + **chance** hits, applied at playback |
+| Harmony | **Chord-follow**: chord harp track drives the current chord, tonic fallback, per-track *Follow* on/off |
+| Settings space | Track page becomes a **flat settings list** (`UP/DOWN` row, `LEFT/RIGHT` value) — new options cost a row, not a button |
+| Instrument swap | Preview on the Track page, apply on `SELECT` release, **undoable** |
+| Notes | **Event format v2**: integer ticks, note length, degrees + absolute pitch, bends, chance |
+| Audio | **Sustained voices** (attack + seamless loop layers) for all pitched patches |
+| Workflow | **One instrument at a time**, each pass includes its stage visuals in the shared template |
+| Look | Base look set early; refined per instrument, not finalised up front |
+| Saving | Autosave right after the format settles; patterns/song later |
 
 ---
 
-## UI-0 · Layout Template & Celestial Anime Visual Language
+## Order of work
 
-Goal: Every region of the 640×480 screen (Top Crown, Center Stage, and Bottom Starlight Tape Deck) shares the same elegant anime-celestial design language.
+| # | Phase | Why here |
+| :-- | :-- | :-- |
+| **A** | **Foundation** — fixes, Track page list, clock, event v2, sustained voices | Everything after depends on the note format and sustain. Small fixes ride along |
+| **B** | **Bass pass** | Hardest test of v2: held notes, glide/bend, degrees. Proves the engine |
+| **C** | **Autosave** | Format is now stable; stop losing jams |
+| **D** | **Chord Harp pass + Harmony (chord-follow)** | Bass already stores degrees, so follow just switches on |
+| **E** | **Drums pass** — kits, Variation, chance, swing | Already plays well; port to v2 and add the randomness |
+| **F** | **Pad** (replaces Grain) | Reuses sustained voices + Harmony; Grain textures become patches |
+| **G** | **Lead / Arp** | Same class as Bass; arp needs clock-locked scheduling from A |
+| **H** | **Mix & FX** — swing for all, tone, real low-pass, meters | Polish once all instruments exist |
+| **I** | **Tape deck v2 & visual polish** | Ribbons/bends/chord lane need v2 data; final look across all stages |
+| **J** | **Patterns / song, `.wav` export, sample loading** | Later, once the jam loop is great |
 
-- [ ] Write a `stage` layout module with named zones (`topBar`, `stage`, `tapeDeck`).
-- [ ] **Top Status Bar ("Crown")**:
-  - Rounded crystal capsule badges with luminous border outlines and top glass highlights.
-  - Starlight Metronome: 4-pointed sparkle stars that flare with a lens glow on downbeats.
-  - Mode Talisman in the top right (Record, Jam Safe, Mix, Transport).
-- [ ] **Center Stage Controls**:
-  - **Wireframe Star Constellation D-Pad**: Slender 8-pointed star wireframe outline; glowing starlight beam ray shooting from center to selected star tip on press.
-  - **Floating Clean Circle Lens Face Pods**: Crisp circular buttons floating on a celestial orbit ring with glass crescent gleam.
-  - **Celestial Instrument Auras**:
-    - Drums: Starlight pulse rings and constellation cross-stars.
-    - Chord Harp: Moonlight crescent arc and harmonic orbital paths.
-    - Bass: Flowing aurora ribbons and stellar degree guides.
-    - Grain: Drifting stardust motes and luminous frequency filaments.
-  - **Shoulder Wings**: Glowing crystal badges (`L1` / `R1`) at the top corners of the stage.
-- [ ] **Bottom Tape Deck ("Starlight Timeline")**:
-  - **Shooting Star Playhead**: Glowing dual-crystal starlight head with an astral beam sweeping across all 4 lanes.
-  - **Constellation Note Beads**: Discrete hits rendered as glowing starlight pearls with outer halo rings.
-  - **Aurora Energy Ribbons**: Sustained notes drawn as luminous rounded ribbons with starlight pitch-bend curves.
-  - **Floating Track Runes**: Capsule badges displaying track number, instrument name, and active rune VU meters.
-- [ ] Minimum text size (12px+) and high contrast pass throughout.
-
-Mock-up: `ui_layout_mockup.html` (conversation artifact).
-
-## UI-1 · Modes & feedback
-
-- [ ] Replace the hand-written combo handler in `main.lua` with an explicit **mode enum** (`NORMAL`, `REC_LATCH`, `REC_HOLD`, `ERASE`, `TRACK`, `MIX`, `TRANSPORT`, `FX`).
-- [ ] **Record latch/hold** on `L2` (tap < 0.25 s toggles, longer is momentary; combos never toggle).
-- [ ] **Mode badge** (top right) and stage border colour driven by the mode.
-- [ ] **Hold-to-hint:** bottom strip shows hints for the held modifier only.
-- [ ] **Audio tick** on mode change, record on/off and track switch (try it, keep it only if it helps).
-- [ ] ❓ Should hints fade out for experienced users, or get a "learn mode" toggle?
-
-## UI-2 · Track page & instrument swapping
-
-- [ ] `SELECT` hold opens the track page: `L1/R1` sound, `LEFT/RIGHT` instrument, `UP/DOWN` setting, face buttons = track FX.
-- [ ] Swapping an instrument clears the track's events but stashes them so **undo restores**.
-- [ ] Sound pools: **one-shot pool** (drums, kits) and **pitched patch pool** (chord, bass, lead, grain).
-- [ ] Drum **kits** (preset of four sounds) with per-pad override.
-- [ ] Per-track setting per instrument (chord colour, swing, glide time, grain size).
-- [ ] ❓ Which settings does each instrument expose on `UP/DOWN`?
-
-## UI-3 · Mix page (`SELECT + R2`)
-
-- [ ] Engine: **per-track volume** and **master volume** in `Synth` (trigger takes the track's level).
-- [ ] Mix page layout: four channel strips + master, level segments, mute badges.
-- [ ] Controls: `LEFT/RIGHT` choose track, `UP/DOWN` level, `B/A/Y/X` mute tracks 1–4, `L1/R1` master level.
-- [ ] Live **level meters** (per track, also shown in the tape deck).
-- [ ] ❓ Pan? Solo? Probably later; mono sources make pan awkward.
-- [ ] ❓ Confirm `SELECT + R2` doesn't conflict with `R2` mute/FX use while `SELECT` is held.
-
-## UI-4 · Tape deck v2
-
-- [ ] Hits as **pills**, held notes as **bars**, bends as a **line over the bar** (needs Looper v2).
-- [ ] Per-track **level meter** and a brief **activity flash** on hits.
-- [ ] Clear selected-track and armed/recording indication.
-- [ ] Readable at 4 bars (about 7 px per step).
-- [ ] ❓ Do we ever want per-track loop length (polyrhythm)?
-
-## UI-5 · Persistence
-
-- [ ] **Autosave** the last session (BPM, key, scale, bars, and every track's instrument, sound, grid, mute, level, FX, events). Save on quit and every N seconds.
-- [ ] Versioned save file via `love.filesystem` (check the save directory on PortMaster / muOS).
-- [ ] Load the autosave on start.
-- [ ] **Song / pattern system** (later): named pattern slots (A–H), maybe a simple chain. ❓ What exactly is a "song" here?
-- [ ] ❓ Export a loop to `.wav`?
-
-## UI-6 · Polish & device checks
-
-- [ ] Test legibility on the real RG35XX Plus screen (font sizes, contrast, brightness).
-- [ ] Measure frame rate with `msaa = 2` and smooth lines on the device.
-- [ ] Shape or icon cues in addition to colour (orange / red / amber are easy to confuse).
-- [ ] Measure boot-time sound generation on the device.
-- [ ] Revisit audio latency only if it feels worse during testing.
+Device checks (frame rate, boot time, legibility) happen at the end of **every** phase, not as a separate one.
 
 ---
 
-## Suggested order
+## Phase A · Foundation ← **next up** (detailed plan below)
 
-1. **UI-0** layout template, because everything else sits on it.
-2. **UI-1** modes, record latch and hold-to-hint.
-3. **UI-3** mix page (needs the per-track volume engine change; small).
-4. **UI-2** track page and instrument swapping (depends on the sound pools).
-5. **UI-4** tape deck v2 (waits for Looper v2: note length and bends).
-6. **UI-5** autosave, then the song system.
-7. **UI-6** device checks, in parallel throughout.
+- [ ] A1 Quick fixes
+- [ ] A2 Track page as a settings list + safe instrument swap
+- [ ] A3 Real tests that run the Lua
+- [ ] A4 Clock from absolute time + integer ticks
+- [ ] A5 Event format v2 + note-on/note-off playback
+- [ ] A6 Sustained voice engine
+- [ ] A7 Modes module (move combo handling out of `main.lua`)
 
-## Dependencies on engine work
+## Phase B · Bass pass
 
-| UI item | Needs |
+- [ ] Bass plays sustained notes: sound while held, release on button-up
+- [ ] Face buttons = articulations (`B` normal, `A` legato/glide, `Y` staccato, `X` accent + vibrato) ❓ confirm after playtest
+- [ ] D-pad move while holding = glide to new degree, recorded as `bend`
+- [ ] Records `degree`, `octave`, `semis`, `len`, `bend`
+- [ ] Track page rows: Glide time, Swing (swing may land as a stub until H)
+- [ ] 2–3 bass patches in the pitched pool (saw, sub, pluck)
+- [ ] Stage view fitted to the template (keep the wave display character)
+- [ ] Tape deck shows bass notes as ribbons (first use of held-note drawing)
+- [ ] Device check
+
+## Phase C · Autosave
+
+- [ ] Serialise session (globals + tracks + events) with `version = 2`
+- [ ] Save on quit and every ~30 s; load on start; ignore/upgrade older versions
+- [ ] Check the save directory on PortMaster / muOS
+
+## Phase D · Chord Harp + Harmony
+
+- [ ] `harmony.lua`: current chord at a tick (chord source track, tonic fallback)
+- [ ] Harp records `chord` events; chord name shown in the top bar and along its tape lane
+- [ ] Strum gesture ❓ (`B` down, `A` up, `Y` low, `X` high — playtest first)
+- [ ] Colour + Strum speed move to the Track page; shoulders become voicing octave / wide
+- [ ] Bass *Follow chords* switches on (default on)
+- [ ] ❓ Neutral D-pad: tonic or keep last chord
+- [ ] Stage view in template (keep the harp character)
+- [ ] Device check
+
+## Phase E · Drums pass
+
+- [ ] Port to v2 events (one-shots: `len = 0`)
+- [ ] Kits (preset of 4) + per-pad override on the Track page
+- [ ] Variation: Off / Light / Wild (velocity jitter → timing nudge + fills)
+- [ ] Chance hits ❓ gesture (proposal: ghost hit while Variation ≠ Off)
+- [ ] Swing row
+- [ ] Device check
+
+## Phase F · Pad (replaces Grain)
+
+- [ ] Grain textures → Pad patches (warm pad, glass bell, choir, drone)
+- [ ] Holds the current chord; `B` full, `A` open, `Y` high, `X` swell
+- [ ] D-pad ↑/↓ brightness (layer crossfade), ←/→ movement
+- [ ] Track page: Attack, Release, Follow
+- [ ] Remove `grain.lua`; default slot 4 = Pad
+- [ ] Stage view in template
+- [ ] Device check
+
+## Phase G · Lead / Arp
+
+- [ ] D-pad degree; `B` note, `A` arp up, `Y` arp down, `X` up-down
+- [ ] Arp locked to the clock; rate 1/8, 1/16, 1/8T; `L1 + R1` = rate ×2
+- [ ] Track page: Arp rate, Arp pattern/range, Follow
+- [ ] Bass ↔ Lead swaps keep events
+- [ ] ❓ Arp latch
+- [ ] Device check
+
+## Phase H · Mix & FX
+
+- [ ] Swing for every instrument
+- [ ] Per-track Tone (layer crossfade)
+- [ ] Real low-pass for master FX, or keep the duck ❓
+- [ ] Level meters in the mix page and tape deck
+- [ ] Metronome click and count-in (`START + A / Y`)
+- [ ] Record takes split per loop pass; ❓ replace vs overdub
+
+## Phase I · Tape deck v2 & visual polish
+
+- [ ] Beads for hits, ribbons for held notes, bend lines, chord lane labels
+- [ ] Readable at 4 bars (about 7 px per step)
+- [ ] Hints only for the held modifier; ❓ learn-mode toggle
+- [ ] Shape cues besides colour; 12 px+ text; legibility pass on the device
+- [ ] Final pass on all five stage views
+
+## Phase J · Later
+
+- [ ] Pattern slots A–H and a simple chain ❓ what a "song" is
+- [ ] Export loop to `.wav`
+- [ ] Optional `.wav` sample loading
+
+---
+
+## Immediate plan: Phase A in detail
+
+Goal: when Phase A is done, the app plays exactly as today, but the engine stores v2 events on integer ticks, can hold notes, and the Track page has room for every setting we planned. Do the steps in this order; each one leaves the app working.
+
+### A1 · Quick fixes (small, do first)
+
+| Fix | Where |
 | :-- | :-- |
-| Mix page, meters | Per-track and master volume in `Synth` |
-| Held notes and bends in the tape deck | Looper v2 (`dur`, `bend` in events) |
-| Track page sounds | Sound pools and kits |
-| Track FX slots | Per-track DSP |
-| Autosave | Serialisable track and event state (already plain tables) |
+| Mix page level changes once per press (+ key repeat), not every frame | `main.lua` MIX block |
+| Drums hint still says BPM/Key on SELECT | `instruments/drums.lua` `getSelectHint` |
+| Track page `UP` and `DOWN` both step the grid forward (superseded by A2, fix anyway) | `main.lua` TRACK block |
+| START tap toggles play after a 0.22–0.25 s hold that opened Transport | `main.lua` START tap check (use "combo used" flag) |
+| Grain uses a fixed major pentatonic and ignores minor scales (stop-gap until it's replaced) | `instruments/grain.lua` |
+
+Done when: each fix checked on desktop, then once on the device.
+
+### A2 · Track page as a settings list + safe swap
+
+1. New `src/ui/trackpage.lua`: draws the list over the stage; rows come from the instrument.
+2. Instrument API: `def:getSettings(state, track)` returns rows `{ id, label, values, get, set }`. Common rows (Instrument, Sound, Grid) are added by the Track page itself; instrument rows are appended.
+3. Controls: `UP/DOWN` row, `LEFT/RIGHT` value, `L1/R1` quick sound, `B/A/Y/X` drum pad select.
+4. Instrument row previews only; apply on `SELECT` release.
+5. Apply = push `{ slot, instrumentId, state, events, settings }` onto the undo stack, so `L2 + R2 + LEFT` restores it.
+6. Move drum pad sound browsing and the grid choice into rows.
+
+Done when: all current Track page functions still work through the list, a swap can be undone, and the list fits with 6 rows.
+
+### A3 · Real tests
+
+1. Make `looper.lua`, `theory.lua` and the new `harmony.lua` loadable without LÖVE (inject `love.timer` where needed).
+2. Add `tests/` run with plain `luajit` (or `busted` if available): snapping, dedup across the loop seam, 2↔4 bars, take undo, chord building per scale.
+3. Retire `test_looper_logic.py`.
+
+Done when: `luajit tests/run.lua` passes and fails if looper maths are broken.
+
+### A4 · Clock + ticks
+
+1. `Looper` keeps `anchorTime` and `anchorTick`; current tick = `anchorTick + (now − anchorTime) × ticksPerSecond`, wrapped to loop length. Re-anchor on BPM change, pause/resume, half-speed and stutter.
+2. Playback fires events whose tick lies in `(prevTick, tick]`, with wraparound — the same logic as today, on integers.
+3. Grids become tick steps: 1/4 = 96, 1/8 = 48, 1/16 = 24, 1/12T = 32 (12 per bar), FREE = 1 tick.
+4. 2↔4 bars: multiply/divide ticks exactly; no float drift.
+5. `phase` = `tick / loopTicks` for drawing only.
+
+Done when: tempo stays exact while frames drop (test by forcing a slow frame), and all existing gestures behave the same.
+
+### A5 · Event format v2
+
+1. Events as in SPEC §8.2. Track-level `instrumentId` moves to the track.
+2. Recording: note-on creates the event with `len = 0`; note-off sets `len`. A note still held at the loop seam is closed at the seam and continues as a new event (❓ or wraps — decide in testing).
+3. Playback calls `def:noteOn(ev)` at `tick` and `def:noteOff(ev)` at `tick + len`; one-shots (`len = 0`) only get `noteOn`.
+4. Pitched instruments record `degree`, `octave` and `semis` (and `chordRef` = current chord name, tonic for now).
+5. Port Drums, Harp, Bass and Grain to v2 at their *current* behaviour (no new features yet). Grain emits one event per press with `len`, not one per grain.
+6. Undo, erase, dedup work on v2.
+
+Done when: every instrument records and replays as today, and a held Grain/Bass press shows as one event.
+
+### A6 · Sustained voices
+
+1. `synths_bank.lua`: generate attack + seamless-loop layers for the harp, bass and pad patches.
+2. `src/synth/voice.lua`: `Synth:noteOn(patch, semis, vel, opts)` → voice with `setPitch`, `noteOff` (release envelope), driven in `Synth:update`.
+3. Voice stealing per patch pool, as today.
+4. Measure boot time on the device before and after; if it grows past ~3 s, add a loading screen or generate lazily.
+
+Done when: a test key holds a bass note for 4 s without clicks and releases cleanly, on desktop and on the device.
+
+### A7 · Modes module
+
+1. Move `handleGlobalCombos` into `src/modes.lua` with an explicit mode enum and one "combo used" flag per modifier.
+2. Chrome reads `Modes.current` instead of re-deriving modes.
+
+Done when: `main.lua` is just the LÖVE callbacks, and all combos in SPEC §3.6 still work.
+
+**Then:** Phase B, the Bass pass, uses A5 + A6 directly.
