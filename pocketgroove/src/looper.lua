@@ -24,6 +24,9 @@ local Looper = {
     currentTakeId = 0,
     takeStack = {},    -- Stack of takeIds for Undo Last Take
     tracks = {},
+    prevUiMode = "NORMAL",
+    clickOn = false,   -- metronome click (Transport X)
+    trackPage = { row = 1, fxHeld = nil, fxAdjusted = false },
     toastText = "READY - TAP [SELECT] TO SWITCH TRACKS",
     toastTimer = 2.5,
 
@@ -53,11 +56,15 @@ function Looper:init(Instruments)
             shortName = instDef.shortName,
             gridIndex = instDef.defaultGridIndex or 3,
             volume = 0.80,
+            swing = 0.50,      -- 0.50 = straight .. 0.75 = heavy (applied at playback)
+            fx = { tone = 0.5, drive = 0.5, echo = 0.4, space = 0.5,
+                   on = { tone = false, drive = false, echo = false, space = false } },
             meterPeak = 0.0,
             muted = false,
             events = {},
             state = instDef:newState(),
         }
+        Synth:configureTrackFx(self.tracks[slot])
     end
 end
 
@@ -74,6 +81,60 @@ function Looper:setTrackInstrument(trackIdx, instrumentId, Instruments)
     track.events = {}
     self:showToast(string.format("TRACK %d -> %s", trackIdx, instDef.title or instDef.name))
 end
+
+-- Swing pushes events on odd 8th/16th grid positions late, at playback only.
+-- Returns the phase offset for an event on `track`.
+function Looper:getSwingOffset(ev, track)
+    local sw = track.swing or 0.5
+    local gs = ev.gridSteps
+    if sw <= 0.5 or not gs then return 0.0 end
+    local perBar = gs / self.bars
+    if perBar ~= 8 and perBar ~= 16 then return 0.0 end
+    local idx = math_floor(ev.phase * gs + 0.5)
+    if idx % 2 == 1 then
+        return (sw - 0.5) * 2.0 / gs
+    end
+    return 0.0
+end
+
+-- Swing amount in sub-step units for a live repeat running at `stepsPerBar`.
+function Looper:getLiveSwing(trackIdx, stepsPerBar)
+    local track = self.tracks[trackIdx]
+    if not track or (stepsPerBar ~= 8 and stepsPerBar ~= 16) then return 0.0 end
+    return math_max(0.0, ((track.swing or 0.5) - 0.5) * 2.0)
+end
+
+function Looper:adjustSwing(trackIdx, delta)
+    local track = self.tracks[trackIdx]
+    if not track then return end
+    track.swing = math_max(0.50, math.min(0.75, (track.swing or 0.5) + delta))
+    self:showToast(string.format("TRACK %d SWING: %d%%", trackIdx, math_floor(track.swing * 100 + 0.5)))
+end
+
+-- Track page effect slots on the face buttons
+Looper.FX_SLOTS = { X = "tone", Y = "drive", A = "echo", B = "space" }
+Looper.FX_ORDER = { "tone", "drive", "echo", "space" }
+
+function Looper:toggleTrackFx(trackIdx, slot)
+    local track = self.tracks[trackIdx]
+    if not track or not slot then return end
+    track.fx.on[slot] = not track.fx.on[slot]
+    if track.fx.on[slot] and track.fx[slot] <= 0.0 then track.fx[slot] = 0.5 end
+    Synth:configureTrackFx(track)
+    self:showToast(string.format("TRACK %d %s: %s", trackIdx, slot:upper(),
+        track.fx.on[slot] and (math_floor(track.fx[slot] * 100 + 0.5) .. "%") or "OFF"))
+end
+
+function Looper:adjustTrackFx(trackIdx, slot, delta)
+    local track = self.tracks[trackIdx]
+    if not track or not slot then return end
+    track.fx[slot] = math_max(0.0, math.min(1.0, track.fx[slot] + delta))
+    track.fx.on[slot] = track.fx[slot] > 0.0
+    Synth:configureTrackFx(track)
+    self:showToast(string.format("TRACK %d %s: %d%%", trackIdx, slot:upper(), math_floor(track.fx[slot] * 100 + 0.5)))
+end
+
+Looper.FLAM_TIME = 0.028 -- seconds between grace note and main hit
 
 function Looper:showToast(msg)
     self.toastText = msg
@@ -297,23 +358,37 @@ function Looper:update(dt, triggerCallback)
         self.stutterAnchorPhase = math_floor(self.phase * totalSixteenths) / totalSixteenths
     end
 
+    local prevBeat = self.currentBeat
     self.currentBeat = math_floor(self.phase * totalBeats) + 1
+    if self.clickOn and self.currentBeat ~= prevBeat then
+        local downbeat = ((self.currentBeat - 1) % 4 == 0)
+        Synth:trigger("perc_wood", downbeat and 5 or 0, downbeat and 0.55 or 0.32, 0.8)
+    end
     self.currentStep = math_floor(self.phase * totalSixteenths) + 1
 
     local wrapped = (self.phase < self.prevPhase)
+    local prev, cur = self.prevPhase, self.phase
+    local function crossedAt(p)
+        if not wrapped then
+            return p > prev and p <= cur
+        end
+        return p > prev or p <= cur
+    end
+    local graceOffset = self.FLAM_TIME / loopDuration
+
     for tIdx = 1, 4 do
         local track = self.tracks[tIdx]
         if not track.muted then
             for i = 1, #track.events do
                 local ev = track.events[i]
-                local crossed = false
-                if not wrapped then
-                    crossed = (ev.phase > self.prevPhase and ev.phase <= self.phase)
-                else
-                    crossed = (ev.phase > self.prevPhase or ev.phase <= self.phase)
+                local p = (ev.phase + self:getSwingOffset(ev, track)) % 1.0
+
+                -- Flam grace note sounds just before the main hit
+                if ev.orn == "flam" and not ev.justRecorded and crossedAt((p - graceOffset) % 1.0) then
+                    triggerCallback(ev, track, true, "grace")
                 end
 
-                if crossed then
+                if crossedAt(p) then
                     if ev.justRecorded then
                         ev.justRecorded = false
                     else

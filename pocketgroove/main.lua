@@ -65,6 +65,7 @@ local function handleGlobalCombos()
     elseif Input.recLatched then
         mode = "REC_LATCH"
     end
+    Looper.prevUiMode = Looper.uiMode
     Looper.uiMode = mode
 
     -- ------------------------------------------------------------------------
@@ -149,27 +150,64 @@ local function handleGlobalCombos()
     end
 
     -- ------------------------------------------------------------------------
-    -- 5. TRACK PAGE: SELECT Held Alone (>= 0.18s)
+    -- 5. TRACK PAGE (SOUND): SELECT Held Alone (>= 0.18s)
+    --    UP/DOWN row · L1/R1 row sound · LEFT/RIGHT instrument
+    --    Face tap = effect on/off · hold face + UP/DOWN = effect amount
     -- ------------------------------------------------------------------------
     if mode == "TRACK" then
         controlsBlocked = true
         Input.selectComboUsed = true
+        local page = Looper.trackPage
+        local rows = Instruments:getSoundRows(activeDef, activeState)
+
+        if Looper.prevUiMode ~= "TRACK" then
+            page.row = (activeDef.getDefaultSoundRow and activeDef:getDefaultSoundRow(activeState)) or 1
+            page.fxHeld, page.fxAdjusted = nil, false
+        end
+        page.row = clamp(page.row, 1, #rows)
 
         if Input.pressed.LEFT then
             Instruments:cycleTrackInstrument(Looper.activeTrack, -1)
+            page.row = 1
         elseif Input.pressed.RIGHT then
             Instruments:cycleTrackInstrument(Looper.activeTrack, 1)
+            page.row = 1
         end
 
-        if Input.pressed.UP then
-            Looper:cycleGridMode(Looper.activeTrack)
-        elseif Input.pressed.DOWN then
-            Looper:cycleGridMode(Looper.activeTrack)
+        -- Effects on the face buttons
+        for _, btn in ipairs({ "X", "Y", "A", "B" }) do
+            if Input.pressed[btn] then
+                page.fxHeld, page.fxAdjusted = btn, false
+            end
+        end
+        local heldSlot = page.fxHeld and Looper.FX_SLOTS[page.fxHeld]
+        if heldSlot and Input.down[page.fxHeld] then
+            if Input.pressed.UP or Input.pressed.DOWN then
+                Looper:adjustTrackFx(Looper.activeTrack, heldSlot, Input.pressed.UP and 0.1 or -0.1)
+                page.fxAdjusted = true
+            end
+        else
+            if Input.pressed.UP then
+                page.row = ((page.row - 2) % #rows) + 1
+            elseif Input.pressed.DOWN then
+                page.row = (page.row % #rows) + 1
+            end
+        end
+        if page.fxHeld and Input.released[page.fxHeld] then
+            if not page.fxAdjusted then
+                Looper:toggleTrackFx(Looper.activeTrack, Looper.FX_SLOTS[page.fxHeld])
+            end
+            page.fxHeld = nil
         end
 
-        -- Delegate instrument-specific sound selection (e.g. Drums / Bass / Grain)
-        if activeDef and activeDef.handleSelectCombo then
-            activeDef:handleSelectCombo(activeState, activeTrack)
+        -- L1 / R1: previous / next sound for the selected row
+        local delta = (Input.pressed.L1 and -1) or (Input.pressed.R1 and 1) or nil
+        if delta then
+            if activeDef.cycleRowSound then
+                activeDef:cycleRowSound(activeState, page.row, delta)
+            else
+                Looper:showToast(activeDef.name .. ": ONE PATCH FOR NOW")
+            end
         end
 
         return controlsBlocked
@@ -186,25 +224,49 @@ local function handleGlobalCombos()
     end
 
     -- ------------------------------------------------------------------------
-    -- 6. TRANSPORT PAGE: START Held Alone (>= 0.22s)
+    -- 6. TRANSPORT PAGE (TIMING): START Held Alone (>= 0.22s)
+    --    UP/DOWN BPM · LEFT/RIGHT key · L1/R1 scale · B bars · A grid
+    --    Y + UP/DOWN swing · X click
     -- ------------------------------------------------------------------------
     if mode == "TRANSPORT" then
         controlsBlocked = true
+        local tIdx = Looper.activeTrack
 
-        if Input.pressed.UP then
+        if Input.down.Y then
+            if Input.pressed.UP then
+                Looper:adjustSwing(tIdx, 0.02)
+            elseif Input.pressed.DOWN then
+                Looper:adjustSwing(tIdx, -0.02)
+            end
+        elseif Input.pressed.UP then
             Looper.bpm = clamp(Looper.bpm + 5, Config.MIN_BPM, Config.MAX_BPM)
             Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
         elseif Input.pressed.DOWN then
             Looper.bpm = clamp(Looper.bpm - 5, Config.MIN_BPM, Config.MAX_BPM)
             Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
-        elseif Input.pressed.RIGHT then
+        end
+
+        if Input.pressed.RIGHT then
             Theory:cycleRoot(1)
             Looper:showToast("KEY: " .. Theory:getKeyLabel())
         elseif Input.pressed.LEFT then
+            Theory:cycleRoot(-1)
+            Looper:showToast("KEY: " .. Theory:getKeyLabel())
+        end
+
+        if Input.pressed.R1 then
             Theory:cycleScale(1)
             Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
-        elseif Input.pressed.B then
-            Looper:toggleBars()
+        elseif Input.pressed.L1 then
+            Theory:cycleScale(-1)
+            Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
+        end
+
+        if Input.pressed.B then Looper:toggleBars() end
+        if Input.pressed.A then Looper:cycleGridMode(tIdx) end
+        if Input.pressed.X then
+            Looper.clickOn = not Looper.clickOn
+            Looper:showToast(Looper.clickOn and "CLICK: ON" or "CLICK: OFF")
         end
 
         return controlsBlocked
@@ -278,8 +340,8 @@ function love.update(dt)
     Input:update(dt)
     local controlsBlocked = handleGlobalCombos()
 
-    Looper:update(dt, function(ev, track, isPlayback)
-        Instruments:triggerEvent(ev, track, isPlayback)
+    Looper:update(dt, function(ev, track, isPlayback, part)
+        Instruments:triggerEvent(ev, track, isPlayback, part)
     end)
 
     Instruments:update(dt, controlsBlocked)

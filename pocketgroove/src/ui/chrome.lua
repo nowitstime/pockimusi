@@ -120,6 +120,51 @@ function Chrome:drawFrame(x, y, w, h, strokeCol, lineWidth)
     love.graphics.setLineWidth(1)
 end
 
+-- Pill-shaped capsule tag
+function Chrome:drawCapsule(x, y, w, h, text, strokeCol, fillCol, textCol, font, fillAlpha)
+    local C = Config.COLORS
+    font = font or self.fontTiny
+    local r = h * 0.5
+    if fillCol then
+        self:setColor(fillCol, fillAlpha or 1.0)
+        love.graphics.rectangle("fill", x, y, w, h, r, r)
+    end
+    if strokeCol then
+        self:setColor(strokeCol)
+        love.graphics.rectangle("line", x, y, w, h, r, r)
+    end
+    self:setColor(textCol or C.TEXT)
+    love.graphics.setFont(font)
+    local tw = font:getWidth(text)
+    love.graphics.print(text, math_floor(x + (w - tw) * 0.5), math_floor(y + (h - font:getHeight()) * 0.5))
+end
+
+-- Lay out capsules centred on cx; items = { {text, stroke, fill, textCol, fillAlpha} }
+function Chrome:drawCapsuleRow(cx, y, h, items, gap)
+    gap = gap or 5
+    local font = self.fontTiny
+    local widths, total = {}, 0
+    for i, it in ipairs(items) do
+        widths[i] = font:getWidth(it[1]) + 18
+        total = total + widths[i] + (i > 1 and gap or 0)
+    end
+    local x = cx - total * 0.5
+    for i, it in ipairs(items) do
+        self:drawCapsule(math_floor(x), y, widths[i], h, it[1], it[2], it[3], it[4], font, it[5])
+        x = x + widths[i] + gap
+    end
+end
+
+function Chrome:isPlayMode(mode)
+    return mode == "NORMAL" or mode == "REC_LATCH" or mode == "REC_HOLD"
+end
+
+-- The page's colour: instrument colour while playing, mode colour on a settings page
+function Chrome:getAccent(mode, instCol)
+    if self:isPlayMode(mode) then return instCol end
+    return Config.MODE_COLORS[mode] or instCol
+end
+
 -- ============================================================================
 -- ZONE 1: 8-POINT WIREFRAME STAR D-PAD (cx=102, cy=188)
 -- ============================================================================
@@ -506,7 +551,7 @@ function Chrome:drawTopBar()
         local isCur = (Looper.playing and Looper.currentBeat == b)
 
         if isCur then
-            local mc = (mode == "REC_LATCH" or mode == "REC_HOLD") and C.ORANGE or C.TEXT
+            local mc = (mode == "REC_LATCH" or mode == "REC_HOLD") and C.RED or C.TEXT
             self:drawStarGlint(bx, by, 6.5, mc, 1.0)
             self:drawDiamond(bx, by, 2.5, C.TEXT)
         else
@@ -517,13 +562,13 @@ function Chrome:drawTopBar()
     -- Right Mode Status Tag (rx=4) with vector icon + ASCII text
     local modeConfigs = {
         NORMAL    = { label = "JAM SAFE",   icon = "STAR",    stroke = C.GRID,   fill = C.PANEL_HI, txt = C.MUTED,  iconCol = C.GRID },
-        REC_LATCH = { label = "REC LATCH",  icon = "DOT",     stroke = C.ORANGE, fill = C.ORANGE,   txt = C.BG,     iconCol = C.BG },
-        REC_HOLD  = { label = "REC HOLD",   icon = "DOT",     stroke = C.ORANGE, fill = C.ORANGE,   txt = C.BG,     iconCol = C.BG },
-        TRACK     = { label = "TRACK CFG",  icon = "DIAMOND", stroke = C.CYAN,   fill = C.CYAN,     txt = C.BG,     iconCol = C.BG },
-        MIX       = { label = "MIXER",      icon = "FADERS",  stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
-        TRANSPORT = { label = "TRANSPORT",  icon = "PLAY",    stroke = C.TEXT,   fill = C.TEXT,     txt = C.BG,     iconCol = C.BG },
-        ERASE     = { label = "ERASE",      icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
-        FX        = { label = "LIVE FX",    icon = "GLINT",   stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
+        REC_LATCH = { label = "REC LATCH",   icon = "DOT",     stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
+        REC_HOLD  = { label = "REC HOLD",    icon = "DOT",     stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
+        TRACK     = { label = "TRACK SOUND", icon = "GLINT",   stroke = C.PINK,   fill = C.PINK,     txt = C.BG,     iconCol = C.BG },
+        MIX       = { label = "MIXER",       icon = "FADERS",  stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
+        TRANSPORT = { label = "TRANSPORT",   icon = "GLINT",   stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
+        ERASE     = { label = "ERASE",       icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
+        FX        = { label = "LIVE FX",     icon = "GLINT",   stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
     local bx, by, bw, bh = 488, 11, 138, 28
@@ -573,34 +618,45 @@ function Chrome:drawCenterStage()
     local def, state = Instruments:getTrackInstrument(sl)
     local instCol = Config.TRACK_COLORS[sl]
     local mode = Looper.uiMode or "NORMAL"
+    local playMode = self:isPlayMode(mode)
+    local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
 
-    -- Border glows based on mode
-    local borderCol = C.GRID
-    if mode == "REC_LATCH" or mode == "REC_HOLD" then borderCol = C.ORANGE
-    elseif mode == "TRACK" then borderCol = C.CYAN
-    elseif mode == "MIX" or mode == "FX" then borderCol = C.AMBER
-    elseif mode == "TRANSPORT" then borderCol = C.TEXT
-    elseif mode == "ERASE" then borderCol = C.RED
+    -- Frame: grid line while jamming, mode colour (with a soft glow) otherwise
+    local borderCol = (mode == "NORMAL") and C.GRID or (Config.MODE_COLORS[mode] or C.GRID)
+    self:drawFrame(8, 50, 624, 306, borderCol, (mode == "NORMAL") and 1 or 1.6)
+    if mode ~= "NORMAL" then
+        for i, a in ipairs({ 0.16, 0.08, 0.04 }) do
+            self:setColor(borderCol, a)
+            love.graphics.setLineWidth(1.5)
+            love.graphics.rectangle("line", 8 - i, 50 - i, 624 + i * 2, 306 + i * 2, 6 + i, 6 + i)
+        end
+        love.graphics.setLineWidth(1)
+        if mode == "ERASE" then
+            self:setColor(C.RED, 0.07)
+            love.graphics.rectangle("fill", 9, 51, 622, 304, 6, 6)
+        end
     end
 
-    self:drawFrame(8, 50, 624, 306, borderCol, (mode == "NORMAL") and 1 or 1.6)
-
-    -- Clean vertical hairline dividers separating Left Zone | Center | Right Zone
+    -- Vertical hairline dividers separating Left Zone | Center | Right Zone
     self:setColor(C.GRID, 0.55)
     love.graphics.line(198, 62, 198, 312)
     love.graphics.line(442, 62, 442, 312)
 
-    -- Astrolabe zone motifs in normal or recording modes
-    if mode == "NORMAL" or mode == "REC_LATCH" or mode == "REC_HOLD" then
+    -- Zone motifs: the instrument's own while playing, a generic astrolabe ring on settings pages
+    if playMode then
         self:drawZoneMotifs(def.id, instCol, t)
+    else
+        self:drawZoneMotifs("drums", accent, t)
     end
 
-    -- Top Header Row: Shoulder Badges + Title
+    -- Shoulder capsules
     local lOn, rOn = Input.down.L1, Input.down.R1
     local l1Label, r1Label = "L1: -", "R1: +"
     if mode == "TRACK" then
         l1Label, r1Label = "L1: SOUND <", "R1: SOUND >"
+    elseif mode == "TRANSPORT" then
+        l1Label, r1Label = "L1: SCALE <", "R1: SCALE >"
     elseif mode == "MIX" then
         l1Label, r1Label = "L1: MST -", "R1: MST +"
     elseif mode == "ERASE" then
@@ -609,41 +665,53 @@ function Chrome:drawCenterStage()
         l1Label, r1Label = "L1: 1/4", "R1: 1/8"
     elseif def.id == "harp" then
         l1Label, r1Label = "L1: OCT -", "R1: OCT +"
-    elseif def.id == "bass" then
-        l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
-    elseif def.id == "grain" then
+    else
         l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
     end
-
-    self:drawTag(18, 58, 112, 22, l1Label, lOn and instCol or C.GRID, lOn and instCol or C.PANEL_HI, lOn and C.BG or C.MUTED, self.fontTiny)
-    self:drawTag(510, 58, 112, 22, r1Label, rOn and instCol or C.GRID, rOn and instCol or C.PANEL_HI, rOn and C.BG or C.MUTED, self.fontTiny)
+    local function shoulder(x, label, on)
+        if on then
+            self:drawCapsule(x, 58, 112, 22, label, accent, accent, C.BG, self.fontTiny)
+        elseif playMode then
+            self:drawCapsule(x, 58, 112, 22, label, C.GRID, C.PANEL_HI, C.MUTED, self.fontTiny)
+        else
+            self:drawCapsule(x, 58, 112, 22, label, accent, accent, accent, self.fontTiny, 0.08)
+        end
+    end
+    shoulder(18, l1Label, lOn)
+    shoulder(510, r1Label, rOn)
 
     local titleStr = def.name
-    if mode == "TRACK" then titleStr = string.format("TRACK %d CONFIGURATION", sl)
+    if mode == "TRACK" then titleStr = string.format("TRACK %d - SOUND", sl)
     elseif mode == "MIX" then titleStr = "4-TRACK LEVEL & MUTE MIXER"
-    elseif mode == "TRANSPORT" then titleStr = "MASTER CLOCK & SCALE"
+    elseif mode == "TRANSPORT" then titleStr = "MASTER CLOCK"
     elseif mode == "ERASE" then titleStr = "SELECTIVE ERASE & UNDO"
     elseif mode == "FX" then titleStr = "LIVE PERFORMANCE FX"
     end
 
-    self:setColor(C.TEXT)
+    self:setColor(playMode and C.TEXT or accent)
     love.graphics.setFont(self.fontMed)
     local tw = self.fontMed:getWidth(titleStr)
     love.graphics.print(titleStr, math_floor(320 - tw * 0.5), 62)
 
-    self:setColor(C.GRID, 0.6)
+    self:setColor(playMode and C.GRID or accent, playMode and 0.6 or 0.35)
     love.graphics.line(212, 82, 428, 82)
 
-    -- Left: Star D-Pad & Right: Circle Face Buttons
+    -- Left: Star D-Pad & Right: Circle Face Buttons (drawn in the page accent)
     local dpadLabels, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, mode)
     local activeDir = Input:get8WayDirection()
-    self:drawStarDpad(102, 188, dpadLabels, instCol, activeDir)
-    self:drawCircleFaceButtons(538, 188, faceLabels, instCol, flashMap, activeMap)
+    self:drawStarDpad(102, 188, dpadLabels, accent, activeDir)
+    self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
     self:setColor(C.MUTED)
     love.graphics.setFont(self.fontTiny)
-    local dpadSubtitle = (mode == "TRACK" and "D-PAD: CFG") or (mode == "MIX" and "D-PAD: LEVEL") or (mode == "TRANSPORT" and "D-PAD: TEMPO") or "D-PAD: HARMONY"
-    local faceSubtitle = (mode == "MIX" and "FACE: MUTES") or (mode == "ERASE" and "FACE: CLEAR") or "FACE: TRIGGERS"
+    local dpadSub = {
+        TRACK = "D-PAD: ROW - INSTRUMENT", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
+        ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
+    }
+    local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", grain = "D-PAD: TEXTURE" }
+    local faceSub = { TRACK = "FACE: EFFECTS", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
+    local dpadSubtitle = dpadSub[mode] or instSub[def.id] or "D-PAD"
+    local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
     love.graphics.print(dpadSubtitle, math_floor(102 - dsw * 0.5), 296)
@@ -653,9 +721,9 @@ function Chrome:drawCenterStage()
     if mode == "MIX" then
         self:drawMixerView(t)
     elseif mode == "TRACK" then
-        self:drawTrackPageView(def, state, track, instCol)
+        self:drawTrackPageView(def, state, track, accent)
     elseif mode == "TRANSPORT" then
-        self:drawTransportView()
+        self:drawTransportView(track, instCol, accent)
     elseif mode == "ERASE" then
         self:drawEraseView(track)
     else
@@ -682,16 +750,25 @@ function Chrome:getControlLabels(def, state, mode)
             X = Looper.tracks[4].muted and "M4 [M]" or "M4",
         }
     elseif mode == "TRACK" then
-        dpadLabels = { UP = "GRID+", DOWN = "GRID-", LEFT = "INST <", RIGHT = "INST >" }
+        local fx = Looper.tracks[Looper.activeTrack].fx
+        local held = Looper.trackPage.fxHeld
+        dpadLabels = held and { UP = "AMT +", DOWN = "AMT -", LEFT = "INST <", RIGHT = "INST >" }
+            or { UP = "ROW UP", DOWN = "ROW DOWN", LEFT = "INST <", RIGHT = "INST >" }
         faceLabels = { B = "SPACE", A = "ECHO", Y = "DRIVE", X = "TONE" }
+        for btn, slot in pairs(Looper.FX_SLOTS) do
+            activeMap[btn] = fx.on[slot]
+        end
     elseif mode == "TRANSPORT" then
-        dpadLabels = { UP = "BPM+", DOWN = "BPM-", LEFT = "KEY <", RIGHT = "KEY >" }
-        faceLabels = { B = Looper.bars .. " BAR", A = "-", Y = "-", X = "-" }
+        local swingHeld = Input.down.Y
+        dpadLabels = swingHeld and { UP = "SWING +", DOWN = "SWING -", LEFT = "KEY <", RIGHT = "KEY >" }
+            or { UP = "BPM+", DOWN = "BPM-", LEFT = "KEY <", RIGHT = "KEY >" }
+        faceLabels = { B = Looper.bars .. " BAR", A = "GRID", Y = "SWING", X = "CLICK" }
+        activeMap.X = Looper.clickOn
     elseif mode == "ERASE" then
         dpadLabels = { LEFT = "UNDO" }
         faceLabels = { B = "CLR B", A = "CLR A", Y = "CLR Y", X = "CLR X" }
     elseif def.id == "drums" then
-        dpadLabels = { UP = "ACCENT", DOWN = "GHOST", LEFT = "LOW", RIGHT = "HIGH" }
+        dpadLabels = { UP = "ACCENT", DOWN = "GHOST", LEFT = "FLAM", RIGHT = "RATCHET" }
         faceLabels = { B = "", A = "", Y = "", X = "" }
         flashMap = state.padFlash
     elseif def.id == "harp" then
@@ -725,106 +802,7 @@ end
 function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     local C = Config.COLORS
     if def.id == "drums" then
-        -- 1. Repeat rate tags (y: 92..112)
-        local l1, r1 = Input.down.L1, Input.down.R1
-        local repIdx = (l1 and r1 and 4) or (r1 and 3) or (l1 and 2) or 1
-        local repLabels = { "1-SHOT", "1/4", "1/8", "1/16" }
-
-        love.graphics.setFont(self.fontTiny)
-        self:setColor(C.MUTED)
-        love.graphics.print("REPEAT RATE", 280, 92)
-
-        for i, l in ipairs(repLabels) do
-            local on = (i == repIdx)
-            self:drawTag(206 + (i - 1) * 58, 104, 52, 20, l, on and col or C.GRID, on and col or C.PANEL_HI, on and C.BG or C.TEXT, self.fontTiny, on and 0.9 or 1.0)
-        end
-
-        -- 2. Reordered 4-Pad Drum Status Deck (y: 132..224)
-        -- Top-Left: Y (SNARE)     Top-Right: X (CLAP)
-        -- Bottom-Left: B (KICK)   Bottom-Right: A (HAT)
-        love.graphics.setFont(self.fontTiny)
-        self:setColor(C.MUTED)
-        love.graphics.print("ACTIVE DRUM CHANNELS", 258, 132)
-
-        local padDefs = {
-            { key = "Y", colIdx = 0, rowIdx = 0 },
-            { key = "X", colIdx = 1, rowIdx = 0 },
-            { key = "B", colIdx = 0, rowIdx = 1 },
-            { key = "A", colIdx = 1, rowIdx = 1 },
-        }
-
-        for _, pd in ipairs(padDefs) do
-            local px = 210 + pd.colIdx * 114
-            local py = 146 + pd.rowIdx * 38
-            local fl = (state.padFlash and state.padFlash[pd.key]) or 0.0
-            local isHit = (fl > 0.05) or Input.down[pd.key]
-            local soundItem = def:getPadSound(state, pd.key)
-
-            -- Card background & border
-            self:setColor(isHit and col or C.PANEL_HI, isHit and 0.22 or 1.0)
-            love.graphics.rectangle("fill", px, py, 108, 34, 4, 4)
-            self:setColor(isHit and col or C.GRID)
-            love.graphics.rectangle("line", px, py, 108, 34, 4, 4)
-
-            -- Controller button indicator badge
-            self:drawTag(px + 4, py + 4, 18, 16, pd.key, isHit and col or C.GRID, isHit and col or C.PANEL, isHit and C.BG or col, self.fontTiny)
-
-            -- Sound Name
-            self:setColor(isHit and C.TEXT or C.TEXT)
-            love.graphics.setFont(self.fontSmall)
-            local sn = soundItem.short or soundItem.name or "PAD"
-            love.graphics.print(sn, px + 26, py + 4)
-
-            -- Sound description profile or live hit expression
-            local soundProfiles = {
-                B = "45Hz SUB BASS",
-                Y = "180Hz ANALOG SNAP",
-                A = "METALLIC 8kHz",
-                X = "STEREO SPREAD",
-            }
-            local subInfo = soundProfiles[pd.key] or "PERCUSSION"
-            if isHit then
-                if state.expressionName and state.expressionName ~= "NORMAL (85%)" then
-                    subInfo = state.expressionName
-                else
-                    subInfo = string.format("HIT %d%%", math_floor((state.velocity or 0.85) * 100))
-                end
-                self:setColor(col)
-            else
-                self:setColor(C.MUTED)
-            end
-            love.graphics.setFont(self.fontTiny)
-            love.graphics.print(subInfo, px + 26, py + 18)
-        end
-
-        -- 3. Expression Modifier & Calibrated Velocity Slider (y: 230..270)
-        local vel = state.velocity or 0.85
-        love.graphics.setFont(self.fontTiny)
-        self:setColor(C.MUTED)
-        local expStr = string.format("EXPRESSION: %s", state.expressionName or "NORMAL (85%)")
-        local ew = self.fontTiny:getWidth(expStr)
-        love.graphics.print(expStr, math_floor(320 - ew * 0.5), 230)
-
-        -- Gauge track with diamond calibration pips
-        self:setColor(C.GRID)
-        love.graphics.setLineWidth(3)
-        love.graphics.line(220, 248, 420, 248)
-        for _, frac in ipairs({ 0.25, 0.50, 0.75, 1.0 }) do
-            local tx = 220 + 200 * frac
-            self:drawDiamond(tx, 248, 1.8, C.DIM)
-        end
-
-        self:setColor(col)
-        love.graphics.line(220, 248, 220 + 200 * vel, 248)
-        love.graphics.setLineWidth(1)
-        self:drawStarGlint(220 + 200 * vel, 248, 6, col, 1.0)
-
-        love.graphics.setFont(self.fontTiny)
-        self:setColor(C.MUTED)
-        local vStr = string.format("VELOCITY: %d%%", math_floor(vel * 100))
-        local vw = self.fontTiny:getWidth(vStr)
-        love.graphics.print(vStr, math_floor(320 - vw * 0.5), 258)
-
+        self:drawDrumLanes(def, state, track, col)
     elseif def.id == "harp" then
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false)
         self:setColor(C.TEXT)
@@ -1001,37 +979,316 @@ function Chrome:drawMixerView(t)
     end
 end
 
-function Chrome:drawTrackPageView(def, state, track, col)
+-- ============================================================================
+-- DRUM LANES: one lane per pad, ordered like the button diamond (X, Y, A, B)
+-- ============================================================================
+function Chrome:drawMiniDiamond(x, y, pad, col)
     local C = Config.COLORS
-    local rows = {
-        { lbl = "SOUND", val = track.name, c = col },
-        { lbl = "INSTRUMENT", val = def.title or def.name, c = col },
-        { lbl = "QUANTIZE GRID", val = Looper:getTrackGrid(track.slot).label, c = C.GRID },
-    }
-    for idx, r in ipairs(rows) do
-        local y = 122 + (idx - 1) * 46
-        love.graphics.setFont(self.fontTiny)
-        self:setColor(C.MUTED)
-        love.graphics.print(r.lbl, 216, y)
-        self:drawTag(216, y + 10, 208, 24, r.val, r.c, C.PANEL_HI, C.TEXT, self.fontSmall)
+    local pos = { X = { 0, -4 }, Y = { -4, 0 }, A = { 4, 0 }, B = { 0, 4 } }
+    for k, o in pairs(pos) do
+        self:setColor(k == pad and col or C.DIM)
+        love.graphics.circle("fill", x + o[1], y + o[2], k == pad and 1.9 or 1.4)
     end
 end
 
-function Chrome:drawTransportView()
+function Chrome:drawDrumLanes(def, state, track, col)
     local C = Config.COLORS
-    self:setColor(C.TEXT)
-    love.graphics.setFont(self.fontHuge)
-    local bpmStr = tostring(Looper.bpm)
-    local bw = self.fontHuge:getWidth(bpmStr)
-    love.graphics.print(bpmStr, math_floor(320 - bw * 0.5), 136)
+    local lx, lw = 205, 230
+    local totalSteps = Looper:getTotalSixteenths()
+    local isRec = Input:isRecording()
 
+    for i, pad in ipairs(def.PADS) do
+        local top = 88 + (i - 1) * 44
+        local flash = state.padFlash[pad] or 0.0
+        local lit = flash > 0.05 or (Input.down[pad] and Looper.uiMode ~= "FX")
+
+        if lit then
+            self:setColor(col, 0.16 + flash * 0.12)
+            love.graphics.rectangle("fill", 204, top, 232, 40, 4, 4)
+            self:setColor(col)
+            love.graphics.rectangle("line", 204, top, 232, 40, 4, 4)
+        end
+
+        -- Header: mini diamond, pad letter, sound name, info
+        self:drawMiniDiamond(212, top + 8, pad, col)
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(col)
+        love.graphics.print(pad, 221, top + 2)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(C.TEXT)
+        love.graphics.print(def:getPadSound(state, pad).short, 232, top)
+
+        local count = Looper:countTrackAction(track.slot, pad)
+        local info = count .. (count == 1 and " HIT" or " HITS")
+        if lit and state.expressionName ~= "NORMAL" then info = state.expressionName end
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(lit and col or C.MUTED)
+        local iw = self.fontTiny:getWidth(info)
+        love.graphics.print(info, math_floor(434 - iw), top + 2)
+
+        -- Step strip
+        local sy = top + 16
+        self:setColor(C.PANEL_HI)
+        love.graphics.rectangle("fill", 204, sy, 232, 22, 2, 2)
+        self:setColor(C.GRID)
+        love.graphics.rectangle("line", 204, sy, 232, 22, 2, 2)
+        for st = 4, totalSteps - 1, 4 do
+            local gx = math_floor(lx + (st / totalSteps) * lw) + 0.5
+            self:setColor((st % 16 == 0) and C.DIM or C.GRID)
+            love.graphics.line(gx, sy + 1, gx, sy + 21)
+        end
+
+        -- Hits: height = dynamics, tick before = flam, slivers = ratchet
+        local base = sy + 20
+        local bw = (totalSteps > 32) and 2.5 or 4
+        for _, ev in ipairs(track.events) do
+            if ev.action == pad then
+                local x = lx + ev.phase * lw + 0.5
+                local vel = ev.velocity or 0.85
+                local h = (vel >= 0.95) and 17 or ((vel <= 0.5) and 6 or 11)
+                local a = (vel <= 0.5) and 0.55 or 1.0
+                local c = track.muted and C.DIM or col
+                if ev.orn == "flam" then
+                    self:setColor(c, 0.65)
+                    love.graphics.rectangle("fill", x - 2.8, base - h * 0.5, 1.2, h * 0.5)
+                end
+                self:setColor(c, a)
+                if ev.ratchet and ev.ratchet > 1 then
+                    for k = 0, 2 do
+                        local hh = h * (1.0 - k * 0.2)
+                        love.graphics.rectangle("fill", x + k * (bw / 3 + 0.3), base - hh, 1.2, hh)
+                    end
+                else
+                    love.graphics.rectangle("fill", x, base - h, bw, h)
+                    if vel >= 0.95 then
+                        self:setColor(C.TEXT, 0.8)
+                        love.graphics.rectangle("fill", x, base - h, bw, 2)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Shared playhead across the lanes
+    local px = math_floor(lx + Looper.phase * lw) + 0.5
+    local phCol = isRec and C.RED or C.TEXT
+    self:setColor(phCol, 0.9)
+    love.graphics.setLineWidth(1.5)
+    love.graphics.line(px, 102, px, 266)
+    love.graphics.setLineWidth(1)
+    love.graphics.polygon("fill", px - 3.5, 97, px + 3.5, 97, px, 102)
+
+    -- Status capsules
+    local items = {}
+    if state.expressionName ~= "NORMAL" then
+        table.insert(items, { state.expressionName, col, col, C.BG })
+    else
+        table.insert(items, { "NORMAL", C.GRID, C.PANEL_HI, C.MUTED })
+    end
+    if state.repeatLabel ~= "OFF" then
+        table.insert(items, { "REPEAT " .. state.repeatLabel, col, col, C.BG })
+    else
+        table.insert(items, { "REPEAT OFF", C.GRID, C.PANEL_HI, C.MUTED })
+    end
+    if (track.swing or 0.5) > 0.5 then
+        table.insert(items, { string.format("SWING %d%%", math_floor(track.swing * 100 + 0.5)), C.GRID, C.PANEL_HI, C.TEXT })
+    end
+    self:drawCapsuleRow(320, 274, 18, items)
+end
+
+-- ============================================================================
+-- TRACK SOUND PAGE: constellation of sound rows + moon-phase effect gauges
+-- ============================================================================
+function Chrome:drawMoonGauge(x, y, r, amount, on, col)
+    local C = Config.COLORS
+    if on and amount > 0 then
+        self:setColor(col)
+        love.graphics.circle("fill", x, y, r)
+        -- Shadow disc slides off as the amount rises (new moon -> full moon)
+        self:setColor(C.PANEL)
+        love.graphics.circle("fill", x + amount * (2 * r + 2), y, r + 0.5)
+    end
+    self:setColor(on and col or C.DIM)
+    love.graphics.setLineWidth(1.2)
+    love.graphics.circle("line", x, y, r)
+    love.graphics.setLineWidth(1)
+end
+
+function Chrome:drawTrackPageView(def, state, track, col)
+    local C = Config.COLORS
+    local rows = Instruments:getSoundRows(def, state)
+    local sel = Looper.trackPage.row
+    local n = #rows
+    local y0 = (n == 1) and 134 or 108
+    local nx = 226
+
+    if n > 1 then
+        self:setColor(col, 0.3)
+        for yy = y0, y0 + (n - 1) * 26, 4 do
+            love.graphics.line(nx, yy, nx, yy + 1)
+        end
+    end
+
+    for i, row in ipairs(rows) do
+        local y = y0 + (i - 1) * 26
+        local isSel = (i == sel)
+        if isSel then
+            self:setColor(col, 0.6)
+            self:drawDashedCircle(nx, y, 11, 2, 3)
+            self:drawStarGlint(nx, y, 7, col, 1.0)
+            self:drawCapsule(240, y - 10, 192, 20, "", col, col, col, self.fontSmall, 0.18)
+        else
+            self:drawStarGlint(nx, y, (i == 1) and 4.5 or 3.2, C.MUTED, 0.9)
+        end
+
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(isSel and col or C.MUTED)
+        love.graphics.print(row.label, 250, y - 6)
+
+        local value = isSel and ("<  " .. row.value .. "  >") or row.value
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(isSel and C.TEXT or C.MUTED)
+        love.graphics.print(value, 282, y - 7)
+
+        if isSel then
+            love.graphics.setFont(self.fontTiny)
+            self:setColor(col)
+            local hint = "L1/R1"
+            love.graphics.print(hint, math_floor(424 - self.fontTiny:getWidth(hint)), y - 6)
+        end
+    end
+
+    -- Instrument
     love.graphics.setFont(self.fontTiny)
     self:setColor(C.MUTED)
-    love.graphics.print("MASTER TEMPO BPM", 268, 178)
+    love.graphics.print("INSTRUMENT", 212, 232)
+    self:drawCapsule(272, 228, 156, 18, "<  " .. (def.title or def.name) .. "  >", C.DIM, nil, C.MUTED, self.fontTiny)
 
-    self:drawTag(220, 200, 96, 26, "KEY " .. Theory:getKeyLabel(), C.CYAN, C.PANEL_HI, C.TEXT, self.fontSmall)
-    self:drawTag(324, 200, 96, 26, Theory.SCALES[Theory.scaleIndex].name, C.GRID, C.PANEL_HI, C.MUTED, self.fontSmall)
-    self:drawTag(220, 234, 200, 26, Looper.bars .. " BARS - 4/4", C.GRID, C.PANEL_HI, C.TEXT, self.fontSmall)
+    -- Effects as moon phases (X tone, Y drive, A echo, B space)
+    local names = { tone = "TONE", drive = "DRIVE", echo = "ECHO", space = "SPACE" }
+    for i, slot in ipairs(Looper.FX_ORDER) do
+        local x = 236 + (i - 1) * 56
+        local on = track.fx.on[slot]
+        local amt = track.fx[slot]
+        self:drawMoonGauge(x, 270, 10, amt, on, col)
+        love.graphics.setFont(self.fontTiny)
+        local name = names[slot]
+        self:setColor(on and C.TEXT or C.MUTED)
+        love.graphics.print(name, math_floor(x - self.fontTiny:getWidth(name) * 0.5), 283)
+        local pct = on and (math_floor(amt * 100 + 0.5) .. "%") or "OFF"
+        self:setColor(on and col or C.DIM)
+        love.graphics.print(pct, math_floor(x - self.fontTiny:getWidth(pct) * 0.5), 294)
+    end
+end
+
+-- ============================================================================
+-- TRANSPORT PAGE: astrolabe dial (key ring, grid + swing ticks, loop hand)
+-- ============================================================================
+function Chrome:drawTransportView(track, trackCol, col)
+    local C = Config.COLORS
+    local cx, cy = 320, 190
+    local rad = math_pi / 180
+
+    self:setColor(col, 0.3)
+    self:drawDashedCircle(cx, cy, 100, 2, 5)
+    self:setColor(col, 0.18)
+    love.graphics.circle("line", cx, cy, 64)
+
+    -- Key ring in circle-of-fifths order; the scale is a contiguous arc on it
+    local root = Theory.rootIndex - 1
+    local scale = Theory.SCALES[Theory.scaleIndex]
+    local inScale = {}
+    for k = 1, 7 do inScale[(root + scale.intervals[k]) % 12] = true end
+    local fifthsPc = {}
+    for i = 0, 11 do fifthsPc[i] = (i * 7) % 12 end
+
+    local arcStart = nil
+    for st = 0, 11 do
+        local ok = true
+        for k = 0, 6 do
+            if not inScale[fifthsPc[(st + k) % 12]] then ok = false break end
+        end
+        if ok then arcStart = st break end
+    end
+    if arcStart then
+        local a1 = (-90 + arcStart * 30 - 12) * rad
+        local a2 = (-90 + (arcStart + 6) * 30 + 12) * rad
+        self:setColor(col, 0.45)
+        love.graphics.setLineWidth(2.5)
+        love.graphics.arc("line", "open", cx, cy, 72, a1, a2)
+        love.graphics.setLineWidth(1)
+    end
+
+    love.graphics.setFont(self.fontTiny)
+    for i = 0, 11 do
+        local pc = fifthsPc[i]
+        local ang = (-90 + i * 30) * rad
+        local x, y = cx + math_cos(ang) * 86, cy + math_sin(ang) * 86
+        local name = Theory.NOTE_NAMES[pc + 1]
+        if pc == root then
+            self:drawCapsule(math_floor(x - 11), math_floor(y - 8), 22, 16, name, col, col, C.BG, self.fontTiny)
+        else
+            self:setColor(inScale[pc] and C.TEXT or C.DIM, inScale[pc] and 0.8 or 1.0)
+            love.graphics.print(name, math_floor(x - self.fontTiny:getWidth(name) * 0.5), math_floor(y - 6))
+        end
+    end
+
+    -- Grid ticks for one bar; swing pushes the offbeat ticks late
+    local grid = Looper:getTrackGrid(track.slot)
+    local perBar = grid.stepsPerBar or 16
+    local sw = 0.0
+    if perBar == 8 or perBar == 16 then sw = math_max(0.0, ((track.swing or 0.5) - 0.5) * 2.0) end
+    local stepDeg = 360 / perBar
+    for k = 0, perBar - 1 do
+        local odd = (k % 2 == 1)
+        local ang = (-90 + (k + (odd and sw or 0)) * stepDeg) * rad
+        local onBeat = (k % (perBar / 4) == 0)
+        local r1 = onBeat and 54 or 58
+        self:setColor(col, grid.stepsPerBar and (odd and 0.5 or 0.8) or 0.25)
+        love.graphics.setLineWidth(1.2)
+        love.graphics.line(cx + math_cos(ang) * r1, cy + math_sin(ang) * r1, cx + math_cos(ang) * 64, cy + math_sin(ang) * 64)
+    end
+    love.graphics.setLineWidth(1)
+
+    -- Loop hand: a star travelling the ring once per loop, leaving a trail
+    local endA = (-90 + Looper.phase * 360) * rad
+    if Looper.phase > 0.002 then
+        self:setColor(col)
+        love.graphics.setLineWidth(2)
+        love.graphics.arc("line", "open", cx, cy, 64, -90 * rad, endA)
+        love.graphics.setLineWidth(1)
+    end
+    self:drawStarGlint(cx + math_cos(endA) * 64, cy + math_sin(endA) * 64, 6, C.TEXT, 1.0)
+
+    -- Centre: tempo, key, loop length as moons
+    love.graphics.setFont(self.fontHuge)
+    self:setColor(C.TEXT)
+    local bpmStr = tostring(Looper.bpm)
+    love.graphics.print(bpmStr, math_floor(cx - self.fontHuge:getWidth(bpmStr) * 0.5), 148)
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(C.MUTED)
+    love.graphics.print("BPM", math_floor(cx - self.fontTiny:getWidth("BPM") * 0.5), 182)
+    local keyStr = Theory.NOTE_NAMES[root + 1] .. " " .. scale.fullName:upper()
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(col)
+    love.graphics.print(keyStr, math_floor(cx - self.fontSmall:getWidth(keyStr) * 0.5), 196)
+    for k = 1, 4 do
+        local mx = cx - 15 + (k - 1) * 10
+        if k <= Looper.bars then
+            self:setColor(col)
+            love.graphics.circle("fill", mx, 222, 3)
+        else
+            self:setColor(col, 0.5)
+            love.graphics.circle("line", mx, 222, 3)
+        end
+    end
+
+    -- Track identity + the active track's timing settings
+    self:drawCapsuleRow(cx, 296, 16, {
+        { string.format("%d - %s", track.slot, track.name), trackCol, nil, trackCol },
+        { "GRID " .. grid.label, col, col, col, 0.16 },
+        { string.format("SWING %d%%", math_floor((track.swing or 0.5) * 100 + 0.5)), col, col, col, 0.16 },
+    })
 end
 
 function Chrome:drawEraseView(track)
@@ -1062,25 +1319,25 @@ function Chrome:drawFooterStrip(def)
 
     if mode == "REC_LATCH" then
         hintText = "REC LATCHED | Tap L2 to stop | Hold L2 for momentary punch-in"
-        hintCol = C.ORANGE
+        hintCol = C.RED
     elseif mode == "REC_HOLD" then
         hintText = "REC (HOLD) | Release L2 to stop punch-in | Quick tap latches"
-        hintCol = C.ORANGE
+        hintCol = C.RED
     elseif mode == "TRACK" then
-        hintText = "TRACK CFG | < > Swap instrument | UP/DN Quantize grid"
-        hintCol = C.CYAN
+        hintText = "TRACK SOUND | UP/DN Row | L1/R1 Sound | < > Instrument | Face FX, hold + UP/DN amount"
+        hintCol = C.PINK
     elseif mode == "MIX" then
         hintText = "MIXER | < > Track | UP/DN Volume | B/A/Y/X Mute | L1/R1 Master"
-        hintCol = C.AMBER
+        hintCol = C.SILVER
     elseif mode == "TRANSPORT" then
-        hintText = "TRANSPORT | UP/DN BPM | < > Key | B Bars | Tap START Play/Pause"
-        hintCol = C.TEXT
+        hintText = "TRANSPORT | UP/DN BPM | < > Key | L1/R1 Scale | A Grid | Y+UP/DN Swing | X Click"
+        hintCol = C.AMBER
     elseif mode == "ERASE" then
         hintText = "ERASE | B/A/Y/X Clear pad | LEFT or L1 Undo take | START Clear all"
         hintCol = C.RED
     elseif mode == "FX" then
         hintText = "LIVE FX | UP Stutter | DN Slow | LEFT Duck | RIGHT Bitcrush | B/A/Y/X Mute"
-        hintCol = C.AMBER
+        hintCol = C.SILVER
     elseif Looper.toastTimer > 0 then
         hintText = "> " .. Looper.toastText
         hintCol = C.AMBER
@@ -1213,7 +1470,7 @@ function Chrome:drawTapeDeck()
     -- Shooting Star Sweeping Playhead
     local px = lx + Looper.phase * lw
     local isRec = (Looper.uiMode == "REC_LATCH" or Looper.uiMode == "REC_HOLD")
-    local playCol = isRec and C.ORANGE or C.TEXT
+    local playCol = isRec and C.RED or C.TEXT
 
     -- Comet wake trailing behind playhead
     local wakeW = math_min(14, px - lx)
@@ -1231,6 +1488,13 @@ function Chrome:drawTapeDeck()
     self:drawStarGlint(px, 366, 7.0, playCol, 1.0)
     self:drawStarGlint(px, 470, 5.5, playCol, 0.9)
     self:drawDiamond(px, 366, 2.5, C.TEXT)
+
+    -- Dim the deck while a settings page has focus
+    local mode = Looper.uiMode or "NORMAL"
+    if mode == "TRACK" or mode == "TRANSPORT" or mode == "MIX" then
+        self:setColor(C.BG, 0.55)
+        love.graphics.rectangle("fill", 7, 361, 626, 114)
+    end
 end
 
 function Chrome:draw()
