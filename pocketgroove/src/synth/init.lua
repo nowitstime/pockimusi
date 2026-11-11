@@ -22,7 +22,15 @@ local Synth = {
     fxBitcrush   = false,
     duckEnvelope = 1.0,
     masterVolume = 0.85,
+    -- Short-delay scheduler for sub-hits (flam main hit, ratchet bursts)
+    clock = 0.0,
+    scheduled = {},
 }
+
+-- Choke groups: triggering any sound in a group cuts ringing voices of the
+-- listed "chokeable" sounds in the same group (closed hat cuts open hat).
+Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat" }
+Synth.CHOKEABLE   = { hat_open = true }
 
 function Synth:createBuffer(durationSec, generatorFn)
     local sampleCount = math_floor(durationSec * Config.SAMPLE_RATE)
@@ -56,11 +64,99 @@ function Synth:init()
 
     DrumsBank.build(self, whiteNoise)
     SynthsBank.build(self, whiteNoise)
+    self:initTrackFx()
 end
 
-function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume)
+-- ============================================================================
+-- Per-track effects (Track page: X tone, Y drive, A echo, B space)
+-- Uses OpenAL EFX through LÖVE: tone = low-pass filter on the voice, the
+-- others are per-track effect sends. Without EFX, drive falls back to a gain
+-- boost and the rest are silent no-ops.
+-- ============================================================================
+Synth.FX_SEND_ORDER = { "space", "echo", "drive" } -- priority when sends are limited
+
+function Synth:initTrackFx()
+    self.sourceFx = setmetatable({}, { __mode = "k" })
+    self.fxSupported = false
+    self.maxSends = 0
+    if love.audio.isEffectsSupported and love.audio.isEffectsSupported() then
+        self.fxSupported = true
+        self.maxSends = love.audio.getMaxSourceEffects and love.audio.getMaxSourceEffects() or 0
+    end
+end
+
+function Synth:fxName(trackSlot, slot)
+    return "trk" .. trackSlot .. "_" .. slot
+end
+
+-- (Re)configure one track's effect units after its amounts change
+function Synth:configureTrackFx(track)
+    if not self.fxSupported or not track then return end
+    local fx = track.fx
+    local settings = {
+        space = { type = "reverb", gain = 0.32, decaytime = 0.6 + fx.space * 3.4, density = 1.0, diffusion = 1.0 },
+        echo  = { type = "echo", delay = 0.11 + fx.echo * 0.09, tapdelay = 0.2 + fx.echo * 0.2,
+                  feedback = 0.25 + fx.echo * 0.5, damping = 0.4, spread = -0.8 },
+        drive = { type = "distortion", gain = 0.2 + fx.drive * 0.6, edge = 0.2 + fx.drive * 0.7,
+                  lowcut = 80, center = 3600, bandwidth = 3600 },
+    }
+    for slot, cfg in pairs(settings) do
+        pcall(love.audio.setEffect, self:fxName(track.slot, slot), cfg)
+    end
+end
+
+function Synth:applyTrackFx(src, track)
+    -- Clear whatever this pooled source carried for its previous track
+    local prev = self.sourceFx[src]
+    if prev then
+        for _, name in ipairs(prev) do pcall(src.setEffect, src, name, false) end
+    end
+    self.sourceFx[src] = nil
+    if not self.fxSupported then return end
+
+    local fx = track and track.fx
+    if fx and fx.on.tone then
+        pcall(src.setFilter, src, { type = "lowpass", volume = 1.0, highgain = math.max(0.03, 1.0 - fx.tone * 0.97) })
+    else
+        pcall(src.setFilter, src)
+    end
+    if not fx then return end
+
+    local applied, used = {}, 0
+    for _, slot in ipairs(self.FX_SEND_ORDER) do
+        if fx.on[slot] and used < self.maxSends then
+            local name = self:fxName(track.slot, slot)
+            local sendGain = (slot == "drive") and 1.0 or clamp(0.25 + fx[slot] * 0.75, 0.0, 1.0)
+            local ok = pcall(src.setEffect, src, name, { type = "lowpass", volume = sendGain, highgain = 1.0 })
+            if ok then
+                table.insert(applied, name)
+                used = used + 1
+            end
+        end
+    end
+    if #applied > 0 then self.sourceFx[src] = applied end
+end
+
+-- Run fn after `delay` seconds (frame resolution).
+function Synth:schedule(delay, fn)
+    table.insert(self.scheduled, { at = self.clock + delay, fn = fn })
+end
+
+function Synth:choke(soundName)
+    local group = self.CHOKE_GROUP[soundName]
+    if not group then return end
+    for i = 1, #self.activeVoices do
+        local v = self.activeVoices[i]
+        if v.soundName ~= soundName and self.CHOKEABLE[v.soundName] and self.CHOKE_GROUP[v.soundName] == group then
+            v.maxLife = math_min(v.maxLife, v.elapsed + 0.03)
+        end
+    end
+end
+
+function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track)
     local pool = self.pools[soundName]
     if not pool then return nil end
+    self:choke(soundName)
 
     local src = pool.voices[pool.cursor]
     pool.cursor = (pool.cursor % pool.size) + 1
@@ -76,6 +172,11 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
         volume = math_min(1.0, volume * 1.15)
     end
 
+    -- Drive without EFX: a plain gain push so the slot still does something
+    if track and track.fx.on.drive and not self.fxSupported then
+        volume = math_min(1.0, volume * (1.0 + track.fx.drive * 0.5))
+    end
+
     local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope, 0.0, 1.0)
     local startSemis = glideFromSemis or pitchSemis
     local pitchRatio = clamp(2.0 ^ ((startSemis + fxPitchOffset) / 12.0), 0.125, 8.0)
@@ -88,6 +189,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
     end
 
     src:stop()
+    self:applyTrackFx(src, track)
     src:setPitch(pitchRatio)
     src:setVolume(effectiveVolume)
     src:play()
@@ -109,6 +211,18 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
 end
 
 function Synth:update(dt)
+    self.clock = self.clock + dt
+    if #self.scheduled > 0 then
+        local due = {}
+        for i = #self.scheduled, 1, -1 do
+            if self.scheduled[i].at <= self.clock then
+                table.insert(due, 1, self.scheduled[i])
+                table.remove(self.scheduled, i)
+            end
+        end
+        for _, job in ipairs(due) do job.fn() end
+    end
+
     if self.fxLowPass then
         self.duckEnvelope = clamp(self.duckEnvelope - dt * 4.5, 0.22, 1.0)
     else

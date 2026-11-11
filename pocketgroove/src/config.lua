@@ -26,8 +26,22 @@ local Config = {
         VIOLET     = { 0xB8 / 255, 0x9B / 255, 0xFA / 255, 1.0 }, -- #B89BFA (Nebula Lavender / Bass)
         MINT       = { 0x4E / 255, 0xE1 / 255, 0xA0 / 255, 1.0 }, -- #4EE1A0 (Aurora Mint / Grain Pad)
         AMBER      = { 0xFC / 255, 0xD3 / 255, 0x4D / 255, 1.0 }, -- #FCD34D (Golden Star / Mix / Accent)
-        RED        = { 0xFB / 255, 0x71 / 255, 0x85 / 255, 1.0 }, -- #FB7185 (Sakura Crimson / Erase / Mute)
+        RED        = { 0xFB / 255, 0x71 / 255, 0x85 / 255, 1.0 }, -- #FB7185 (Sakura Crimson / Rec / Erase / Mute)
+        PINK       = { 0xF9 / 255, 0xA8 / 255, 0xD4 / 255, 1.0 }, -- #F9A8D4 (Sakura Blossom / Track Sound page)
+        SILVER     = { 0xDC / 255, 0xE3 / 255, 0xF5 / 255, 1.0 }, -- #DCE3F5 (Moon Silver / Mix & Live FX)
     }
+}
+
+-- One colour per page. On a settings page the mode colour replaces the
+-- instrument colour everywhere except a small track-identity capsule.
+Config.MODE_COLORS = {
+    REC_LATCH = Config.COLORS.RED,
+    REC_HOLD  = Config.COLORS.RED,
+    TRACK     = Config.COLORS.PINK,
+    TRANSPORT = Config.COLORS.AMBER,  -- solar gold
+    MIX       = Config.COLORS.SILVER,
+    FX        = Config.COLORS.SILVER,
+    ERASE     = Config.COLORS.RED,
 }
 
 Config.TRACK_COLORS = {
