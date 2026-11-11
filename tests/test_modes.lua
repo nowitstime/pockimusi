@@ -206,9 +206,9 @@ return {
 
     { "Track page: L1/R1 on a PATCH-only row just shows a toast", function()
         local _, L = boot()
-        H.tap("SELECT"); H.tap("SELECT")                  -- track 3 = bass
+        for _ = 1, 3 do H.tap("SELECT") end              -- track 4 = grain (one patch)
         H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.release("SELECT"); H.play(0.1)
-        H.eq(L.toastText, "RIBBON BASS: ONE PATCH FOR NOW", "toast")
+        H.eq(L.toastText, "GRANULAR PAD: ONE PATCH FOR NOW", "toast")
     end },
 
     { "Track page blocks playing: face buttons don't trigger the instrument", function()

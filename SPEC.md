@@ -231,7 +231,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - 📐 **Monophonic, held notes:** a note sounds while its button is held and releases on button-up (§9.2); a new press ends the previous note.
 - 📐 Face buttons = articulations only: `B` hold, `A` legato (glides from the held or last note without a new attack), `Y` staccato (short, fixed), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
 - 📐 Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed.
-- 📐 Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`), `GLIDE` (fast / medium / slow). `FOLLOW` comes with chord-follow (§5, Phase D).
+- ✅ Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`; `PLUCK` notes overlap and ring), `GLIDE` (fast / medium / slow). 📐 `FOLLOW` comes with chord-follow (§5, Phase D).
 
 ### 7.4 Pad 📐 (replaces Grain)
 
@@ -313,7 +313,7 @@ Event = {
 - Each sustaining patch is generated as an **attack layer** (one-shot) plus a **seamless loop layer** (whole number of cycles, so `setLooping(true)` is click-free).
 - A voice = attack + loop sources with an envelope (attack / release, and crossfade for Pad brightness) driven in `Synth:update` via `setVolume`; pitch and glide via `setPitch`. Voices route through the track's effects like one-shots do.
 - API: `Synth:noteOn(patch, semis, vel, opts) → voice`, `voice:setPitch(semis)`, `voice:noteOff()`. One-shots keep using `Synth:trigger`.
-- Patches so far: `bass`, `grain_pad`, `grain_bell`, `grain_choir`, `grain_drone`. Loops contain only whole harmonics; each patch has 6 loop sources and steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
+- Patches so far: `bass_saw`, `bass_sub`, `bass_pluck`, `grain_pad`, `grain_bell`, `grain_choir`, `grain_drone`. Loops contain only whole harmonics; each patch has 6 loop sources and steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
 
 ### 9.3 Effects & mix
 

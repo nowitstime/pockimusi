@@ -108,10 +108,17 @@ end
 function SynthsBank.buildSustain(Synth)
     local function h(a, k) return math_sin(a * k) end
 
-    -- Bass: band-limited saw (9 harmonics, softened like the one-shot's
-    -- settled tone) + square sub an octave down. Fundamental = the sub, C2,
-    -- so the C3 bass note is harmonic 2.
-    local bassLoop, _, bassTune = Synth:createLoop(65.41, 24, function(a)
+    -- -----------------------------------------------------------------------
+    -- Bass patches (Bass Track page PATCH row). All share the C3 pitch
+    -- reference; loops use C2 as the fundamental so the note is harmonic 2.
+    --   label    shown on the Track page
+    --   overlap  true = notes may overlap (otherwise the bass is mono)
+    -- -----------------------------------------------------------------------
+    local C3 = 130.81
+
+    -- SAW: today's bass. Attack = the "bass" one-shot; loop = band-limited saw
+    -- (softened like the one-shot's settled tone) + square sub an octave down.
+    local sawLoop, _, sawTune = Synth:createLoop(65.41, 24, function(a)
         local saw = 0.0
         for k = 1, 9 do
             saw = saw + h(a, 2 * k) * (1.0 / k) * math_exp(-(k - 1) * 0.55)
@@ -119,9 +126,48 @@ function SynthsBank.buildSustain(Synth)
         local sub = (h(a, 1) >= 0 and 1.0 or -1.0) * 0.30
         return tanh_approx((saw * 0.65 + sub) * 1.2) * 0.75
     end)
-    Synth:createLoopPool("bass_loop", bassLoop, 6)
-    Synth:definePatch("bass", { attack = "bass", loop = "bass_loop", tune = bassTune,
-                                sustain = 0.55, xfade = 0.18, release = 0.10 })
+    Synth:createLoopPool("bass_saw_loop", sawLoop, 6)
+    Synth:definePatch("bass_saw", { label = "SAW", attack = "bass", loop = "bass_saw_loop", tune = sawTune,
+                                    sustain = 0.55, xfade = 0.18, release = 0.10 })
+
+    -- SUB: round and deep. Mostly the fundamental, a soft octave-down sine
+    -- underneath, a touch of second harmonic; a small click on the attack.
+    local subSD = Synth:createBuffer(0.6, function(t)
+        local w = TWO_PI * C3 * t
+        local click = math_sin(w * 4.0) * 0.18 * math_exp(-t * 60.0)
+        local body = math_sin(w) * 0.75 + math_sin(w * 0.5) * 0.35 + math_sin(w * 2.0) * 0.12 * math_exp(-t * 6.0)
+        local attack = clamp(t / 0.004, 0.0, 1.0)
+        local env = attack * (0.55 + 0.45 * math_exp(-t * 5.0)) * math_exp(-t * 1.2)
+        return tanh_approx((body + click) * env * 1.3) * 0.78
+    end)
+    Synth:createPool("bass_sub", subSD, 8, 0.60)
+    local subLoop, _, subTune = Synth:createLoop(65.41, 24, function(a)
+        return tanh_approx(h(a, 2) * 0.75 + h(a, 1) * 0.35 + h(a, 4) * 0.06) * 0.72
+    end)
+    Synth:createLoopPool("bass_sub_loop", subLoop, 6)
+    Synth:definePatch("bass_sub", { label = "SUB", attack = "bass_sub", loop = "bass_sub_loop", tune = subTune,
+                                    sustain = 0.6, xfade = 0.15, release = 0.12 })
+
+    -- PLUCK: sharp, bright attack that closes fast, then a soft triangle-ish
+    -- body that rings out. Notes overlap.
+    local pluckSD = Synth:createBuffer(0.7, function(t)
+        local w = TWO_PI * C3 * t
+        local bright = math_exp(-t * 22.0)
+        local s = 0.0
+        for k = 1, 12 do
+            s = s + math_sin(w * k) * (1.0 / k) * math_exp(-(k - 1) * (0.08 + (1.0 - bright) * 0.9))
+        end
+        local attack = clamp(t / 0.0015, 0.0, 1.0)
+        local env = attack * (0.35 * math_exp(-t * 1.8) + 0.65 * math_exp(-t * 9.0))
+        return tanh_approx(s * env * 1.6) * 0.8
+    end)
+    Synth:createPool("bass_pluck", pluckSD, 10, 0.70)
+    local pluckLoop, _, pluckTune = Synth:createLoop(65.41, 24, function(a)
+        return (h(a, 2) * 0.8 + h(a, 6) * (0.8 / 9) + h(a, 10) * (0.8 / 25) + h(a, 4) * 0.08) * 0.7
+    end)
+    Synth:createLoopPool("bass_pluck_loop", pluckLoop, 8)
+    Synth:definePatch("bass_pluck", { label = "PLUCK", attack = "bass_pluck", loop = "bass_pluck_loop", tune = pluckTune,
+                                      sustain = 0.25, xfade = 0.10, release = 0.45, overlap = true })
 
     -- Grain textures as sustained patches (become Pad sounds in Phase F).
     -- Fundamental C3 (130.81 Hz); the one-shots' "f" (C4) is harmonic 2.

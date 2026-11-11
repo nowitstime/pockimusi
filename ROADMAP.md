@@ -71,7 +71,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 ## Phase B · Bass pass ← **next up** — working plan in [PHASE_B.md](PHASE_B.md)
 
 - [x] B1 Held-note handles: end early, record bends incl. the release tail (shared by Bass, Pad, Lead)
-- [ ] B2 Bass sounds: `SAW`, `SUB`, `PLUCK` patches + `PATCH` and `GLIDE` rows
+- [x] B2 Bass sounds: `SAW`, `SUB`, `PLUCK` patches + `PATCH` and `GLIDE` rows
 - [ ] B3 Held notes: `B` hold, `Y` staccato, `X` accent + vibrato; monophonic
 - [ ] B4 Legato `A`: glide without a new attack, live and on playback
 - [ ] B5 Bends: D-pad and shoulders while holding glide, record, replay

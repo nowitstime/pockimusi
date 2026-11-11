@@ -45,7 +45,7 @@ end
 
 -- Desktop-only test keys for sustained voices: hold H (bass) or G (warm pad)
 local testVoices = {}
-local TEST_KEYS = { h = { patch = "bass", track = 3, semis = 0 }, g = { patch = "grain_pad", track = 4, semis = 0 } }
+local TEST_KEYS = { h = { patch = "bass_saw", track = 3, semis = 0 }, g = { patch = "grain_pad", track = 4, semis = 0 } }
 
 function love.keypressed(key)
     if key == "escape" then
