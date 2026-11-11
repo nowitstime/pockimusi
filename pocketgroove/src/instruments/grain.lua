@@ -19,6 +19,7 @@ local Grain = {
     name = "GRANULAR PAD",
     shortName = "GRAN",
     title = "GRANULAR CLOUD PAD",
+    patchName = "4 CLOUD TEXTURES",
     defaultGridIndex = 5, -- FREE
     SLOT_MAP = {
         B = { sound = "grain_pad",   name = "WARM PAD"   },

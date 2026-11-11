@@ -36,6 +36,14 @@ function Instruments:getTrackInstrument(trackSlot)
     return def, track.state, track
 end
 
+-- Rows for the Track page. Instruments with a single patch get one PATCH row.
+function Instruments:getSoundRows(def, state)
+    if def.getSoundRows then
+        return def:getSoundRows(state)
+    end
+    return { { key = "PATCH", label = "PATCH", value = def.patchName or def.title or def.name } }
+end
+
 function Instruments:cycleTrackInstrument(trackSlot, delta)
     delta = delta or 1
     local track = Looper.tracks[trackSlot or Looper.activeTrack]

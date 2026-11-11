@@ -19,6 +19,7 @@ local Harp = {
     name = "CHORD HARP",
     shortName = "HARP",
     title = "OMNICHORD HARP",
+    patchName = "STARLIGHT PLUCK",
     defaultGridIndex = 5, -- FREE
     BUTTON_TO_INDEX = { B = 1, A = 2, Y = 3, X = 4 },
 }

@@ -20,6 +20,7 @@ local Bass = {
     name = "RIBBON BASS",
     shortName = "BASS",
     title = "RIBBON BASS & LEAD",
+    patchName = "SUB RIBBON",
     defaultGridIndex = 3, -- 1/16
     COMPASS_DEGREE_MAP = {
         DOWN       = 1,
