@@ -187,47 +187,34 @@ Then delete `test_looper_logic.py`.
 
 ## A6 · Event format v2 + note-on / note-off
 
-**Event** as in SPEC §8.2: `tick`, `len`, `grid`, `action`, `vel`, `chance`, `takeId`, plus instrument fields.
+**Status:** ✅ done (102 tests). What was built:
 
-- `trackSlot` and `instrumentId` move to the track; no saves exist yet, so there's nothing to migrate.
+**Events** (SPEC §8.2): `tick`, `len`, `grid`, `action`, `vel`, `takeId`, plus per instrument:
 
-**Instrument API** (replaces `triggerEvent`):
+| Instrument | Fields | Kind |
+| :-- | :-- | :-- |
+| Drums | `soundId`, `decay`, `orn`, `ratchet` | one-shot (`len = 0`) |
+| Bass | `degree`, `octave`, `semis`, `decay`, `glideFrom` | one-shot until A7 / Phase B |
+| Harp | `semis`, `decay`, `chord = { name, roman, colour }` | one-shot |
+| Grain | `semis`, `scanPos`, `density` | **held note** with `len` |
 
-| Function | Called when |
-| :-- | :-- |
-| `def:noteOn(ev, state, track, isPlayback)` | live press or playback start |
-| `def:noteOff(ev, state, track, isPlayback)` | live release or playback `tick + len` (only when `len > 0`) |
-| `def:grace(ev, state, track)` | drums flam grace (replaces `part == "grace"`) |
+No `trackSlot`, `instrumentId`, `phase`, `velocity`, `pitchSemis` or `decayMod` on events any more. `justRecorded` is now `skipOnce`. `chance`, `bend` and `chordRef` arrive with Phases E, B and D.
 
-**Recording held notes:**
+**Instrument API** (replaces `triggerEvent`): `noteOn(ev, state, track, isPlayback)`, `noteOff(...)`, `grace(ev, state, track)` for drum flams, optional `updateVoices(dt, state, track)` run every frame on every track. `updateInput(dt, state, track, play, hold)`: `play(ev)` for one-shots, `hold(ev)` for held notes.
 
-- `Instruments:pressNote(track, ev)` records the event with `len = 0` and returns a handle.
-- `Instruments:releaseNote(track, handle)` sets `len = (tick − ev.tick) % loopTicks`, at least 1.
-- Instruments whose notes are pure one-shots never call `releaseNote`.
-- ❓ A note held across the loop seam: close it at the seam and start a new event, or let `len` wrap. Try wrapping first (simpler); split only if it sounds wrong.
+**Held notes** (`Instruments:holdNote`): sound at once; recorded with `open = true` (not played back yet); released automatically when the button goes up, when a page takes the controls, or when the track stops being active; on release the recording gets `len` = time held (at least 1 tick, at most one loop) and `open` is cleared.
 
-**Porting each instrument at its *current* behaviour:**
+**Playback** (`Looper:update` → `noteHandler(kind, ev, track)`, set once in `main.lua`): `"on"` at `tick` + swing, `"off"` at `tick + len` (wrapping), `"grace"` before flams. A per-track `sounding` set means a note-off is only sent for notes that were started, and every sounding note is released on mute, clear, erase, undo, 2↔4 bars (4→2 also cuts notes at the new loop end), pause, re-recording over it, and instrument swap.
 
-| Instrument | v2 fields |
-| :-- | :-- |
-| Drums | `soundId`, `orn`, `ratchet`, `decay`; `len = 0` |
-| Bass | `degree`, `octave`, `semis`; `len = 0` until A7 gives it sustain |
-| Harp | `semis`, string index in `action`, `chord = { roman, colour }` |
-| Grain | **one event per press** with `len`. Playback `noteOn` starts a grain spawner on that track's state and `noteOff` stops it. This is the model for every continuous instrument |
+**Loop seam:** a note held across the seam wraps (`len` runs past the end and the note-off lands after the wrap). Splitting wasn't needed.
 
-**Other changes:**
+**Grain:** one press = one held note. A per-note *spawner* makes the grains: live notes follow the D-pad and shoulders while held, recorded notes replay the settings stored at the press. A held press records one event (it used to record one per grain).
 
-- `justRecorded` becomes `ev.skipOnce`, cleared the first time the playhead crosses the event.
-- Dedup compares the same `action` on the same snapped `tick`.
-- Chrome: the 3 places that read `ev.phase` switch to `Looper:evPhase(ev)`, which returns `ev.tick / loopTicks`.
+**Fixed on the way:** a held note snapped just ahead of the playhead kept its "already played live" mark until release, which silenced its next whole loop pass. The playhead now uses the mark up while the note is still held.
 
-**Tests:**
+**Also:** the dead `drawStage` functions in Bass, Harp and Grain are deleted (Chrome draws every stage). `Looper:setPlaying(on)` replaces writing `Looper.playing` from Modes.
 
-- A held Grain press records exactly one event with the right `len`.
-- Playback calls `noteOn`/`noteOff` at the right ticks, including across the seam.
-- Undo and erase work on v2 events.
-
-**Done when:** every instrument records and replays as today, and a held Grain press is one event.
+**New tests** (`tests/test_notes.lua`): on/off timing, seam wrap, no off for one-shots, open notes not played, no stray off after a skipped pass, the held-note mark fix, release on each of the 7 silencing actions, re-record releases, 4→2 bar cut, per-instrument v2 fields with no old fields, Grain held press = one event with the right length, Grain playback spawns and stops, page opening releases a held note, mute stops a playing note. Removing the auto-release or the mark fix fails the matching tests.
 
 ---
 

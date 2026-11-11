@@ -25,6 +25,10 @@ local Looper = {
     resetPending = false, -- playhead reset: let events on tick 0 fire
     stutterAnchorTick = 0,
 
+    -- Playback output: noteHandler(kind, ev, track) with kind "on", "off" or
+    -- "grace" (drum flam). Set once by main.lua (Looper:setNoteHandler).
+    noteHandler = nil,
+
     -- Derived each frame (drawing, drum repeat)
     phase = 0.0,
     prevPhase = 0.0,
@@ -70,6 +74,7 @@ function Looper:init(Instruments)
             meterPeak = 0.0,
             muted = false,
             events = {},
+            sounding = {},     -- events whose playback note-on has fired and note-off not yet
             state = instDef:newState(),
         }
         Synth:configureTrackFx(self.tracks[slot])
@@ -81,6 +86,7 @@ function Looper:setTrackInstrument(trackIdx, instrumentId, Instruments)
     local track = self.tracks[trackIdx]
     local instDef = Instruments:getDefinition(instrumentId)
     if not track or not instDef then return end
+    self:silenceTrack(trackIdx)
     track.instrumentId = instrumentId
     track.name = instDef.name
     track.shortName = instDef.shortName
@@ -142,6 +148,35 @@ function Looper:adjustTrackFx(trackIdx, slot, delta)
 end
 
 Looper.FLAM_TIME = 0.028 -- seconds between grace note and main hit
+
+function Looper:setNoteHandler(fn)
+    self.noteHandler = fn
+end
+
+-- Send note-off for every note the looper started on this track
+function Looper:silenceTrack(trackIdx)
+    local track = self.tracks[trackIdx]
+    if not track then return end
+    local handler = self.noteHandler
+    for ev in pairs(track.sounding) do
+        track.sounding[ev] = nil
+        if handler then handler("off", ev, track) end
+    end
+end
+
+function Looper:silenceAll()
+    for tIdx = 1, #self.tracks do self:silenceTrack(tIdx) end
+end
+
+-- Remove one event, releasing it first if it is sounding
+function Looper:removeEventAt(track, i)
+    local ev = table.remove(track.events, i)
+    if ev and track.sounding[ev] then
+        track.sounding[ev] = nil
+        if self.noteHandler then self.noteHandler("off", ev, track) end
+    end
+    return ev
+end
 
 function Looper:showToast(msg)
     self.toastText = msg
@@ -205,14 +240,15 @@ function Looper:beginRecordingTake()
     self.currentTakeId = self.currentTakeId + 1
 end
 
-function Looper:recordEvent(ev)
-    local trackIdx = ev.trackSlot or ev.instrument or self.activeTrack
+-- Record `ev` (event format v2, SPEC §8.2) on a track at the playhead.
+-- Sets ev.tick, ev.grid, ev.takeId and ev.len (0 unless the caller holds the
+-- note open with ev.open and sets len on release). Returns the event.
+function Looper:recordEvent(trackIdx, ev)
     local track = self.tracks[trackIdx]
-    if not track then return end
+    if not track then return nil end
 
-    ev.trackSlot = trackIdx
-    ev.instrumentId = ev.instrumentId or track.instrumentId
     ev.takeId = self.currentTakeId
+    ev.len = ev.len or 0
 
     local top = self.undoStack[#self.undoStack]
     if not (top and top.kind == "take" and top.takeId == self.currentTakeId and top.trackSlot == trackIdx) then
@@ -239,7 +275,7 @@ function Looper:recordEvent(ev)
                 local d = math_abs(existing.tick - snapped)
                 if d > loop * 0.5 then d = loop - d end
                 if d < 0.4 * step then
-                    table.remove(track.events, i)
+                    self:removeEventAt(track, i)
                 end
             end
         end
@@ -252,10 +288,11 @@ function Looper:recordEvent(ev)
     -- Snapped ahead of the playhead: the live press already played it
     local ahead = (snapped - now) % loop
     if ahead > 0 and ahead < loop * 0.05 then
-        ev.justRecorded = true
+        ev.skipOnce = true
     end
 
     table.insert(track.events, ev)
+    return ev
 end
 
 function Looper:pushUndo(entry)
@@ -269,6 +306,7 @@ function Looper:undo()
         local entry = table.remove(self.undoStack)
         local track = self.tracks[entry.trackSlot]
         if entry.kind == "swap" and track then
+            self:silenceTrack(entry.trackSlot)
             track.instrumentId = entry.instrumentId
             track.name = entry.name
             track.shortName = entry.shortName
@@ -281,7 +319,7 @@ function Looper:undo()
             local removed = 0
             for i = #track.events, 1, -1 do
                 if track.events[i].takeId == entry.takeId then
-                    table.remove(track.events, i)
+                    self:removeEventAt(track, i)
                     removed = removed + 1
                 end
             end
@@ -301,7 +339,7 @@ function Looper:clearTrackAction(trackIdx, action, label)
     local removed = 0
     for i = #track.events, 1, -1 do
         if track.events[i].action == action then
-            table.remove(track.events, i)
+            self:removeEventAt(track, i)
             removed = removed + 1
         end
     end
@@ -323,6 +361,7 @@ end
 function Looper:clearTrack(trackIdx)
     local track = self.tracks[trackIdx]
     if track then
+        self:silenceTrack(trackIdx)
         track.events = {}
         self:showToast("CLEARED ALL ON TRACK " .. trackIdx .. " (" .. track.name .. ")")
     end
@@ -338,6 +377,7 @@ function Looper:cycleGridMode(trackIdx)
 end
 
 function Looper:toggleBars()
+    self:silenceAll()
     if self.bars == 2 then
         -- 2 -> 4 bars: bars 1-2 stay where they are and are copied into bars 3-4
         local oldLoop = self:getLoopTicks()
@@ -348,7 +388,7 @@ function Looper:toggleBars()
                 local copy = {}
                 for k, v in pairs(track.events[i]) do copy[k] = v end
                 copy.tick = copy.tick + oldLoop
-                copy.justRecorded = false
+                copy.skipOnce = nil
                 table.insert(track.events, copy)
             end
         end
@@ -362,6 +402,8 @@ function Looper:toggleBars()
             for i = #track.events, 1, -1 do
                 if track.events[i].tick >= loop then
                     table.remove(track.events, i)
+                elseif track.events[i].tick + track.events[i].len > loop then
+                    track.events[i].len = loop - track.events[i].tick   -- cut at the new loop end
                 end
             end
         end
@@ -376,11 +418,18 @@ function Looper:toggleMute(trackIdx)
     local track = self.tracks[trackIdx]
     if track then
         track.muted = not track.muted
+        if track.muted then self:silenceTrack(trackIdx) end
         self:showToast("TRACK " .. trackIdx .. " " .. (track.muted and "MUTED" or "UNMUTED"))
     end
 end
 
-function Looper:update(dt, triggerCallback)
+function Looper:setPlaying(on)
+    self.playing = on
+    if not on then self:silenceAll() end
+end
+
+function Looper:update(dt, handler)
+    handler = handler or self.noteHandler
     if self.toastTimer > 0 then
         self.toastTimer = math_max(0, self.toastTimer - dt)
     end
@@ -446,18 +495,30 @@ function Looper:update(dt, triggerCallback)
             for i = 1, #track.events do
                 local ev = track.events[i]
                 local t = (ev.tick + self:getSwingOffset(ev, track)) % loop
+                if ev.open then
+                    -- Still held while recording: don't play it, but a pass of
+                    -- the playhead still uses up its "already played live" mark
+                    if ev.skipOnce and crossedAt(t) then ev.skipOnce = nil end
+                else
 
-                -- Flam grace note sounds just before the main hit
-                if ev.orn == "flam" and not ev.justRecorded and crossedAt((t - graceTicks) % loop) then
-                    triggerCallback(ev, track, true, "grace")
-                end
+                    -- Flam grace note sounds just before the main hit
+                    if ev.orn == "flam" and not ev.skipOnce and crossedAt((t - graceTicks) % loop) then
+                        handler("grace", ev, track)
+                    end
 
-                if crossedAt(t) then
-                    if ev.justRecorded then
-                        ev.justRecorded = false
-                    else
-                        track.meterPeak = math_max(track.meterPeak, ev.velocity or 0.85)
-                        triggerCallback(ev, track, true)
+                    if crossedAt(t) then
+                        if ev.skipOnce then
+                            ev.skipOnce = nil     -- the live press already played this pass
+                        else
+                            track.meterPeak = math_max(track.meterPeak, ev.vel or 0.85)
+                            if ev.len > 0 then track.sounding[ev] = true end
+                            handler("on", ev, track)
+                        end
+                    end
+
+                    if ev.len > 0 and track.sounding[ev] and crossedAt((t + math.min(ev.len, loop - 1)) % loop) then
+                        track.sounding[ev] = nil
+                        handler("off", ev, track)
                     end
                 end
             end

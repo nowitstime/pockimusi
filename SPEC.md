@@ -264,7 +264,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ **Clock from real time:** the playhead advances by the real time between frames (`love.timer.getTime()`), not the clamped frame `dt`, so frame drops never slow the tempo. A frame longer than 0.25 s fires none of its skipped events.
 - ✅ **Integer ticks:** positions are stored as ticks at **480 PPQN** (2 bars = 3840 ticks; 4 bars = 7680; 1 tick ≈ 1.1 ms at 115 BPM). Grid steps: 1/4 = 480, 1/8 = 240, 1/16 = 120, 1/12T = 160; FREE rounds to 1 tick. Snapping, dedup, 2↔4 bar toggling, triplets and swing offsets are exact. `phase` remains a derived value for drawing.
 
-### 8.2 Event format v2 📐
+### 8.2 Event format v2 🔧 (core ✅; `chance`, `bend`, `chordRef` come with their phases)
 
 ```lua
 Event = {
@@ -292,9 +292,10 @@ Event = {
 }
 ```
 
-- Track-level fields (`instrumentId`, `trackSlot`) live on the track, not on each event.
-- Continuous textures record **notes with length**, never a stream of grains. One held pad chord = one event.
-- Playback: note-on at `tick` (+ swing), note-off at `tick + len` (wrapping), bend keyframes applied in between.
+- ✅ Track-level fields (`instrumentId`, `trackSlot`) live on the track, not on each event.
+- ✅ Continuous textures record **notes with length**, never a stream of grains. One held pad chord = one event. A note still held while recording is marked `open` and not played back until released.
+- ✅ Playback: note-on at `tick` (+ swing), note-off at `tick + len` (wrapping across the loop seam), bend keyframes (📐) applied in between. The looper keeps a set of sounding notes per track and always releases them on mute, clear, erase, undo, 2↔4 bars, pause, re-record and instrument swap.
+- ✅ Instrument API: `noteOn(ev, state, track, isPlayback)`, `noteOff(...)`, `grace(...)` (drum flam), optional `updateVoices(dt, state, track)` every frame; live input uses `play(ev)` for one-shots and `hold(ev)` for held notes, which release themselves when the button goes up or a page takes the controls.
 - Saved files store events as-is plus a `version` field (§10).
 
 ---

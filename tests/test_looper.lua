@@ -76,22 +76,24 @@ return {
         local _, L = setup(GRID.S)
         local ev = H.record(L, 1, "B", 0.99)
         H.eq(ev.tick, 0, "tick")
-        H.truthy(ev.justRecorded, "marked as already played")
+        H.truthy(ev.skipOnce, "marked as already played")
     end },
 
     { "snapping forward marks the event as already played; snapping back does not", function()
         local _, L = setup(GRID.S)
-        H.truthy(H.record(L, 1, "B", 0.24).justRecorded, "0.24 -> 0.25 (forward)")
-        H.falsy(H.record(L, 1, "A", 0.26).justRecorded, "0.26 -> 0.25 (back)")
+        H.truthy(H.record(L, 1, "B", 0.24).skipOnce, "0.24 -> 0.25 (forward)")
+        H.falsy(H.record(L, 1, "A", 0.26).skipOnce, "0.26 -> 0.25 (back)")
     end },
 
-    { "recorded events carry track, instrument and take", function()
+    { "recorded events carry their take and length, not their track (v2)", function()
         local _, L = setup(GRID.S)
         L:beginRecordingTake()
         local ev = H.record(L, 1, "B", 0.26)
-        H.eq(ev.trackSlot, 1, "trackSlot")
-        H.eq(ev.instrumentId, "drums", "instrumentId")
         H.eq(ev.takeId, L.currentTakeId, "takeId")
+        H.eq(ev.len, 0, "one-shot: len 0")
+        H.eq(ev.trackSlot, nil, "no trackSlot")
+        H.eq(ev.instrumentId, nil, "no instrumentId")
+        H.eq(L.tracks[1].events[1], ev, "stored on the track")
     end },
 
     -- ------------------------------------------------------------------

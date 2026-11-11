@@ -275,7 +275,7 @@ local function updateStartTap()
         Looper.playing = true
         Looper:showToast("PLAYHEAD RESET TO BAR 1.1")
     else
-        Looper.playing = not Looper.playing
+        Looper:setPlaying(not Looper.playing)
         Looper:showToast(Looper.playing and "CLOCK: PLAYING" or "CLOCK: PAUSED (2x TAP = RESET)")
     end
     Input.lastStartTapTime = now

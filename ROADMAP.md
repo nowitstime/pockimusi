@@ -65,7 +65,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] A3 Modes module (move combo handling out of `main.lua`)
 - [x] A4 Setting rows + safe instrument swap (first row: Harp `COLOUR`)
 - [x] A5 Clock from real time + integer ticks (480 PPQN; device check pending)
-- [ ] A6 Event format v2 + note-on/note-off playback
+- [x] A6 Event format v2 + note-on/note-off playback (Grain = held notes)
 - [ ] A7 Sustained voice engine
 
 ## Phase B · Bass pass

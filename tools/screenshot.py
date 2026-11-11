@@ -34,6 +34,9 @@ SCENES = {
     "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("R1");'
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
+    "grain-hold": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("B", "RIGHT"); H.play(0.8)',
+    "grain-playback": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("A"); H.play(1.2); H.release("A");'
+                      ' H.play(0.05); H.tap("L2"); H.play(3.4)',
 }
 
 _fonts = {}
