@@ -15,6 +15,7 @@ local FILES = {
     "test_looper",
     "test_modes",
     "test_notes",
+    "test_voices",
     "test_smoke",
 }
 

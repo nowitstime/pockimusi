@@ -38,13 +38,29 @@ end
 -- ---------------------------------------------------------------------------
 local noop = function() end
 
-local function fakeSource()
-    local s = { playing = false }
+local function fakeSource(soundData)
+    local s = { playing = false, volume = 1.0, pitch = 1.0, looping = false, soundData = soundData }
     function s:play() self.playing = true end
     function s:stop() self.playing = false end
     function s:isPlaying() return self.playing end
-    s.setPitch, s.setVolume, s.setFilter, s.setEffect, s.setLooping = noop, noop, noop, noop, noop
+    function s:setVolume(v) self.volume = v end
+    function s:setPitch(p) self.pitch = p end
+    function s:setLooping(l) self.looping = l end
+    s.setFilter, s.setEffect = noop, noop
     return s
+end
+
+-- SoundData that keeps its samples only when H.captureSamples is set
+local function fakeSoundData(n)
+    local d = { n = n }
+    if H.captureSamples then
+        d.samples = {}
+        function d:setSample(i, v) self.samples[i] = v end
+    else
+        d.setSample = noop
+    end
+    function d:getSampleCount() return self.n end
+    return d
 end
 
 local function fakeFont(size)
@@ -75,9 +91,9 @@ function H.installLove()
             end,
             random = function() return 0.5 end,
         },
-        sound = { newSoundData = function() return { setSample = noop } end },
+        sound = { newSoundData = function(n) return fakeSoundData(n) end },
         audio = {
-            newSource = function() return fakeSource() end,
+            newSource = function(sd) return fakeSource(sd) end,
             isEffectsSupported = function() return false end,
             getMaxSourceEffects = function() return 0 end,
             setEffect = noop,

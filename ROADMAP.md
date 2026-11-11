@@ -58,7 +58,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ---
 
-## Phase A · Foundation ← **next up** — working plan in [PHASE_A.md](PHASE_A.md)
+## Phase A · Foundation ✅ (device checks pending) — details in [PHASE_A.md](PHASE_A.md)
 
 - [x] A1 Quick fixes + build script packs every file (device check pending)
 - [x] A2 Real tests (characterise today's looper first) — `python3 tests/run.py`
@@ -66,9 +66,9 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] A4 Setting rows + safe instrument swap (first row: Harp `COLOUR`)
 - [x] A5 Clock from real time + integer ticks (480 PPQN; device check pending)
 - [x] A6 Event format v2 + note-on/note-off playback (Grain = held notes)
-- [ ] A7 Sustained voice engine
+- [x] A7 Sustained voice engine (device listen pending)
 
-## Phase B · Bass pass
+## Phase B · Bass pass ← **next up**
 
 - [ ] Bass plays sustained notes: sound while held, release on button-up
 - [ ] Face buttons = articulations (`B` normal, `A` legato/glide, `Y` staccato, `X` accent + vibrato) ❓ confirm after playtest
@@ -150,4 +150,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is next. The step-by-step plan, tests and exit checklist live in [PHASE_A.md](PHASE_A.md).
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B, the Bass pass, is next and will get its own working plan.

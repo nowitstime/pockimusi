@@ -5,6 +5,7 @@
 local Config     = require("src.config")
 local DrumsBank  = require("src.synth.drums_bank")
 local SynthsBank = require("src.synth.synths_bank")
+local Voice      = require("src.synth.voice")
 
 local clamp      = Config.clamp
 local math_sin   = math.sin
@@ -31,6 +32,9 @@ local Synth = {
 -- listed "chokeable" sounds in the same group (closed hat cuts open hat).
 Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat" }
 Synth.CHOKEABLE   = { hat_open = true }
+
+-- Sustained voices: patches, loop pools, noteOn / updateVoices (voice.lua)
+Voice.install(Synth)
 
 function Synth:createBuffer(durationSec, generatorFn)
     local sampleCount = math_floor(durationSec * Config.SAMPLE_RATE)
@@ -62,9 +66,18 @@ function Synth:init()
         return rng:random() * 2.0 - 1.0
     end
 
+    local t0 = love.timer.getTime()
     DrumsBank.build(self, whiteNoise)
+    local t1 = love.timer.getTime()
     SynthsBank.build(self, whiteNoise)
+    local t2 = love.timer.getTime()
+    SynthsBank.buildSustain(self)
+    local t3 = love.timer.getTime()
     self:initTrackFx()
+    -- Boot cost, printed to the PortMaster log (log.txt) on the device
+    self.bootTimes = { drums = t1 - t0, synths = t2 - t1, sustain = t3 - t2, total = t3 - t0 }
+    print(string.format("[PocketGroove] sound generation: drums %.2fs, synths %.2fs, sustain loops %.2fs, total %.2fs",
+        t1 - t0, t2 - t1, t3 - t2, t3 - t0))
 end
 
 -- ============================================================================
@@ -212,6 +225,7 @@ end
 
 function Synth:update(dt)
     self.clock = self.clock + dt
+    self:updateVoices(dt)
     if #self.scheduled > 0 then
         local due = {}
         for i = #self.scheduled, 1, -1 do
