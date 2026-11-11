@@ -34,7 +34,7 @@ local function handleGlobalCombos()
         if not Input.l2ComboUsed and Input.l2HoldTime < 0.25 then
             Input.recLatched = not Input.recLatched
             if Input.recLatched then
-                Looper:showToast("● RECORD LATCHED (TAP L2 TO STOP)")
+                Looper:showToast("[REC] RECORD LATCHED (TAP L2 TO STOP)")
             else
                 Looper:showToast("RECORD STOPPED")
             end
@@ -266,7 +266,7 @@ end
 -- ============================================================================
 
 function love.load()
-    love.window.setTitle("PocketGroove — 4-Track Handheld Groovebox")
+    love.window.setTitle("PocketGroove - 4-Track Handheld Groovebox")
     Synth:init()
     Looper:init(Instruments)
     Chrome:init()

@@ -24,7 +24,7 @@ local Looper = {
     currentTakeId = 0,
     takeStack = {},    -- Stack of takeIds for Undo Last Take
     tracks = {},
-    toastText = "READY — TAP [SELECT] TO SWITCH TRACKS",
+    toastText = "READY - TAP [SELECT] TO SWITCH TRACKS",
     toastTimer = 2.5,
 
     -- Quantize Grid Modes per track: stepsPerBar (nil = Free unquantized)

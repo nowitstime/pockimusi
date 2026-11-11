@@ -63,7 +63,7 @@ function Drums:getActionLabel(state, btn)
 end
 
 function Drums:getSelectHint()
-    return "CONFIGURE:  [B/Y/A/X] Pad Sound   [L1/R1] ◄/►   [U/D] BPM   [L/R] Key   [START] 2/4 Bars"
+    return "CONFIGURE:  [B/Y/A/X] Pad Sound   [L1/R1] < / >   [U/D] BPM   [L/R] Key   [START] 2/4 Bars"
 end
 
 function Drums:handleSelectCombo(state)
@@ -252,7 +252,7 @@ function Drums:drawSoundBrowser(state, Chrome)
             Chrome:setColor(activeColor)
             love.graphics.rectangle("fill", bx + 6, ry, bw - 12, rowH - 2, 4, 4)
             Chrome:setColor(C.BG)
-            love.graphics.print("► " .. item.full, bx + 10, ry + 5)
+            love.graphics.print("> " .. item.full, bx + 10, ry + 5)
         else
             if offset % 2 == 0 then
                 Chrome:setColor(C.PANEL, 0.65)
@@ -347,16 +347,16 @@ function Drums:drawStage(state, track, Chrome)
     }
 
     love.graphics.setFont(Chrome.fontSmall)
-    local topHint = "L1: 1/4 PULSE   •   R1: 1/8 GROOVE   •   L1+R1: 1/16"
+    local topHint = "L1: 1/4 PULSE   |   R1: 1/8 GROOVE   |   L1+R1: 1/16"
     local topColor = C.MUTED
     if isEraseMode then
-        topHint = "▼ [B / Y / A / X] ERASE PAD   •   [LEFT] UNDO ▼"
+        topHint = "[B / Y / A / X] ERASE PAD   |   [LEFT] UNDO"
         topColor = C.RED
     elseif showSoundBrowser or isSelectMode then
-        topHint = "▼ [B / Y / A / X] PAD SOUND   •   [L1 / R1] ◄/► ▼"
+        topHint = "[B / Y / A / X] PAD SOUND   |   [L1 / R1] < / >"
         topColor = C.CYAN
     elseif isMuteMode then
-        topHint = "▼ [B / A / Y / X] MUTE TRACK 1-4 ▼"
+        topHint = "[B / A / Y / X] MUTE TRACK 1-4"
         topColor = C.AMBER
     end
     Chrome:setColor(topColor)
@@ -414,7 +414,7 @@ function Drums:drawStage(state, track, Chrome)
         if isEraseMode then
             mainLabel = "ERASE " .. p.btn
         elseif showSoundBrowser or isSelectMode then
-            mainLabel = isFocusedInBrowser and ("◄ " .. soundItem.short .. " ►") or soundItem.short
+            mainLabel = isFocusedInBrowser and ("< " .. soundItem.short .. " >") or soundItem.short
         elseif isMuteMode then
             mainLabel = "MUTE TRK " .. p.muteTrack
         end

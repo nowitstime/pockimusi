@@ -222,11 +222,32 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
         self:drawDiamond(coord.tx, coord.ty, isActive and 3.5 or (has and 2.5 or 1.5),
             isActive and C.TEXT or (has and col or C.DIM))
 
-        -- Clean floating label outside tip
+        -- Clean floating label (radial for Roman/numbers; tucked underneath for longer words like LOW/HIGH)
         if has then
             local text = labels[d.k]
-            local lx = cx + math_cos(d.ang) * d.lr
-            local ly = cy + math_sin(d.ang) * d.lr
+            local isShortRadial = text:match("^[IVXLCDMivxlcdm]+$") or text:match("^%d+$")
+            local lx, ly
+            if isShortRadial then
+                -- Roman numerals (IV, V) and numbers (1..8) sit directly outside points radially
+                lx = cx + math_cos(d.ang) * d.lr
+                ly = cy + math_sin(d.ang) * d.lr
+            elseif d.k == "LEFT" then
+                lx = coord.tx + 4
+                ly = coord.ty + 14
+            elseif d.k == "RIGHT" then
+                lx = coord.tx - 4
+                ly = coord.ty + 14
+            elseif d.k == "UP" then
+                lx = coord.tx
+                ly = coord.ty - 13
+            elseif d.k == "DOWN" then
+                lx = coord.tx
+                ly = coord.ty + 14
+            else
+                lx = cx + math_cos(d.ang) * d.lr
+                ly = cy + math_sin(d.ang) * d.lr
+            end
+
             local tw = self.fontSmall:getWidth(text)
             local th = self.fontSmall:getHeight()
             self:setColor(isActive and C.TEXT or C.MUTED)
@@ -312,21 +333,42 @@ function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeM
         love.graphics.circle("line", p.x, p.y, r)
         love.graphics.setLineWidth(1)
 
-        -- Top glass crescent highlight
-        self:setColor(C.TEXT, 0.22)
-        love.graphics.arc("line", "open", p.x, p.y - 2, r * 0.68, math_pi * 1.15, math_pi * 1.85)
+        -- Typography or Central Void Diamond Pip
+        local label = faceLabels and faceLabels[btn]
+        if not label or label == "" then
+            -- Clean celestial void lens: elegant diamond pip in center (lights up on press)
+            self:drawDiamond(p.x, p.y, (fl > 0.05 or isActive) and 3.5 or 2.2, (fl > 0.05 or isActive) and C.TEXT or C.DIM)
+        elseif type(label) == "table" and label.l1 and label.l2 then
+            self:setColor(btnCol)
+            love.graphics.setFont(self.fontTiny)
+            local w1 = self.fontTiny:getWidth(label.l1)
+            love.graphics.print(label.l1, math_floor(p.x - w1 * 0.5), p.y - 7)
 
-        -- Typography
-        local subText = faceLabels and faceLabels[btn] or ""
-        self:setColor(btnCol)
-        love.graphics.setFont(self.fontMed)
-        local bw = self.fontMed:getWidth(btn)
-        love.graphics.print(btn, math_floor(p.x - bw * 0.5), p.y - 10)
+            self:setColor((fl > 0.05 or isActive) and btnCol or C.TEXT)
+            love.graphics.setFont(self.fontSmall)
+            local w2 = self.fontSmall:getWidth(label.l2)
+            love.graphics.print(label.l2, math_floor(p.x - w2 * 0.5), p.y + 4)
+        else
+            local text = tostring(label or btn)
+            local s1, s2 = text:match("^(%S+)%s+(%S+)$")
+            if s1 and s2 then
+                self:setColor(btnCol)
+                love.graphics.setFont(self.fontTiny)
+                local w1 = self.fontTiny:getWidth(s1)
+                love.graphics.print(s1, math_floor(p.x - w1 * 0.5), p.y - 7)
 
-        self:setColor(C.TEXT)
-        love.graphics.setFont(self.fontTiny)
-        local sw = self.fontTiny:getWidth(subText)
-        love.graphics.print(subText, math_floor(p.x - sw * 0.5), p.y + 4)
+                self:setColor((fl > 0.05 or isActive) and btnCol or C.TEXT)
+                love.graphics.setFont(self.fontSmall)
+                local w2 = self.fontSmall:getWidth(s2)
+                love.graphics.print(s2, math_floor(p.x - w2 * 0.5), p.y + 4)
+            else
+                self:setColor((fl > 0.05 or isActive) and btnCol or C.TEXT)
+                love.graphics.setFont(self.fontSmall)
+                local tw = self.fontSmall:getWidth(text)
+                local th = self.fontSmall:getHeight()
+                love.graphics.print(text, math_floor(p.x - tw * 0.5), math_floor(p.y - th * 0.5))
+            end
+        end
     end
 end
 
@@ -337,9 +379,24 @@ function Chrome:drawZoneMotifs(instId, col, t)
     local lx, ly, rx, ry = 102, 188, 538, 188
 
     if instId == "drums" then
+        -- D-pad side: rhythmic astrolabe pulse ring
         self:setColor(col, 0.22)
         self:drawDashedCircle(lx, ly, 78, 2, 6)
+
+        -- Face button side: 16-step chronometer graduation ring with 16th-note ticks
+        self:setColor(col, 0.22)
         self:drawDashedCircle(rx, ry, 84, 2, 6)
+        for i = 0, 15 do
+            local ang = (i / 16.0) * 2.0 * math_pi
+            local isQuarter = (i % 4 == 0)
+            local r1, r2 = 82, isQuarter and 88 or 85
+            local x1 = rx + math_cos(ang) * r1
+            local y1 = ry + math_sin(ang) * r1
+            local x2 = rx + math_cos(ang) * r2
+            local y2 = ry + math_sin(ang) * r2
+            self:setColor(col, isQuarter and 0.45 or 0.20)
+            love.graphics.line(x1, y1, x2, y2)
+        end
     elseif instId == "harp" then
         local rot = t * 0.35
         self:setColor(col, 0.28)
@@ -347,16 +404,27 @@ function Chrome:drawZoneMotifs(instId, col, t)
         love.graphics.arc("line", "open", rx, ry + 14, 84, math_pi * 0.1, math_pi * 0.9)
         self:drawStarGlint(lx + math_cos(rot) * 78, ly + math_sin(rot) * 78, 5.5, col, 0.55)
         self:drawStarGlint(rx + math_cos(-rot) * 84, ry + math_sin(-rot) * 84, 5.5, col, 0.55)
+
+        -- Extra harmonic orbital halo
+        self:setColor(col, 0.16)
+        love.graphics.circle("line", rx, ry, 90)
     elseif instId == "bass" then
         local ptsL = { lx, ly - 82, lx + 82, ly, lx, ly + 82, lx - 82, ly }
         local ptsR = { rx, ry - 86, rx + 86, ry, rx, ry + 86, rx - 86, ry }
         self:setColor(col, 0.22)
         love.graphics.polygon("line", ptsL)
         love.graphics.polygon("line", ptsR)
+
+        -- Cardinal diamond corner markers
+        self:drawDiamond(rx, ry - 86, 2.8, col)
+        self:drawDiamond(rx + 86, ry, 2.8, col)
+        self:drawDiamond(rx, ry + 86, 2.8, col)
+        self:drawDiamond(rx - 86, ry, 2.8, col)
     elseif instId == "grain" then
         self:setColor(col, 0.2)
         love.graphics.circle("line", lx, ly, 76)
         self:drawDashedCircle(rx, ry, 82, 4, 8)
+        self:drawDashedCircle(rx, ry, 90, 2, 6)
         for i = 0, 3 do
             local a = t * 0.2 + i * (math_pi * 0.5)
             self:drawStarGlint(rx + math_cos(a) * 82, ry + math_sin(a) * 82, 4.5, col, 0.45)
@@ -396,7 +464,7 @@ function Chrome:drawTopBar()
 
     self:setColor(C.TEXT)
     love.graphics.setFont(self.fontSmall)
-    love.graphics.print(string.format("%d · %s", sl, track and track.name or "TRK"), 24, 17)
+    love.graphics.print(string.format("%d - %s", sl, track and track.name or "TRK"), 24, 17)
 
     -- Hairline dividers & Metadata
     self:setColor(C.GRID)
@@ -427,7 +495,7 @@ function Chrome:drawTopBar()
     self:setColor(C.TEXT)
     love.graphics.print(string.format("%d BPM", Looper.bpm), 268, 12)
     self:setColor(C.CYAN)
-    love.graphics.print(Theory:getKeyLabel() .. " MAJ", 332, 12)
+    love.graphics.print(Theory:getKeyLabel(), 332, 12)
 
     local totalBeats = Looper:getTotalBeats()
     local sp = (totalBeats == 8) and 16 or 8.5
@@ -446,19 +514,53 @@ function Chrome:drawTopBar()
         end
     end
 
-    -- Right Mode Status Tag (rx=4)
+    -- Right Mode Status Tag (rx=4) with vector icon + ASCII text
     local modeConfigs = {
-        NORMAL    = { text = "✦ JAM SAFE",   stroke = C.GRID,   fill = C.PANEL_HI, txt = C.MUTED },
-        REC_LATCH = { text = "● REC LATCH",  stroke = C.ORANGE, fill = C.ORANGE,   txt = C.BG },
-        REC_HOLD  = { text = "● REC HOLD",   stroke = C.ORANGE, fill = C.ORANGE,   txt = C.BG },
-        TRACK     = { text = "❖ TRACK CFG",  stroke = C.CYAN,   fill = C.CYAN,     txt = C.BG },
-        MIX       = { text = "▮▮ MIXER",     stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG },
-        TRANSPORT = { text = "▶ TRANSPORT",  stroke = C.TEXT,   fill = C.TEXT,     txt = C.BG },
-        ERASE     = { text = "✕ ERASE",      stroke = C.RED,    fill = C.RED,      txt = C.BG },
-        FX        = { text = "✶ LIVE FX",    stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG },
+        NORMAL    = { label = "JAM SAFE",   icon = "STAR",    stroke = C.GRID,   fill = C.PANEL_HI, txt = C.MUTED,  iconCol = C.GRID },
+        REC_LATCH = { label = "REC LATCH",  icon = "DOT",     stroke = C.ORANGE, fill = C.ORANGE,   txt = C.BG,     iconCol = C.BG },
+        REC_HOLD  = { label = "REC HOLD",   icon = "DOT",     stroke = C.ORANGE, fill = C.ORANGE,   txt = C.BG,     iconCol = C.BG },
+        TRACK     = { label = "TRACK CFG",  icon = "DIAMOND", stroke = C.CYAN,   fill = C.CYAN,     txt = C.BG,     iconCol = C.BG },
+        MIX       = { label = "MIXER",      icon = "FADERS",  stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
+        TRANSPORT = { label = "TRANSPORT",  icon = "PLAY",    stroke = C.TEXT,   fill = C.TEXT,     txt = C.BG,     iconCol = C.BG },
+        ERASE     = { label = "ERASE",      icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
+        FX        = { label = "LIVE FX",    icon = "GLINT",   stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
-    self:drawTag(488, 11, 138, 28, mc.text, mc.stroke, mc.fill, mc.txt, self.fontSmall, (mode == "NORMAL") and 1.0 or 0.92)
+    local bx, by, bw, bh = 488, 11, 138, 28
+    self:setColor(mc.fill, (mode == "NORMAL") and 1.0 or 0.92)
+    love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
+    self:setColor(mc.stroke)
+    love.graphics.rectangle("line", bx, by, bw, bh, 4, 4)
+
+    -- Vector icon before label
+    local icx, icy = bx + 18, by + 14
+    if mc.icon == "STAR" then
+        self:drawStarGlint(icx, icy, 4.2, mc.iconCol, 0.9)
+    elseif mc.icon == "DOT" then
+        self:setColor(mc.iconCol)
+        love.graphics.circle("fill", icx, icy, 3.8)
+    elseif mc.icon == "DIAMOND" then
+        self:drawDiamond(icx, icy, 3.5, mc.iconCol)
+    elseif mc.icon == "FADERS" then
+        self:setColor(mc.iconCol)
+        love.graphics.rectangle("fill", icx - 4, icy - 4.5, 2.5, 9, 1, 1)
+        love.graphics.rectangle("fill", icx + 1, icy - 4.5, 2.5, 9, 1, 1)
+    elseif mc.icon == "PLAY" then
+        self:setColor(mc.iconCol)
+        love.graphics.polygon("fill", icx - 3, icy - 4.5, icx + 4, icy, icx - 3, icy + 4.5)
+    elseif mc.icon == "CROSS" then
+        self:setColor(mc.iconCol)
+        love.graphics.setLineWidth(1.8)
+        love.graphics.line(icx - 3.5, icy - 3.5, icx + 3.5, icy + 3.5)
+        love.graphics.line(icx - 3.5, icy + 3.5, icx + 3.5, icy - 3.5)
+        love.graphics.setLineWidth(1)
+    elseif mc.icon == "GLINT" then
+        self:drawStarGlint(icx, icy, 5.0, mc.iconCol, 1.0)
+    end
+
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(mc.txt)
+    love.graphics.print(mc.label, bx + 32, by + 6)
 end
 
 -- ============================================================================
@@ -496,27 +598,27 @@ function Chrome:drawCenterStage()
 
     -- Top Header Row: Shoulder Badges + Title
     local lOn, rOn = Input.down.L1, Input.down.R1
-    local l1Label, r1Label = "L1 · -", "R1 · +"
+    local l1Label, r1Label = "L1: -", "R1: +"
     if mode == "TRACK" then
-        l1Label, r1Label = "L1 · ◄ SOUND", "R1 · SOUND ►"
+        l1Label, r1Label = "L1: SOUND <", "R1: SOUND >"
     elseif mode == "MIX" then
-        l1Label, r1Label = "L1 · MST -", "R1 · MST +"
+        l1Label, r1Label = "L1: MST -", "R1: MST +"
     elseif mode == "ERASE" then
-        l1Label, r1Label = "L1 · UNDO", "R1 · -"
+        l1Label, r1Label = "L1: UNDO", "R1: -"
     elseif def.id == "drums" then
-        l1Label, r1Label = "L1 · 1/4", "R1 · 1/8"
+        l1Label, r1Label = "L1: 1/4", "R1: 1/8"
     elseif def.id == "harp" then
-        l1Label, r1Label = "L1 · OCT -", "R1 · OCT +"
+        l1Label, r1Label = "L1: OCT -", "R1: OCT +"
     elseif def.id == "bass" then
-        l1Label, r1Label = "L1 · OCT -1", "R1 · OCT +1"
+        l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
     elseif def.id == "grain" then
-        l1Label, r1Label = "L1 · OCT -1", "R1 · OCT +1"
+        l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
     end
 
     self:drawTag(18, 58, 112, 22, l1Label, lOn and instCol or C.GRID, lOn and instCol or C.PANEL_HI, lOn and C.BG or C.MUTED, self.fontTiny)
     self:drawTag(510, 58, 112, 22, r1Label, rOn and instCol or C.GRID, rOn and instCol or C.PANEL_HI, rOn and C.BG or C.MUTED, self.fontTiny)
 
-    local titleStr = string.format("%s  ·  %s", def.name, track.name)
+    local titleStr = def.name
     if mode == "TRACK" then titleStr = string.format("TRACK %d CONFIGURATION", sl)
     elseif mode == "MIX" then titleStr = "4-TRACK LEVEL & MUTE MIXER"
     elseif mode == "TRANSPORT" then titleStr = "MASTER CLOCK & SCALE"
@@ -540,8 +642,8 @@ function Chrome:drawCenterStage()
 
     self:setColor(C.MUTED)
     love.graphics.setFont(self.fontTiny)
-    local dpadSubtitle = (mode == "TRACK" and "D-PAD · CFG") or (mode == "MIX" and "D-PAD · LEVEL") or (mode == "TRANSPORT" and "D-PAD · TEMPO") or "D-PAD · HARMONY"
-    local faceSubtitle = (mode == "MIX" and "FACE · MUTES") or (mode == "ERASE" and "FACE · CLEAR") or "FACE · TRIGGERS"
+    local dpadSubtitle = (mode == "TRACK" and "D-PAD: CFG") or (mode == "MIX" and "D-PAD: LEVEL") or (mode == "TRANSPORT" and "D-PAD: TEMPO") or "D-PAD: HARMONY"
+    local faceSubtitle = (mode == "MIX" and "FACE: MUTES") or (mode == "ERASE" and "FACE: CLEAR") or "FACE: TRIGGERS"
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
     love.graphics.print(dpadSubtitle, math_floor(102 - dsw * 0.5), 296)
@@ -572,30 +674,25 @@ function Chrome:getControlLabels(def, state, mode)
     local activeMap = {}
 
     if mode == "MIX" then
-        dpadLabels = { UP = "LVL+", DOWN = "LVL-", LEFT = "TRK◄", RIGHT = "TRK►" }
+        dpadLabels = { UP = "LVL+", DOWN = "LVL-", LEFT = "TRK <", RIGHT = "TRK >" }
         faceLabels = {
-            B = Looper.tracks[1].muted and "M1 ✕" or "M1",
-            A = Looper.tracks[2].muted and "M2 ✕" or "M2",
-            Y = Looper.tracks[3].muted and "M3 ✕" or "M3",
-            X = Looper.tracks[4].muted and "M4 ✕" or "M4",
+            B = Looper.tracks[1].muted and "M1 [M]" or "M1",
+            A = Looper.tracks[2].muted and "M2 [M]" or "M2",
+            Y = Looper.tracks[3].muted and "M3 [M]" or "M3",
+            X = Looper.tracks[4].muted and "M4 [M]" or "M4",
         }
     elseif mode == "TRACK" then
-        dpadLabels = { UP = "GRID+", DOWN = "GRID-", LEFT = "◄INST", RIGHT = "INST►" }
+        dpadLabels = { UP = "GRID+", DOWN = "GRID-", LEFT = "INST <", RIGHT = "INST >" }
         faceLabels = { B = "SPACE", A = "ECHO", Y = "DRIVE", X = "TONE" }
     elseif mode == "TRANSPORT" then
-        dpadLabels = { UP = "BPM+", DOWN = "BPM-", LEFT = "KEY◄", RIGHT = "KEY►" }
-        faceLabels = { B = Looper.bars .. " BAR", A = "·", Y = "·", X = "·" }
+        dpadLabels = { UP = "BPM+", DOWN = "BPM-", LEFT = "KEY <", RIGHT = "KEY >" }
+        faceLabels = { B = Looper.bars .. " BAR", A = "-", Y = "-", X = "-" }
     elseif mode == "ERASE" then
         dpadLabels = { LEFT = "UNDO" }
         faceLabels = { B = "CLR B", A = "CLR A", Y = "CLR Y", X = "CLR X" }
     elseif def.id == "drums" then
-        dpadLabels = { UP = "ACC", DOWN = "GHO", LEFT = "-4st", RIGHT = "+4st" }
-        faceLabels = {
-            B = def:getPadSound(state, "B").short,
-            A = def:getPadSound(state, "A").short,
-            Y = def:getPadSound(state, "Y").short,
-            X = def:getPadSound(state, "X").short,
-        }
+        dpadLabels = { UP = "ACCENT", DOWN = "GHOST", LEFT = "LOW", RIGHT = "HIGH" }
+        faceLabels = { B = "", A = "", Y = "", X = "" }
         flashMap = state.padFlash
     elseif def.id == "harp" then
         dpadLabels = { UP = "I", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
@@ -615,7 +712,7 @@ function Chrome:getControlLabels(def, state, mode)
         dpadLabels = { DOWN = "1", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
         faceLabels = { B = "PLUCK", A = "GLIDE", Y = "+OCT", X = "+5TH" }
     elseif def.id == "grain" then
-        dpadLabels = { UP = "DENS+", DOWN = "DENS-", LEFT = "SCAN◄", RIGHT = "SCAN►" }
+        dpadLabels = { UP = "DENSE", DOWN = "SPARSE", LEFT = "SCAN <", RIGHT = "SCAN >" }
         faceLabels = { B = "PAD", A = "BELL", Y = "CHOIR", X = "DRONE" }
     end
 
@@ -628,38 +725,105 @@ end
 function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     local C = Config.COLORS
     if def.id == "drums" then
+        -- 1. Repeat rate tags (y: 92..112)
         local l1, r1 = Input.down.L1, Input.down.R1
         local repIdx = (l1 and r1 and 4) or (r1 and 3) or (l1 and 2) or 1
         local repLabels = { "1-SHOT", "1/4", "1/8", "1/16" }
 
         love.graphics.setFont(self.fontTiny)
         self:setColor(C.MUTED)
-        love.graphics.print("REPEAT RATE", 280, 118)
+        love.graphics.print("REPEAT RATE", 280, 92)
 
         for i, l in ipairs(repLabels) do
             local on = (i == repIdx)
-            self:drawTag(206 + (i - 1) * 58, 134, 52, 22, l, on and col or C.GRID, on and col or C.PANEL_HI, on and C.BG or C.TEXT, self.fontSmall, on and 0.9 or 1.0)
+            self:drawTag(206 + (i - 1) * 58, 104, 52, 20, l, on and col or C.GRID, on and col or C.PANEL_HI, on and C.BG or C.TEXT, self.fontTiny, on and 0.9 or 1.0)
         end
 
+        -- 2. Reordered 4-Pad Drum Status Deck (y: 132..224)
+        -- Top-Left: Y (SNARE)     Top-Right: X (CLAP)
+        -- Bottom-Left: B (KICK)   Bottom-Right: A (HAT)
         love.graphics.setFont(self.fontTiny)
         self:setColor(C.MUTED)
-        love.graphics.print("EXPRESSION MODIFIER", 258, 182)
+        love.graphics.print("ACTIVE DRUM CHANNELS", 258, 132)
 
-        self:drawTag(220, 198, 200, 26, state.expressionName or "STANDARD", (state.expressionName and state.expressionName ~= "NORMAL (85%)") and col or C.GRID, C.PANEL_HI, col, self.fontSmall)
+        local padDefs = {
+            { key = "Y", colIdx = 0, rowIdx = 0 },
+            { key = "X", colIdx = 1, rowIdx = 0 },
+            { key = "B", colIdx = 0, rowIdx = 1 },
+            { key = "A", colIdx = 1, rowIdx = 1 },
+        }
 
-        -- Velocity slider bar
+        for _, pd in ipairs(padDefs) do
+            local px = 210 + pd.colIdx * 114
+            local py = 146 + pd.rowIdx * 38
+            local fl = (state.padFlash and state.padFlash[pd.key]) or 0.0
+            local isHit = (fl > 0.05) or Input.down[pd.key]
+            local soundItem = def:getPadSound(state, pd.key)
+
+            -- Card background & border
+            self:setColor(isHit and col or C.PANEL_HI, isHit and 0.22 or 1.0)
+            love.graphics.rectangle("fill", px, py, 108, 34, 4, 4)
+            self:setColor(isHit and col or C.GRID)
+            love.graphics.rectangle("line", px, py, 108, 34, 4, 4)
+
+            -- Controller button indicator badge
+            self:drawTag(px + 4, py + 4, 18, 16, pd.key, isHit and col or C.GRID, isHit and col or C.PANEL, isHit and C.BG or col, self.fontTiny)
+
+            -- Sound Name
+            self:setColor(isHit and C.TEXT or C.TEXT)
+            love.graphics.setFont(self.fontSmall)
+            local sn = soundItem.short or soundItem.name or "PAD"
+            love.graphics.print(sn, px + 26, py + 4)
+
+            -- Sound description profile or live hit expression
+            local soundProfiles = {
+                B = "45Hz SUB BASS",
+                Y = "180Hz ANALOG SNAP",
+                A = "METALLIC 8kHz",
+                X = "STEREO SPREAD",
+            }
+            local subInfo = soundProfiles[pd.key] or "PERCUSSION"
+            if isHit then
+                if state.expressionName and state.expressionName ~= "NORMAL (85%)" then
+                    subInfo = state.expressionName
+                else
+                    subInfo = string.format("HIT %d%%", math_floor((state.velocity or 0.85) * 100))
+                end
+                self:setColor(col)
+            else
+                self:setColor(C.MUTED)
+            end
+            love.graphics.setFont(self.fontTiny)
+            love.graphics.print(subInfo, px + 26, py + 18)
+        end
+
+        -- 3. Expression Modifier & Calibrated Velocity Slider (y: 230..270)
         local vel = state.velocity or 0.85
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(C.MUTED)
+        local expStr = string.format("EXPRESSION: %s", state.expressionName or "NORMAL (85%)")
+        local ew = self.fontTiny:getWidth(expStr)
+        love.graphics.print(expStr, math_floor(320 - ew * 0.5), 230)
+
+        -- Gauge track with diamond calibration pips
         self:setColor(C.GRID)
         love.graphics.setLineWidth(3)
-        love.graphics.line(220, 246, 420, 246)
+        love.graphics.line(220, 248, 420, 248)
+        for _, frac in ipairs({ 0.25, 0.50, 0.75, 1.0 }) do
+            local tx = 220 + 200 * frac
+            self:drawDiamond(tx, 248, 1.8, C.DIM)
+        end
+
         self:setColor(col)
-        love.graphics.line(220, 246, 220 + 200 * vel, 246)
+        love.graphics.line(220, 248, 220 + 200 * vel, 248)
         love.graphics.setLineWidth(1)
-        self:drawStarGlint(220 + 200 * vel, 246, 6, col, 1.0)
+        self:drawStarGlint(220 + 200 * vel, 248, 6, col, 1.0)
 
         love.graphics.setFont(self.fontTiny)
         self:setColor(C.MUTED)
-        love.graphics.print(string.format("VELOCITY: %d%%", math_floor(vel * 100)), 284, 262)
+        local vStr = string.format("VELOCITY: %d%%", math_floor(vel * 100))
+        local vw = self.fontTiny:getWidth(vStr)
+        love.graphics.print(vStr, math_floor(320 - vw * 0.5), 258)
 
     elseif def.id == "harp" then
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false)
@@ -671,7 +835,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         love.graphics.setFont(self.fontSmall)
         self:setColor(col)
         local octStr = chord.isWide and "WIDE OPEN" or (chord.octShift < 0 and "OCT -1" or (chord.octShift > 0 and "OCT +1" or "OCT 0"))
-        local sub = string.format("%s  ·  %s", chord.roman, octStr)
+        local sub = string.format("%s  -  %s", chord.roman, octStr)
         local sw = self.fontSmall:getWidth(sub)
         love.graphics.print(sub, math_floor(320 - sw * 0.5), 158)
 
@@ -721,7 +885,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         love.graphics.setFont(self.fontSmall)
         self:setColor(C.MUTED)
         local oct = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
-        local sub = string.format("DEGREE %d  ·  OCT %s%d", deg, (oct > 0 and "+" or ""), oct)
+        local sub = string.format("DEGREE %d  -  OCT %s%d", deg, (oct > 0 and "+" or ""), oct)
         local sw = self.fontSmall:getWidth(sub)
         love.graphics.print(sub, math_floor(320 - sw * 0.5), 154)
 
@@ -791,7 +955,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
 
         love.graphics.setFont(self.fontSmall)
         self:setColor(C.MUTED)
-        local scanStr = string.format("SCAN %d%%  ·  DENS %d%%", math_floor(state.scanPos * 100), math_floor(state.density * 100))
+        local scanStr = string.format("SCAN %d%%  -  DENS %d%%", math_floor(state.scanPos * 100), math_floor(state.density * 100))
         local sw = self.fontSmall:getWidth(scanStr)
         love.graphics.print(scanStr, math_floor(320 - sw * 0.5), 276)
     end
@@ -867,7 +1031,7 @@ function Chrome:drawTransportView()
 
     self:drawTag(220, 200, 96, 26, "KEY " .. Theory:getKeyLabel(), C.CYAN, C.PANEL_HI, C.TEXT, self.fontSmall)
     self:drawTag(324, 200, 96, 26, Theory.SCALES[Theory.scaleIndex].name, C.GRID, C.PANEL_HI, C.MUTED, self.fontSmall)
-    self:drawTag(220, 234, 200, 26, Looper.bars .. " BARS  ·  4/4", C.GRID, C.PANEL_HI, C.TEXT, self.fontSmall)
+    self:drawTag(220, 234, 200, 26, Looper.bars .. " BARS - 4/4", C.GRID, C.PANEL_HI, C.TEXT, self.fontSmall)
 end
 
 function Chrome:drawEraseView(track)
@@ -879,9 +1043,9 @@ function Chrome:drawEraseView(track)
 
     love.graphics.setFont(self.fontSmall)
     self:setColor(C.TEXT)
-    love.graphics.print("B / A / Y / X  ·  Clear pad lane", 232, 178)
-    love.graphics.print("LEFT / L1  ·  Undo last overdub", 232, 202)
-    love.graphics.print("START  ·  Clear entire track", 232, 226)
+    love.graphics.print("B / A / Y / X - Clear pad lane", 232, 178)
+    love.graphics.print("LEFT / L1 - Undo last overdub", 232, 202)
+    love.graphics.print("START - Clear entire track", 232, 226)
 
     self:setColor(C.MUTED)
     love.graphics.print(string.format("%d EVENTS ON TRACK %d", #track.events, track.slot), 244, 260)
@@ -897,28 +1061,28 @@ function Chrome:drawFooterStrip(def)
     local hintCol = C.MUTED
 
     if mode == "REC_LATCH" then
-        hintText = "REC LATCHED · Tap L2 to stop · Hold L2 for momentary punch-in"
+        hintText = "REC LATCHED | Tap L2 to stop | Hold L2 for momentary punch-in"
         hintCol = C.ORANGE
     elseif mode == "REC_HOLD" then
-        hintText = "REC (HOLD) · Release L2 to stop punch-in · Quick tap latches"
+        hintText = "REC (HOLD) | Release L2 to stop punch-in | Quick tap latches"
         hintCol = C.ORANGE
     elseif mode == "TRACK" then
-        hintText = "TRACK CFG · ◄► Swap instrument · ▲▼ Quantize grid"
+        hintText = "TRACK CFG | < > Swap instrument | UP/DN Quantize grid"
         hintCol = C.CYAN
     elseif mode == "MIX" then
-        hintText = "MIXER · ◄► Track · ▲▼ Volume · B/A/Y/X Mute · L1/R1 Master"
+        hintText = "MIXER | < > Track | UP/DN Volume | B/A/Y/X Mute | L1/R1 Master"
         hintCol = C.AMBER
     elseif mode == "TRANSPORT" then
-        hintText = "TRANSPORT · ▲▼ BPM · ◄► Key · B Bars · Tap START Play/Pause"
+        hintText = "TRANSPORT | UP/DN BPM | < > Key | B Bars | Tap START Play/Pause"
         hintCol = C.TEXT
     elseif mode == "ERASE" then
-        hintText = "ERASE · B/A/Y/X Clear pad · ◄ or L1 Undo take · START Clear all"
+        hintText = "ERASE | B/A/Y/X Clear pad | LEFT or L1 Undo take | START Clear all"
         hintCol = C.RED
     elseif mode == "FX" then
-        hintText = "LIVE FX · ▲ Stutter · ▼ Slow · ◄ Duck · ► Bitcrush · B/A/Y/X Mute"
+        hintText = "LIVE FX | UP Stutter | DN Slow | LEFT Duck | RIGHT Bitcrush | B/A/Y/X Mute"
         hintCol = C.AMBER
     elseif Looper.toastTimer > 0 then
-        hintText = "▸ " .. Looper.toastText
+        hintText = "> " .. Looper.toastText
         hintCol = C.AMBER
     end
 
@@ -985,8 +1149,13 @@ function Chrome:drawTapeDeck()
         love.graphics.setFont(self.fontTiny)
         love.graphics.print(grid.label, 78, ry + 4)
 
-        -- Mute Rune Tag (✦ vs M)
-        self:drawTag(112, ry + 2, 18, 18, track.muted and "M" or "✦", track.muted and C.RED or C.GRID, track.muted and C.RED or C.PANEL_HI, track.muted and C.BG or tColor, self.fontTiny)
+        -- Mute Rune Tag (Diamond vs M)
+        if track.muted then
+            self:drawTag(112, ry + 2, 18, 18, "M", C.RED, C.RED, C.BG, self.fontTiny)
+        else
+            self:drawTag(112, ry + 2, 18, 18, "", C.GRID, C.PANEL_HI, tColor, self.fontTiny)
+            self:drawDiamond(121, ry + 11, 2.6, tColor)
+        end
 
         -- Constellation Thread Lane
         if isSel then

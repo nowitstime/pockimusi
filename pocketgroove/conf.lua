@@ -9,7 +9,7 @@ function love.conf(t)
 
     t.audio.mixwithsystem = true
 
-    t.window.title = "PocketGroove — 4-Track Handheld Groovebox"
+    t.window.title = "PocketGroove - 4-Track Handheld Groovebox"
     t.window.width = 640
     t.window.height = 480
     t.window.resizable = true
