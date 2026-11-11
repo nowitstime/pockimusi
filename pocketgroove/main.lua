@@ -278,8 +278,8 @@ function love.update(dt)
     Input:update(dt)
     local controlsBlocked = handleGlobalCombos()
 
-    Looper:update(dt, function(ev, track, isPlayback)
-        Instruments:triggerEvent(ev, track, isPlayback)
+    Looper:update(dt, function(ev, track, isPlayback, part)
+        Instruments:triggerEvent(ev, track, isPlayback, part)
     end)
 
     Instruments:update(dt, controlsBlocked)

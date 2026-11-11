@@ -52,15 +52,15 @@ function Instruments:cycleTrackInstrument(trackSlot, delta)
     Looper:setTrackInstrument(track.slot, nextInst.id, self)
 end
 
-function Instruments:triggerEvent(ev, track, isPlayback)
+function Instruments:triggerEvent(ev, track, isPlayback, part)
     track = track or Looper.tracks[ev.trackSlot or ev.instrument or Looper.activeTrack]
     if not track then return end
 
     local instId = ev.instrumentId or track.instrumentId
     local def = self:getDefinition(instId)
-    def:triggerEvent(ev, track.state, isPlayback)
+    def:triggerEvent(ev, track.state, isPlayback, part)
 
-    if not isPlayback and Input:isRecording() then
+    if not isPlayback and not part and Input:isRecording() then
         Looper:recordEvent({
             phase             = Looper.phase,
             step              = Looper.currentStep,
@@ -75,6 +75,8 @@ function Instruments:triggerEvent(ev, track, isPlayback)
             glideFromSemis    = ev.glideFromSemis,
             scanPos           = ev.scanPos,
             overrideGridSteps = ev.overrideGridSteps,
+            orn               = ev.orn,
+            ratchet           = ev.ratchet,
         })
     end
 end

@@ -22,7 +22,15 @@ local Synth = {
     fxBitcrush   = false,
     duckEnvelope = 1.0,
     masterVolume = 0.85,
+    -- Short-delay scheduler for sub-hits (flam main hit, ratchet bursts)
+    clock = 0.0,
+    scheduled = {},
 }
+
+-- Choke groups: triggering any sound in a group cuts ringing voices of the
+-- listed "chokeable" sounds in the same group (closed hat cuts open hat).
+Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat" }
+Synth.CHOKEABLE   = { hat_open = true }
 
 function Synth:createBuffer(durationSec, generatorFn)
     local sampleCount = math_floor(durationSec * Config.SAMPLE_RATE)
@@ -58,9 +66,26 @@ function Synth:init()
     SynthsBank.build(self, whiteNoise)
 end
 
+-- Run fn after `delay` seconds (frame resolution).
+function Synth:schedule(delay, fn)
+    table.insert(self.scheduled, { at = self.clock + delay, fn = fn })
+end
+
+function Synth:choke(soundName)
+    local group = self.CHOKE_GROUP[soundName]
+    if not group then return end
+    for i = 1, #self.activeVoices do
+        local v = self.activeVoices[i]
+        if v.soundName ~= soundName and self.CHOKEABLE[v.soundName] and self.CHOKE_GROUP[v.soundName] == group then
+            v.maxLife = math_min(v.maxLife, v.elapsed + 0.03)
+        end
+    end
+end
+
 function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume)
     local pool = self.pools[soundName]
     if not pool then return nil end
+    self:choke(soundName)
 
     local src = pool.voices[pool.cursor]
     pool.cursor = (pool.cursor % pool.size) + 1
@@ -109,6 +134,18 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
 end
 
 function Synth:update(dt)
+    self.clock = self.clock + dt
+    if #self.scheduled > 0 then
+        local due = {}
+        for i = #self.scheduled, 1, -1 do
+            if self.scheduled[i].at <= self.clock then
+                table.insert(due, 1, self.scheduled[i])
+                table.remove(self.scheduled, i)
+            end
+        end
+        for _, job in ipairs(due) do job.fn() end
+    end
+
     if self.fxLowPass then
         self.duckEnvelope = clamp(self.duckEnvelope - dt * 4.5, 0.22, 1.0)
     else
