@@ -116,6 +116,7 @@ function Theory:getChordForDirection(dirKey, l1, r1)
         absRoot + 12 + octShift
     }
 
+    local voicings
     if l1 and r1 then
         extLabel = quality .. " (WIDE)"
         voicings = {

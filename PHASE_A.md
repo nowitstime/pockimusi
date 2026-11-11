@@ -73,6 +73,19 @@ Then delete `test_looper_logic.py`.
 
 **Done when:** `python3 tests/run.py` passes, and breaking the snap or wrap maths makes it fail.
 
+**Status:** ✅ done. 50 tests in under 1 s:
+
+| File | Covers |
+| :-- | :-- |
+| `test_theory.lua` | scale degrees, all 8 chords, minor/key change, shoulder voicings |
+| `test_input.lua` | press/release edges, key repeat, START flag, 8-way, record states |
+| `test_looper.lua` | snapping per grid, dedup (incl. seam), playback per pass, already-played skip, mute, flam grace timing, swing, 2↔4 bars, undo/erase, grid cycle, instrument swap, click, half-speed, stutter |
+| `test_smoke.lua` | boots the real `main.lua` with sound generation, then drives every instrument on every track through playing, recording, Track page, Transport, Mix, live FX and erase/undo with `love.update` + `love.draw` each frame |
+
+- Mutation check: snap rounding, seam wrap, seam dedup, swing parity and 4→2 bar trimming each broken on purpose → each makes the suite fail.
+- Found and fixed one bug: `Theory:getChordForDirection` wrote a global `voicings`.
+- Add new test files to the `FILES` list in `tests/run.lua`.
+
 ---
 
 ## A3 · Modes module

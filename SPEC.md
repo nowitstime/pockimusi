@@ -359,7 +359,7 @@ pockimusi/
  ├── SPEC.md  ROADMAP.md
  ├── PocketGroove.sh            # PortMaster launcher
  ├── build.py                   # packs pocketgroove/PocketGroove.love
- ├── test_looper_logic.py       # to be replaced by tests that run the real Lua
+ ├── tests/                     # Lua tests: python3 tests/run.py (needs `pip install lupa`) or luajit tests/run.lua
  └── pocketgroove/
       ├── main.lua  conf.lua  controls.gptk
       └── src/

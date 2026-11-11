@@ -61,7 +61,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 ## Phase A · Foundation ← **next up** — working plan in [PHASE_A.md](PHASE_A.md)
 
 - [x] A1 Quick fixes + build script packs every file (device check pending)
-- [ ] A2 Real tests (characterise today's looper first)
+- [x] A2 Real tests (characterise today's looper first) — `python3 tests/run.py`
 - [ ] A3 Modes module (move combo handling out of `main.lua`)
 - [ ] A4 Setting rows + safe instrument swap (first row: Harp `COLOUR`)
 - [ ] A5 Clock from absolute time + integer ticks
