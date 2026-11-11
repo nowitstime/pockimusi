@@ -78,7 +78,7 @@ function Harp:triggerEvent(ev, state)
     local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
     local trkVol = track and track.volume or 1.0
 
-    Synth:trigger("harp", semis, vel, decay, nil, trkVol)
+    Synth:trigger("harp", semis, vel, decay, nil, trkVol, track)
     local sIdx = self.BUTTON_TO_INDEX[act] or 1
     local str = state.strings[sIdx]
     if str then

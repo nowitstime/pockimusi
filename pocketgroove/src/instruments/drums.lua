@@ -303,7 +303,7 @@ function Drums:triggerEvent(ev, state, isPlayback, part)
     local trkVol  = track and track.volume or 1.0
 
     local function hit(v, d)
-        Synth:trigger(soundId, semis, v, d, nil, trkVol)
+        Synth:trigger(soundId, semis, v, d, nil, trkVol, track)
     end
 
     if part == "grace" then

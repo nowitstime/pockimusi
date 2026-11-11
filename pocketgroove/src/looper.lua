@@ -64,6 +64,7 @@ function Looper:init(Instruments)
             events = {},
             state = instDef:newState(),
         }
+        Synth:configureTrackFx(self.tracks[slot])
     end
 end
 
@@ -119,6 +120,7 @@ function Looper:toggleTrackFx(trackIdx, slot)
     if not track or not slot then return end
     track.fx.on[slot] = not track.fx.on[slot]
     if track.fx.on[slot] and track.fx[slot] <= 0.0 then track.fx[slot] = 0.5 end
+    Synth:configureTrackFx(track)
     self:showToast(string.format("TRACK %d %s: %s", trackIdx, slot:upper(),
         track.fx.on[slot] and (math_floor(track.fx[slot] * 100 + 0.5) .. "%") or "OFF"))
 end
@@ -128,6 +130,7 @@ function Looper:adjustTrackFx(trackIdx, slot, delta)
     if not track or not slot then return end
     track.fx[slot] = math_max(0.0, math.min(1.0, track.fx[slot] + delta))
     track.fx.on[slot] = track.fx[slot] > 0.0
+    Synth:configureTrackFx(track)
     self:showToast(string.format("TRACK %d %s: %d%%", trackIdx, slot:upper(), math_floor(track.fx[slot] * 100 + 0.5)))
 end
 

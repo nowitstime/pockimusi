@@ -134,7 +134,7 @@ function Grain:triggerEvent(ev, state)
     if slot then
         local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
         local trkVol = track and track.volume or 1.0
-        Synth:trigger(slot.sound, semis, 0.55, decay, nil, trkVol)
+        Synth:trigger(slot.sound, semis, 0.55, decay, nil, trkVol, track)
         self:spawnParticle(state, act, semis, ev.scanPos or state.scanPos)
     end
 end

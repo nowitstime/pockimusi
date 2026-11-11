@@ -131,7 +131,7 @@ function Bass:triggerEvent(ev, state, isPlayback)
     local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
     local trkVol = track and track.volume or 1.0
 
-    local voice = Synth:trigger("bass", semis, vel, decay, glideFrom, trkVol)
+    local voice = Synth:trigger("bass", semis, vel, decay, glideFrom, trkVol, track)
     if voice and act == "X" then
         voice.vibrato = true
     end
