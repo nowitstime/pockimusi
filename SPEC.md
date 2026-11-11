@@ -50,8 +50,8 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | Shoulders `L1 R1` | **Register & density** | `L1` = lower / sparser, `R1` = higher / denser, both = a special "extra" |
 | `L2` | **Record** | Latch or momentary (§4) |
 | `R2` | **Performance** | Mutes and punch-in FX; with `L2` = erase |
-| `SELECT` (hold) | **Track page** | Sound, instrument and per-track settings for the active track |
-| `START` | **Transport / global** | Play/pause; with D-pad = tempo, key, scale |
+| `SELECT` (hold) | **Track page = sound** | Sounds, instrument and effects for the active track (§3.4) |
+| `START` (hold) | **Transport = timing** | Tempo, key, scale, bars, and the active track's grid and swing (§3.5) |
 
 **Rule:** a gesture may use at most two buttons plus the D-pad. No nested menus.
 
@@ -66,6 +66,22 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 
 Today the chord harp still uses `L1`/`R1` for 7th/9th and sus4/add9 — 🔧 these move out (see §3.3).
 
+### 3.2a Drums: the D-pad is two axes ✅
+
+The D-pad modifies every hit while held. It is read as two independent axes so a slip into a diagonal still gives roughly what was meant; diagonals never have meanings of their own.
+
+| Axis | ← / ↓ | → / ↑ |
+| :-- | :-- | :-- |
+| Vertical = **dynamics** | `DOWN` ghost (40 %, short) | `UP` accent (100 %, longer) |
+| Horizontal = **articulation** | `LEFT` flam: grace note 28 ms before the hit | `RIGHT` ratchet: 3 hits inside one 1/16 (one triplet step on 1/12T) |
+
+- Diagonals combine both axes (`UP+LEFT` = accented flam, `DOWN+RIGHT` = ghost ratchet).
+- Flam and ratchet are stored on the event (`orn = "flam"`, `ratchet = 3`). On playback the flam's grace note fires just before the beat, so the main hit stays on the grid.
+- Pad tuning moved off the D-pad (it was ±4 st) and will become a per-pad setting.
+- **Note repeat (L1/R1)** is locked to the grid. A press within 45 ms of a tick plays at once and stands in for that tick, so it never doubles. A press further away waits for the next tick, and still plays there even if the pad is released first. Repeats follow the track's swing.
+- **Choke:** closed hats cut a ringing open hat.
+- **Display:** the face buttons stay unlabelled. The centre shows four lanes ordered like the button diamond (X, Y, A, B top to bottom), each with a mini diamond, the pad's sound and a step strip: bar height = dynamics, a tick before = flam, slivers = ratchet.
+
 ### 3.3 Chord colour 📐
 
 D-pad already picks the chord (8 directions), so extensions cannot also live on the D-pad. Proposal:
@@ -73,26 +89,35 @@ D-pad already picks the chord (8 directions), so extensions cannot also live on 
 - **Chord colour** (triad, 7th, 9th, sus4, add9) is a **per-track setting** in the Track page (§3.4), set once and left.
 - ❓ Optional **momentary colour** gesture for live variation (e.g. double-tap a direction). Decide after playtesting.
 
-### 3.4 Track page (hold `SELECT`) 📐
+### 3.4 Track page = sound (hold `SELECT`) ✅
 
-Shows and edits the **active track** only:
+The same layout on every instrument:
 
-- `L1 / R1` — previous / next **sound** (kit for drums, patch for pitched instruments).
-- `LEFT / RIGHT` — previous / next **instrument** for this slot (§6).
-- `UP / DOWN` — per-track setting (chord colour, swing, etc. ❓).
-- `B A Y X` — drums: choose the pad to edit, then `L1/R1` changes that pad's sound. Other instruments: reserved for per-track FX slots (§7).
-- Quick **tap** of `SELECT` (< 0.28 s, no combo used) still cycles the active track 1→4.
+| Control | Job |
+| :-- | :-- |
+| `UP / DOWN` | Move the row cursor |
+| `L1 / R1` | Previous / next sound for the selected row (plays a preview) |
+| `LEFT / RIGHT` | Previous / next instrument for this slot (§6) |
+| Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space |
+| Face hold + `UP / DOWN` | Effect amount (10 % steps) |
+| `SELECT` tap (< 0.25 s, no combo) | Next track 1→4 |
 
-### 3.5 Transport (hold `START`) 📐
+Rows: drums have `KIT, X, Y, A, B` (the kit row swaps all four sounds; a pad row swaps one). Other instruments have a single `PATCH` row until the pitched patch pool exists (§5). The cursor opens on the **last pad you hit**, so "hit the snare, hold SELECT, press R1" swaps the snare.
 
-Moves tempo/key/scale off `SELECT` so `SELECT` can be purely about the track.
+### 3.5 Transport = timing (hold `START`) ✅
 
-- `START` tap (on release, if no combo used): play/pause. Double-tap: reset playhead to 1.1.
-- `START` + `UP/DOWN`: BPM ±5 (60–180).
-- `START` + `LEFT/RIGHT`: key / scale.
-- `START` + a face button: toggle 2 / 4 bars. ❓ exact button.
+| Control | Job |
+| :-- | :-- |
+| `UP / DOWN` | BPM ±5 (60–180) |
+| `LEFT / RIGHT` | Key (root) |
+| `L1 / R1` | Scale |
+| `B` | Bars 2 / 4 |
+| `A` | Grid for the active track (1/4 → 1/8 → 1/16 → 1/12T → FREE) |
+| `Y` + `UP / DOWN` | Swing for the active track, 50–75 % in 2 % steps |
+| `X` | Metronome click on / off |
+| `START` tap | Play / pause; double tap = reset playhead to 1.1 |
 
-❓ Moving tempo/key to `START` is a proposal; today they are on `SELECT`.
+BPM, key, scale and bars are global. Grid and swing belong to the active track and are drawn in its colour.
 
 ### 3.6 Other global combos ✅
 
@@ -103,7 +128,6 @@ Moves tempo/key/scale off `SELECT` so `SELECT` can be purely about the track.
 | `L2 + R2` + `B/A/Y/X` | Erase that pad/action on the active track |
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
-| `L2` + `SELECT` | Cycle the active track's quantize grid |
 
 ---
 
@@ -137,7 +161,7 @@ Two shared pools:
 
 Goal: swapping the patch changes how the chord/bass sits with the drums **without changing how you play it**.
 
-Current state: drums have a 24-sound catalogue ✅; harp and bass are hard-wired to one buffer each; grain has four fixed textures.
+Current state: drums have a 24-sound catalogue ✅ and six kits ✅ (808 Classic, 909 House, Lo-Fi, Acoustic, Latin, Industrial; a changed pad marks the kit with `*`). Harp and bass are hard-wired to one buffer each; grain has four fixed textures.
 
 ---
 
@@ -156,8 +180,8 @@ Planned instruments (❓ unprioritised): lead/arp, sample chop, second drum styl
 ## 7. Effects 📐
 
 - **Master punch-in FX** (momentary, `R2` + D-pad) ✅ — note: the "low-pass" is currently a volume duck, not a filter.
-- **Per-track FX** (set-and-forget, Track page): tone (low-pass), drive, echo, space. Needs real per-track DSP. 📐
-- **Swing / humanize** per track. 📐 (high-value for groove)
+- **Per-track FX** (set-and-forget, Track page) ✅: tone = low-pass filter on each voice; drive (distortion), echo and space (reverb) = per-track OpenAL EFX sends. Without EFX, drive falls back to a gain push. ❓ Check EFX support and CPU cost on the RG35XX.
+- **Swing** per track ✅: applied at playback to odd 8ths/16ths (by the event's grid), so it can change after recording; live repeats follow it. 📐 Humanize later.
 
 ---
 
@@ -206,6 +230,19 @@ Event = {
 
 Principles: show mode in the same place always; one hint line for the current held modifier; colour-code tracks consistently.
 
+**One colour per page** ✅. While playing, the instrument's colour owns the stage. On a settings page the mode colour replaces it on the frame (with a soft glow), badge, footer, D-pad, face rings, shoulders and selection; the only track colour left is a small identity capsule. Mode colours avoid the four track colours:
+
+| Page | Colour | Motif |
+| :-- | :-- | :-- |
+| Play | instrument colour | the instrument's own decorations |
+| Recording | crimson `#FB7185` (frame, badge, footer, playhead only) | — |
+| Track page (sound) | sakura pink `#F9A8D4` | constellation of rows, moon-phase effect gauges |
+| Transport (timing) | solar gold `#FCD34D` | astrolabe: circle-of-fifths key ring with scale arc, grid ticks that show swing, loop hand |
+| Mix / Live FX | moon silver `#DCE3F5` | — |
+| Erase | crimson with a tinted frame | — |
+
+The tape deck dims while a settings page is open.
+
 ---
 
 ## 11. Code layout ✅
@@ -245,10 +282,11 @@ Known structural debt: global combo handling in `main.lua` is a hand-written sta
 ## 13. Open questions
 
 1. Chord colour: per-track setting only, or also a momentary gesture? (§3.3)
-2. Tempo/key on `START` instead of `SELECT`? (§3.5)
+2. ~~Tempo/key on `START` instead of `SELECT`?~~ Decided: yes, plus grid and swing (§3.5).
 3. What does `L1 + R1` do on the chord instrument?
 4. Should instrument swap be undoable and keep compatible events? (§6)
-5. Per-track FX slot UI on `B/A/Y/X` in the Track page. (§3.4, §7)
+5. ~~Per-track FX slot UI on `B/A/Y/X` in the Track page.~~ Decided (§3.4).
+9. Per-pad tune and level for drums: where on the Track page? (§3.2a)
 6. Record extras: auto-stop, count-in, replace vs overdub. (§4)
 7. Is direct track selection needed besides `SELECT` tap cycling?
 8. Boot-time sound generation cost on device.

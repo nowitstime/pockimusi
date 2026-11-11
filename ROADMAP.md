@@ -20,8 +20,20 @@ Legend: `[x]` done · `[ ]` to do · ❓ needs a decision
 | Saving | **Autosave** first. A **song / pattern saving system** later |
 | Latency | Not a concern right now. Revisit if it gets worse during testing |
 | Instrument looks | Keep the character of the harp view and the bass wave display, but fit them into the template |
+| Page colours | One colour per page: instrument colour while playing; Track page pink, Transport gold, Mix silver, recording/erase crimson (SPEC §10) |
+| Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
+| Drums | D-pad = dynamics × articulation (accent/ghost × flam/ratchet); grid-locked repeat; four-lane centre view (SPEC §3.2a) |
 
 ---
+
+## Done in the drum & pages pass
+
+- [x] Drums: flam, ratchet, grid-locked note repeat, hi-hat choke, kits, four-lane view
+- [x] Per-track swing (Transport) and grid moved to Transport
+- [x] Unified Track page (rows, sound, instrument, effects) and per-track effects audio
+- [x] Mode colours and the constellation / astrolabe page designs
+- [ ] Per-pad tune and level for drums
+- [ ] Check EFX support, CPU cost and 9 px legibility on the RG35XX
 
 ## UI-0 · Layout Template & Celestial Anime Visual Language
 
