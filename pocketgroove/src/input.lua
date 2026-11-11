@@ -20,12 +20,20 @@ local Input = {
     r2ComboUsed = false,
     lastStartTapTime = -10.0,
     startHoldTime = 0.0,
+    startComboUsed = false,   -- START held into Transport or a combo: release is not a tap
+    repeated = {},            -- pressed, then auto-repeats while held (see REPEAT_*)
+    repeatTimer = {},
 }
+
+Input.REPEAT_DELAY = 0.35     -- seconds held before auto-repeat starts
+Input.REPEAT_RATE  = 0.08     -- seconds between auto-repeats
 
 for _, btn in ipairs(Input.BUTTON_LIST) do
     Input.down[btn] = false
     Input.pressed[btn] = false
     Input.released[btn] = false
+    Input.repeated[btn] = false
+    Input.repeatTimer[btn] = 0.0
 end
 
 Input.KEY_MAP = {
@@ -104,6 +112,20 @@ function Input:update(dt)
         self.pressed[btn]  = (isNowDown and not wasDown)
         self.released[btn] = (not isNowDown and wasDown)
         self.down[btn]     = isNowDown
+
+        -- Key repeat: fire on press, then every REPEAT_RATE after REPEAT_DELAY
+        if self.pressed[btn] then
+            self.repeated[btn] = true
+            self.repeatTimer[btn] = self.REPEAT_DELAY
+        elseif isNowDown then
+            self.repeatTimer[btn] = self.repeatTimer[btn] - (dt or 0.016)
+            self.repeated[btn] = self.repeatTimer[btn] <= 0.0
+            if self.repeated[btn] then
+                self.repeatTimer[btn] = self.repeatTimer[btn] + self.REPEAT_RATE
+            end
+        else
+            self.repeated[btn] = false
+        end
     end
 
     if self.pressed.SELECT then
@@ -120,6 +142,7 @@ function Input:update(dt)
 
     if self.pressed.START then
         self.startHoldTime = 0.0
+        self.startComboUsed = false
     elseif self.down.START then
         self.startHoldTime = self.startHoldTime + (dt or 0.016)
     end
