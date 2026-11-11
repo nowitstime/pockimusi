@@ -177,6 +177,23 @@ H.KEY = {
     SELECT = "tab", START = "return",
 }
 
+-- Hold / release buttons across several H.play calls
+function H.hold(...) for _, b in ipairs({ ... }) do H.keys[H.KEY[b]] = true end end
+function H.release(...) for _, b in ipairs({ ... }) do H.keys[H.KEY[b]] = false end end
+
+-- Press and release quickly (3 frames down, 3 frames up)
+function H.tap(...)
+    H.play(0.05, { ... })
+    H.play(0.05)
+end
+
+-- The current UI mode, wherever it lives
+function H.mode()
+    local Modes = package.loaded["src.modes"]
+    if Modes then return Modes.current end
+    return package.loaded["src.looper"].uiMode
+end
+
 -- Run full game frames (update + draw) for `seconds`, with `buttons` held
 function H.play(seconds, buttons)
     for _, b in ipairs(buttons or {}) do H.keys[H.KEY[b]] = true end

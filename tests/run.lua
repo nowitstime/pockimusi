@@ -13,6 +13,7 @@ local FILES = {
     "test_theory",
     "test_input",
     "test_looper",
+    "test_modes",
     "test_smoke",
 }
 
