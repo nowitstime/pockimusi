@@ -21,6 +21,9 @@ function love.load()
     love.window.setTitle("PocketGroove - 4-Track Handheld Groovebox")
     Synth:init()
     Looper:init(Instruments)
+    Looper:setNoteHandler(function(kind, ev, track)
+        Instruments:handleLooperNote(kind, ev, track)
+    end)
     Chrome:init()
 end
 
@@ -30,9 +33,7 @@ function love.update(dt)
     Input:update(dt)
     local controlsBlocked = Modes:update()
 
-    Looper:update(dt, function(ev, track, isPlayback, part)
-        Instruments:triggerEvent(ev, track, isPlayback, part)
-    end)
+    Looper:update(dt)
 
     Instruments:update(dt, controlsBlocked)
     Synth:update(dt)

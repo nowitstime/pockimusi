@@ -75,6 +75,7 @@ end
 function Instruments:swapTrackInstrument(trackSlot, instrumentId)
     local track = Looper.tracks[trackSlot]
     if not track or track.instrumentId == instrumentId then return end
+    self:releaseAll(trackSlot)
     Looper:pushUndo({
         kind = "swap",
         trackSlot = trackSlot,
@@ -88,55 +89,126 @@ function Instruments:swapTrackInstrument(trackSlot, instrumentId)
     Looper:setTrackInstrument(trackSlot, instrumentId, self)
 end
 
-function Instruments:triggerEvent(ev, track, isPlayback, part)
-    track = track or Looper.tracks[ev.trackSlot or ev.instrument or Looper.activeTrack]
-    if not track then return end
+-- ---------------------------------------------------------------------------
+-- Notes (event format v2, SPEC §8.2)
+--
+-- Instrument API:
+--   def:noteOn(ev, state, track, isPlayback)   live press or playback start
+--   def:noteOff(ev, state, track, isPlayback)  live release or playback end (len > 0)
+--   def:grace(ev, state, track)                 drum flam grace note (playback)
+--   def:updateVoices(dt, state, track)          every frame, every track (optional)
+--   def:updateInput(dt, state, track, play, hold)
+--       play(ev)  a one-shot: sounds now, recorded with len = 0
+--       hold(ev)  a held note: sounds now, released automatically when
+--                 ev.action's button goes up (or a page takes the controls);
+--                 recorded with the held length
+-- Events carry no track or instrument fields: the track owns them.
+-- ---------------------------------------------------------------------------
 
-    local instId = ev.instrumentId or track.instrumentId
-    local def = self:getDefinition(instId)
-    def:triggerEvent(ev, track.state, isPlayback, part)
+Instruments.held = { {}, {}, {}, {} }      -- per track: live held notes
 
-    if not isPlayback and not part and Input:isRecording() then
-        Looper:recordEvent({
-            trackSlot         = track.slot,
-            instrumentId      = instId,
-            action            = ev.action,
-            soundId           = ev.soundId,
-            pitchSemis        = ev.pitchSemis or 0,
-            velocity          = ev.velocity or 0.85,
-            chordName         = ev.chordName,
-            decayMod          = ev.decayMod or 1.0,
-            glideFromSemis    = ev.glideFromSemis,
-            scanPos           = ev.scanPos,
-            overrideGridSteps = ev.overrideGridSteps,
-            orn               = ev.orn,
-            ratchet           = ev.ratchet,
-        })
+local function copyEvent(ev)
+    local rec = {}
+    for k, v in pairs(ev) do rec[k] = v end
+    return rec
+end
+
+local function defOf(self, track)
+    return self:getDefinition(track.instrumentId)
+end
+
+-- One-shot from a live press
+function Instruments:playNote(track, ev)
+    defOf(self, track):noteOn(ev, track.state, track, false)
+    if Input:isRecording() then
+        Looper:recordEvent(track.slot, copyEvent(ev))
+    end
+end
+
+-- Held note from a live press; released by Instruments:update
+function Instruments:holdNote(track, ev)
+    defOf(self, track):noteOn(ev, track.state, track, false)
+    local h = { ev = ev, pressTick = Looper.tick }
+    if Input:isRecording() then
+        local rec = copyEvent(ev)
+        rec.open = true                    -- not played back until released
+        h.rec = Looper:recordEvent(track.slot, rec)
+    end
+    table.insert(self.held[track.slot], h)
+end
+
+function Instruments:releaseNote(track, h)
+    local def = defOf(self, track)
+    if def.noteOff then def:noteOff(h.ev, track.state, track, false) end
+    if h.rec then
+        local loop = Looper:getLoopTicks()
+        local held = (Looper.tick - h.pressTick) % loop
+        h.rec.len = math.max(1, math.min(loop - 1, math.floor(held + 0.5)))
+        h.rec.open = nil
+    end
+end
+
+-- Release every live held note on a track (or all tracks)
+function Instruments:releaseAll(slot)
+    for s = slot or 1, slot or 4 do
+        local track = Looper.tracks[s]
+        local list = self.held[s]
+        for i = #list, 1, -1 do
+            self:releaseNote(track, table.remove(list, i))
+        end
+    end
+end
+
+-- Playback from the looper: kind = "on", "off" or "grace"
+function Instruments:handleLooperNote(kind, ev, track)
+    local def = defOf(self, track)
+    if kind == "on" then
+        def:noteOn(ev, track.state, track, true)
+    elseif kind == "off" then
+        if def.noteOff then def:noteOff(ev, track.state, track, true) end
+    elseif kind == "grace" then
+        if def.grace then def:grace(ev, track.state, track) end
     end
 end
 
 function Instruments:update(dt, controlsBlocked)
-    -- Update visual animations across all 4 tracks so background tracks decay smoothly
+    -- Visual animations on all tracks, so background tracks decay smoothly
     for slot = 1, 4 do
         local track = Looper.tracks[slot]
-        if track then
-            local def = self:getDefinition(track.instrumentId)
-            if def.updateVisuals then
-                def:updateVisuals(dt, track.state, controlsBlocked)
+        local def = self:getDefinition(track.instrumentId)
+        if def.updateVisuals then
+            def:updateVisuals(dt, track.state, controlsBlocked)
+        end
+    end
+
+    -- Live input goes to the active track's instrument
+    local def, state, track = self:getTrackInstrument(Looper.activeTrack)
+    if not controlsBlocked and def.updateInput then
+        def:updateInput(dt, state, track,
+            function(ev) self:playNote(track, ev) end,
+            function(ev) self:holdNote(track, ev) end)
+    end
+
+    -- Held notes end when their button goes up, a page takes the controls,
+    -- or the track is no longer the active one
+    for s = 1, 4 do
+        local list = self.held[s]
+        for i = #list, 1, -1 do
+            local h = list[i]
+            if controlsBlocked or s ~= Looper.activeTrack or not Input.down[h.ev.action] then
+                table.remove(list, i)
+                self:releaseNote(Looper.tracks[s], h)
             end
         end
     end
 
-    if controlsBlocked then
-        return
-    end
-
-    -- Route live controller input to the currently active track's instrument
-    local def, state, track = self:getTrackInstrument(Looper.activeTrack)
-    if def and def.updateInput and track then
-        def:updateInput(dt, state, track, function(ev, isPlayback)
-            self:triggerEvent(ev, track, isPlayback)
-        end)
+    -- Continuous voices (grain spawners, later sustained notes) on all tracks
+    for slot = 1, 4 do
+        local trk = Looper.tracks[slot]
+        local d = self:getDefinition(trk.instrumentId)
+        if d.updateVoices then
+            d:updateVoices(dt, trk.state, trk)
+        end
     end
 end
 

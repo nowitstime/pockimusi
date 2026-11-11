@@ -6,13 +6,9 @@ local Config = require("src.config")
 local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
-local Looper = require("src.looper")
 
 local clamp      = Config.clamp
-local math_sin   = math.sin
-local math_cos   = math.cos
 local math_floor = math.floor
-local math_abs   = math.abs
 
 local Grain = {
     id = "grain",
@@ -33,7 +29,8 @@ function Grain:newState()
     return {
         scanPos = 0.5,
         density = 0.55,
-        spawnTimers = { B = 0.0, A = 0.0, Y = 0.0, X = 0.0 },
+        spawners = {},             -- one per sounding note: [ev] = { timer, live }
+        live = { semis = 0, interval = 0.1, decay = 1.0 },  -- current D-pad/shoulder settings
         particles = {},
     }
 end
@@ -73,7 +70,7 @@ function Grain:updateVisuals(dt, state)
     end
 end
 
-function Grain:updateInput(dt, state, track, emitEvent)
+function Grain:updateInput(dt, state, track, emitEvent, holdNote)
     if Input.down.LEFT then
         state.scanPos = clamp(state.scanPos - dt * 0.65, 0.0, 1.0)
     elseif Input.down.RIGHT then
@@ -102,103 +99,66 @@ function Grain:updateInput(dt, state, track, emitEvent)
     local scanIdx = clamp(math_floor(state.scanPos * (#scanDegrees - 1) + 1.5), 1, #scanDegrees)
     local scanSemis = Theory:getScaleDegreeSemis(scanDegrees[scanIdx]) + shoulderSemis
 
-    local grainInterval = 0.045 + (1.0 - state.density) * 0.12
-    local grainDecay = 0.45 + (1.0 - state.density) * 0.95
-    local faceButtons = { "B", "A", "Y", "X" }
+    -- Live settings: a held note follows the D-pad and shoulders while held
+    state.live.semis = scanSemis
+    state.live.interval = self:grainInterval(state.density)
+    state.live.decay = self:grainDecay(state.density)
 
-    for _, btn in ipairs(faceButtons) do
-        if Input.down[btn] then
-            state.spawnTimers[btn] = state.spawnTimers[btn] - dt
-            if Input.pressed[btn] or state.spawnTimers[btn] <= 0.0 then
-                state.spawnTimers[btn] = grainInterval
-                local jitter = (love.math.random() - 0.5) * 0.18
-                emitEvent({
-                    trackSlot = track.slot,
-                    instrumentId = self.id,
-                    action = btn,
-                    pitchSemis = scanSemis + jitter,
-                    velocity = 0.60,
-                    decayMod = grainDecay,
-                    scanPos = state.scanPos,
-                }, false)
-            end
-        else
-            state.spawnTimers[btn] = 0.0
+    -- Each press is one held note (one event with a length when recorded)
+    for _, btn in ipairs({ "B", "A", "Y", "X" }) do
+        if Input.pressed[btn] then
+            holdNote({
+                action = btn,
+                semis = scanSemis,
+                scanPos = state.scanPos,
+                density = state.density,
+                vel = 0.55,
+            })
         end
     end
 end
 
-function Grain:triggerEvent(ev, state)
-    local act   = ev.action
-    local semis = ev.pitchSemis or 0
-    local decay = ev.decayMod or 1.0
-    local slot  = self.SLOT_MAP[act]
-    if slot then
-        local track = Looper.tracks[ev.trackSlot or Looper.activeTrack]
-        local trkVol = track and track.volume or 1.0
-        Synth:trigger(slot.sound, semis, 0.55, decay, nil, trkVol, track)
-        self:spawnParticle(state, act, semis, ev.scanPos or state.scanPos)
-    end
+function Grain:grainInterval(density) return 0.045 + (1.0 - density) * 0.12 end
+function Grain:grainDecay(density) return 0.45 + (1.0 - density) * 0.95 end
+
+function Grain:spawnGrain(state, track, action, semis, decay, scanPos, vel)
+    local slot = self.SLOT_MAP[action]
+    if not slot then return end
+    local jitter = (love.math.random() - 0.5) * 0.18
+    Synth:trigger(slot.sound, semis + jitter, vel or 0.55, decay, nil, track.volume, track)
+    self:spawnParticle(state, action, semis, scanPos)
 end
 
-function Grain:drawStage(state, track, Chrome)
-    local C = Config.COLORS
-    local l1, r1 = Input.down.L1, Input.down.R1
-
-    Chrome:setColor(C.TEXT)
-    love.graphics.setFont(Chrome.fontLarge)
-    love.graphics.print(self.title, 24, 62)
-
-    -- Live L1 / R1 Octave Indicator Badges
-    Chrome:drawBadge(234, 62, 86, 22, "L1: OCT -1", l1 and not r1 and C.MINT or C.PANEL_HI, l1 and not r1 and C.BG or C.MUTED, Chrome.fontSmall)
-    Chrome:drawBadge(326, 62, 86, 22, "R1: OCT +1", r1 and not l1 and C.MINT or C.PANEL_HI, r1 and not l1 and C.BG or C.MUTED, Chrome.fontSmall)
-
-    love.graphics.setFont(Chrome.fontSmall)
-    Chrome:setColor(C.MINT)
-    love.graphics.print(string.format("SCAN:%d%%  DENS:%d%%",
-        math_floor(state.scanPos * 100), math_floor(state.density * 100)), 476, 67)
-
-    local gx, gy, gw, gh = 24, 92, 592, 184
-    Chrome:setColor(C.BG)
-    love.graphics.rectangle("fill", gx, gy, gw, gh, 6, 6)
-    Chrome:setColor(C.GRID)
-    love.graphics.rectangle("line", gx, gy, gw, gh, 6, 6)
-
-    Chrome:setColor(C.DIM, 0.45)
-    local midY = gy + gh * 0.5
-    for i = 0, 110 do
-        local frac = i / 110
-        local bx = gx + 12 + frac * (gw - 24)
-        local bh = (math_sin(frac * 19.0) * 0.5 + math_cos(frac * 37.0) * 0.5) * (gh * 0.36)
-        love.graphics.line(bx, midY - math_abs(bh), bx, midY + math_abs(bh))
+function Grain:noteOn(ev, state, track, isPlayback)
+    if (ev.len or 0) == 0 and isPlayback then
+        -- A note without length (shouldn't happen): one grain
+        self:spawnGrain(state, track, ev.action, ev.semis or 0, self:grainDecay(ev.density or 0.55), ev.scanPos, ev.vel)
+        return
     end
+    state.spawners[ev] = { timer = 0.0, live = not isPlayback }
+end
 
-    local scanX = gx + 16 + state.scanPos * (gw - 32)
-    Chrome:setColor(C.MINT, 0.7)
-    love.graphics.setLineWidth(2)
-    love.graphics.line(scanX, gy + 6, scanX, gy + gh - 6)
-    love.graphics.setLineWidth(1)
+function Grain:noteOff(ev, state)
+    state.spawners[ev] = nil
+end
 
-    for i = 1, #state.particles do
-        local p = state.particles[i]
-        Chrome:setColor(p.color, p.life * 0.45)
-        love.graphics.circle("fill", p.x, p.y, p.radius)
-        Chrome:setColor(p.color, p.life * 0.95)
-        love.graphics.circle("line", p.x, p.y, p.radius)
-    end
-
-    local slots = {
-        { btn = "B", label = "B: WARM PAD",   x = 24  },
-        { btn = "A", label = "A: GLASS BELL", x = 176 },
-        { btn = "Y", label = "Y: CHOIR",      x = 328 },
-        { btn = "X", label = "X: SUB DRONE",  x = 480 },
-    }
-    for _, s in ipairs(slots) do
-        local active = Input.down[s.btn] and not Input.down.R2
-        Chrome:drawBadge(s.x, 284, 136, 26, s.label,
-            active and C.MINT or C.PANEL_HI,
-            active and C.BG or C.TEXT,
-            Chrome.fontSmall)
+-- Spawn grains for every sounding note (live: current settings; playback:
+-- the settings stored on the event)
+function Grain:updateVoices(dt, state, track)
+    for ev, sp in pairs(state.spawners) do
+        sp.timer = sp.timer - dt
+        if sp.timer <= 0.0 then
+            local semis, interval, decay, scan
+            if sp.live then
+                semis, interval, decay, scan = state.live.semis, state.live.interval, state.live.decay, state.scanPos
+            else
+                local d = ev.density or 0.55
+                semis, interval, decay, scan = ev.semis or 0, self:grainInterval(d), self:grainDecay(d), ev.scanPos
+            end
+            self:spawnGrain(state, track, ev.action, semis, decay, scan, ev.vel)
+            sp.timer = sp.timer + interval
+            if sp.timer < 0 then sp.timer = interval end
+        end
     end
 end
 

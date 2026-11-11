@@ -1045,7 +1045,7 @@ function Chrome:drawDrumLanes(def, state, track, col)
         for _, ev in ipairs(track.events) do
             if ev.action == pad then
                 local x = lx + Looper:evPhase(ev) * lw + 0.5
-                local vel = ev.velocity or 0.85
+                local vel = ev.vel or 0.85
                 local h = (vel >= 0.95) and 17 or ((vel <= 0.5) and 6 or 11)
                 local a = (vel <= 0.5) and 0.55 or 1.0
                 local c = track.muted and C.DIM or col
@@ -1466,7 +1466,7 @@ function Chrome:drawTapeDeck()
                 love.graphics.rectangle("fill", x, cy - 2.5, w, 5, 2, 2)
                 self:drawDiamond(x + 2, cy, 2.0, C.TEXT)
             else
-                local vel = ev.velocity or 0.85
+                local vel = ev.vel or 0.85
                 if vel >= 0.88 and not track.muted then
                     self:drawStarGlint(x, cy, 5.5, col, 0.95)
                     self:setColor(C.TEXT)

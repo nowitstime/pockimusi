@@ -204,18 +204,16 @@ function Drums:getRepeatRate(track)
     return nil, "OFF"
 end
 
+-- A drum hit (event format v2): one-shot, len = 0
 function Drums:buildHit(state, track, btn, gridSteps)
     return {
-        trackSlot = track.slot,
-        instrumentId = self.id,
         action = btn,
         soundId = self:getPadSound(state, btn).id,
-        pitchSemis = 0,
-        velocity = state.velocity,
-        decayMod = state.decayMod,
+        vel = state.velocity,
+        decay = state.decayMod,
         orn = state.orn,
         ratchet = state.ratchet,
-        overrideGridSteps = gridSteps,
+        overrideGridSteps = gridSteps,   -- note repeat snaps to its own rate
     }
 end
 
@@ -231,7 +229,7 @@ function Drums:updateInput(dt, state, track, emitEvent)
         for _, btn in ipairs(self.PADS) do
             if Input.pressed[btn] then
                 state.lastPad = btn
-                emitEvent(self:buildHit(state, track, btn, stepsPerBar and stepsPerBar * Looper.bars or nil), false)
+                emitEvent(self:buildHit(state, track, btn, stepsPerBar and stepsPerBar * Looper.bars or nil))
             end
         end
         return
@@ -257,11 +255,11 @@ function Drums:updateInput(dt, state, track, emitEvent)
             if crossed or sinceTick <= self.REPEAT_SNAP_WINDOW then
                 -- Just after a tick: this press is that tick
                 state.skipTick[btn] = nil
-                emitEvent(self:buildHit(state, track, btn, total), false)
+                emitEvent(self:buildHit(state, track, btn, total))
             elseif toNext <= self.REPEAT_SNAP_WINDOW then
                 -- Just before a tick: play now and let the press stand in for it
                 state.skipTick[btn] = nextIdx
-                emitEvent(self:buildHit(state, track, btn, total), false)
+                emitEvent(self:buildHit(state, track, btn, total))
             else
                 -- Far from a tick: start on the next one, even if the pad is let go first
                 state.pendingTick[btn] = nextIdx
@@ -277,7 +275,7 @@ function Drums:updateInput(dt, state, track, emitEvent)
         if state.skipTick[btn] == tickIdx then
             state.skipTick[btn] = nil
         elseif held or pending then
-            emitEvent(self:buildHit(state, track, btn, total), false)
+            emitEvent(self:buildHit(state, track, btn, total))
         end
         if pending then state.pendingTick[btn] = nil end
     end
@@ -293,32 +291,28 @@ function Drums:getRatchetSpan(track)
     return (60.0 / Looper.bpm) / perBeat
 end
 
-function Drums:triggerEvent(ev, state, isPlayback, part)
-    local act     = ev.action
-    local semis   = ev.pitchSemis or 0
-    local decay   = ev.decayMod or 1.0
-    local vel     = ev.velocity or 0.85
-    local soundId = ev.soundId or self:getPadSound(state, act).id
-    local track   = Looper.tracks[ev.trackSlot or Looper.activeTrack]
-    local trkVol  = track and track.volume or 1.0
+function Drums:hit(ev, track, vel, decay)
+    Synth:trigger(ev.soundId, ev.semis or 0, vel, decay, nil, track.volume, track)
+end
 
-    local function hit(v, d)
-        Synth:trigger(soundId, semis, v, d, nil, trkVol, track)
-    end
+-- Flam grace note on playback (the looper sends it 28 ms before the hit)
+function Drums:grace(ev, state, track)
+    self:hit(ev, track, (ev.vel or 0.85) * 0.45, (ev.decay or 1.0) * 0.6)
+end
 
-    if part == "grace" then
-        hit(vel * 0.45, decay * 0.6)
-        return
-    end
+function Drums:noteOn(ev, state, track, isPlayback)
+    local vel   = ev.vel or 0.85
+    local decay = ev.decay or 1.0
+    local act   = ev.action
 
     local mainDelay = 0.0
     if ev.orn == "flam" and not isPlayback then
         -- Live flam: grace note now, main hit a moment later
-        hit(vel * 0.45, decay * 0.6)
+        self:hit(ev, track, vel * 0.45, decay * 0.6)
         mainDelay = Looper.FLAM_TIME
-        Synth:schedule(mainDelay, function() hit(vel, decay) end)
+        Synth:schedule(mainDelay, function() self:hit(ev, track, vel, decay) end)
     else
-        hit(vel, decay)
+        self:hit(ev, track, vel, decay)
     end
 
     local n = ev.ratchet
@@ -326,7 +320,7 @@ function Drums:triggerEvent(ev, state, isPlayback, part)
         local span = self:getRatchetSpan(track)
         for i = 1, n - 1 do
             local v = vel * (1.0 - 0.18 * i)
-            Synth:schedule(mainDelay + span * i / n, function() hit(v, decay * 0.7) end)
+            Synth:schedule(mainDelay + span * i / n, function() self:hit(ev, track, v, decay * 0.7) end)
         end
     end
 

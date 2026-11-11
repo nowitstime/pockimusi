@@ -127,7 +127,9 @@ function H.loopSeconds(Looper)
     return Looper:getLoopDuration()
 end
 
--- Run Looper:update in fixed frames for `seconds`, collecting playback callbacks
+-- Run Looper:update in fixed frames for `seconds`, collecting playback notes.
+-- Each entry: { kind = "on"|"off"|"grace", ev, track, phase, part }, where
+-- part is nil for "on" and the kind otherwise (so `not f.part` = a note-on).
 function H.run(Looper, seconds, fps)
     fps = fps or 60
     local dt = 1.0 / fps
@@ -135,9 +137,9 @@ function H.run(Looper, seconds, fps)
     local n = math.floor(seconds * fps + 0.5)
     for _ = 1, n do
         H.time = H.time + dt
-        Looper:update(dt, function(ev, track, isPlayback, part)
-            table.insert(fired, { ev = ev, track = track, playback = isPlayback, part = part,
-                                  phase = Looper.phase })
+        Looper:update(dt, function(kind, ev, track)
+            table.insert(fired, { kind = kind, ev = ev, track = track, playback = true,
+                                  part = (kind ~= "on") and kind or nil, phase = Looper.phase })
         end)
     end
     return fired
@@ -146,10 +148,9 @@ end
 -- Record an event on a track at a given playhead phase (as a live press would)
 function H.record(Looper, slot, action, phase, extra)
     Looper:seek(phase)
-    local ev = { trackSlot = slot, action = action, velocity = 0.85 }
+    local ev = { action = action, vel = 0.85 }
     for k, v in pairs(extra or {}) do ev[k] = v end
-    Looper:recordEvent(ev)
-    return ev
+    return Looper:recordEvent(slot, ev)
 end
 
 -- Load the real main.lua with real sound generation, as the game boots
