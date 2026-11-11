@@ -1044,7 +1044,7 @@ function Chrome:drawDrumLanes(def, state, track, col)
         local bw = (totalSteps > 32) and 2.5 or 4
         for _, ev in ipairs(track.events) do
             if ev.action == pad then
-                local x = lx + ev.phase * lw + 0.5
+                local x = lx + Looper:evPhase(ev) * lw + 0.5
                 local vel = ev.velocity or 0.85
                 local h = (vel >= 0.95) and 17 or ((vel <= 0.5) and 6 or 11)
                 local a = (vel <= 0.5) and 0.55 or 1.0
@@ -1457,7 +1457,7 @@ function Chrome:drawTapeDeck()
         -- Recorded Events: Starlight beads & aurora ribbons
         local col = track.muted and C.DIM or tColor
         for _, ev in ipairs(track.events) do
-            local x = lx + ev.phase * (lw - 4)
+            local x = lx + Looper:evPhase(ev) * (lw - 4)
             if ev.duration or ev.dur then
                 local w = math_max(6, (ev.duration or ev.dur) * lw)
                 self:setColor(col, 0.28)

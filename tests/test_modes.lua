@@ -85,6 +85,25 @@ return {
         H.eq(L.currentTakeId, t0 + 2, "two L2 presses = two takes")
     end },
 
+    { "drum note repeat stays on the grid at 60 and 30 fps", function()
+        for _, fps in ipairs({ 60, 30 }) do
+            local _, L = boot()
+            H.tap("L2")                                         -- latch record
+            H.hold("B", "R1")                                   -- 1/8 repeat
+            local frames = math.floor(L:getLoopDuration() * fps + 0.5)
+            for _ = 1, frames do
+                H.time = H.time + 1 / fps
+                love.update(1 / fps)
+            end
+            H.release("B", "R1"); H.play(0.05)
+            local ev = L.tracks[1].events
+            local offGrid = 0
+            for _, e in ipairs(ev) do if e.tick % 240 ~= 0 then offGrid = offGrid + 1 end end
+            H.truthy(#ev >= 15 and #ev <= 16, fps .. " fps: " .. #ev .. " eighths in 2 bars")
+            H.eq(offGrid, 0, fps .. " fps: all on 1/8 steps")
+        end
+    end },
+
     -- ------------------------------------------------------------------
     -- Track page (hold SELECT)
     -- ------------------------------------------------------------------

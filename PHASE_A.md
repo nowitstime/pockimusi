@@ -152,42 +152,36 @@ Then delete `test_looper_logic.py`.
 
 ## A5 · Clock from absolute time + integer ticks 📱
 
-**Ticks:** `PPQN = 96`, so `loopTicks = bars × 4 × 96` (768 or 1536).
+**Status:** ✅ done (88 tests). ⬜ Device check. What was built, where it differs from the first draft:
+
+**Ticks:** `PPQN = 480` (the draft said 96). At 96 one tick is 5.4 ms at 115 BPM, so FREE recordings would be rounded to audible 5 ms steps; at 480 a tick is about 1.1 ms and every grid is still whole ticks. `loopTicks = bars × 4 × 480` (3840 or 7680).
 
 | Grid | Step (ticks) |
 | :-- | :-- |
-| 1/4 | 96 |
-| 1/8 | 48 |
-| 1/16 | 24 |
-| 1/12T | 32 |
-| FREE | 1 |
+| 1/4 | 480 |
+| 1/8 | 240 |
+| 1/16 | 120 |
+| 1/12T | 160 |
+| FREE | rounds to 1 |
 
-**Clock:**
+**Clock:** each frame the playhead advances by the *real* time since the last frame (`love.timer.getTime()`), times `bpm / 60 × PPQN × rate`. The sum of real frame times is the absolute time, so this can't drift, and tempo, half-speed and pause changes apply from the next frame with no re-anchoring bookkeeping (the draft's anchor scheme). The clamped `dt` from `main.lua` is now only used for visuals.
 
-```lua
-tick = anchorTick + (love.timer.getTime() - anchorTime) * (bpm / 60) * PPQN * rate
-```
+- **Clock start:** the first update starts the clock (no time counted), so boot-time sound generation never counts as a hitch.
+- **Gap guard:** a frame longer than 0.25 s keeps the playhead on real time but fires none of the skipped events.
+- **Stutter:** one 1/16 window (120 ticks) in tick space, as before.
+- `Looper.phase`, `prevPhase`, `currentBeat`, `currentStep` are derived each frame (`Looper:syncPhase`), so Chrome and the drum repeat didn't change. Chrome draws events with `Looper:evPhase(ev)`.
+- `Looper:seek(phase)` moves the playhead silently; `Looper:resetPlayhead()` is the double-tap reset.
 
-- `Looper:reanchor()` runs on BPM change, pause/resume, half-speed on/off, 2↔4 bars and playhead reset.
-- **Stutter** (beat repeat) works in tick space: when the playhead reaches the end of the 1/16 window, re-anchor to the window start.
-- **Gap guard:** if more than 0.25 s passed since the last update (suspend, hitch), re-anchor without firing the skipped events, so you never get a burst.
-- `Looper.tick` is a float playhead. Events sit on integer ticks, and the crossing test stays `(prevTick, tick]` with wraparound.
-- `Looper.phase = tick / loopTicks` is still updated every frame, so Chrome and the drum repeat keep working unchanged.
+**Recording, swing, bars, click:**
 
-**Recording, swing, bars and click:**
+- Events now store `tick` (integer) and `grid` (step in ticks, nil = FREE) instead of `phase`, `step` and `gridSteps`. Note repeat's `overrideGridSteps` becomes a step size in ticks.
+- Swing offset in ticks: `(swing − 0.5) × 2 × grid` on odd 1/8 and 1/16 steps.
+- 2→4 bars: events keep their ticks and are copied one loop later; 4→2 drops ticks past the new loop. Exact.
+- Click: on each beat crossing; flam grace: 28 ms before the hit, converted to ticks at the current BPM.
 
-- Recording snaps `tick` to the step: `round(tick / step) × step % loopTicks`.
-- Swing becomes a tick offset: `round((swing − 0.5) × 2 × step)` on odd steps of 1/8 and 1/16 grids.
-- 2↔4 bars multiplies or divides ticks exactly.
-- The click fires on crossings of multiples of 96.
-- The flam grace note stays a fixed 28 ms before the hit, converted to ticks at the current BPM.
+**Fixed on the way:** the double-tap playhead reset skipped any hit on the downbeat (the old code set `prevPhase` just before `update` overwrote it). Now the downbeat plays.
 
-**Tests:**
-
-- Advance fake time in uneven frames, including one 0.3 s hitch: the tempo stays exact and no burst fires.
-- The A2 characterisation tests still pass, after updating them to compare ticks.
-
-**Done when:** the tests pass, and on the device the drums, repeats, swing and click feel the same, with no drift when frames drop.
+**New tests:** uneven/slow frames over 4 loops land exactly back where they started with no lost hits (the old clamped-`dt` clock fails this); a half-loop freeze fires nothing and resumes normally; the clock runs from real time even with `dt = 0`; tempo change without a jump; downbeat after reset; whole-tick grids at 2 and 4 bars; drum 1/8 repeat lands on the grid at 60 and 30 fps. Each fix was removed in turn to check its test fails.
 
 ---
 

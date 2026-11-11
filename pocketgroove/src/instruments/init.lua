@@ -98,8 +98,6 @@ function Instruments:triggerEvent(ev, track, isPlayback, part)
 
     if not isPlayback and not part and Input:isRecording() then
         Looper:recordEvent({
-            phase             = Looper.phase,
-            step              = Looper.currentStep,
             trackSlot         = track.slot,
             instrumentId      = instId,
             action            = ev.action,

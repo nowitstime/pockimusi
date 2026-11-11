@@ -24,6 +24,9 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
     "play-drums": 'H.play(0.5)',
+    "drums-pattern": 'H.tap("L2"); H.hold("B", "R1"); H.play(2.2); H.release("B", "R1");'
+                     ' H.hold("Y", "UP"); H.play(0.05); H.release("Y", "UP"); H.play(1.0);'
+                     ' H.hold("A", "L1", "R1"); H.play(1.0); H.release("A", "L1", "R1"); H.tap("L2"); H.play(0.3)',
     "track-drums": 'H.hold("SELECT"); H.play(0.3)',
     "swap-preview": 'H.hold("SELECT"); H.play(0.3); H.tap("RIGHT")',
     "harp-play": 'H.tap("SELECT"); H.play(0.2)',

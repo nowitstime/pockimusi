@@ -13,11 +13,23 @@ local Looper = {
     bpm = Config.DEFAULT_BPM,
     bars = 2,          -- 2 Bars or 4 Bars
     playing = true,
+
+    -- Clock. Positions are integer ticks at PPQN per beat; the playhead `tick`
+    -- is a float advanced by real elapsed time (love.timer), never by the
+    -- clamped frame dt, so dropped frames can't slow the tempo.
+    PPQN = 480,
+    GAP_LIMIT = 0.25,     -- a frame longer than this (hitch, suspend) skips its events
+    tick = 0.0,
+    prevTick = 0.0,
+    lastClockTime = nil,
+    resetPending = false, -- playhead reset: let events on tick 0 fire
+    stutterAnchorTick = 0,
+
+    -- Derived each frame (drawing, drum repeat)
     phase = 0.0,
     prevPhase = 0.0,
     currentBeat = 1,
     currentStep = 1,
-    stutterAnchorPhase = 0.0,
     activeTrack = 1,   -- Active track slot (1..4)
     currentTakeId = 0,
     undoStack = {},    -- { kind = "take", takeId, trackSlot } or { kind = "swap", ... }
@@ -26,13 +38,13 @@ local Looper = {
     toastText = "READY - TAP [SELECT] TO SWITCH TRACKS",
     toastTimer = 2.5,
 
-    -- Quantize Grid Modes per track: stepsPerBar (nil = Free unquantized)
+    -- Quantize grids per track. stepTicks at PPQN 480; FREE rounds to 1 tick.
     GRID_MODES = {
-        { id = "1/4",   label = "1/4",   stepsPerBar = 4   },
-        { id = "1/8",   label = "1/8",   stepsPerBar = 8   },
-        { id = "1/16",  label = "1/16",  stepsPerBar = 16  },
-        { id = "1/12T", label = "1/12T", stepsPerBar = 12  },
-        { id = "FREE",  label = "FREE",  stepsPerBar = nil },
+        { id = "1/4",   label = "1/4",   stepsPerBar = 4,   stepTicks = 480 },
+        { id = "1/8",   label = "1/8",   stepsPerBar = 8,   stepTicks = 240 },
+        { id = "1/16",  label = "1/16",  stepsPerBar = 16,  stepTicks = 120 },
+        { id = "1/12T", label = "1/12T", stepsPerBar = 12,  stepTicks = 160 },
+        { id = "FREE",  label = "FREE",  stepsPerBar = nil, stepTicks = nil },
     }
 }
 
@@ -79,16 +91,15 @@ function Looper:setTrackInstrument(trackIdx, instrumentId, Instruments)
 end
 
 -- Swing pushes events on odd 8th/16th grid positions late, at playback only.
--- Returns the phase offset for an event on `track`.
+-- Returns the offset in ticks for an event on `track`.
 function Looper:getSwingOffset(ev, track)
     local sw = track.swing or 0.5
-    local gs = ev.gridSteps
-    if sw <= 0.5 or not gs then return 0.0 end
-    local perBar = gs / self.bars
-    if perBar ~= 8 and perBar ~= 16 then return 0.0 end
-    local idx = math_floor(ev.phase * gs + 0.5)
+    local g = ev.grid
+    if sw <= 0.5 or not g then return 0.0 end
+    if g ~= self.PPQN / 2 and g ~= self.PPQN / 4 then return 0.0 end
+    local idx = math_floor(ev.tick / g + 0.5)
     if idx % 2 == 1 then
-        return (sw - 0.5) * 2.0 / gs
+        return (sw - 0.5) * 2.0 * g
     end
     return 0.0
 end
@@ -149,6 +160,42 @@ function Looper:getLoopDuration()
     return (60.0 / self.bpm) * self:getTotalBeats()
 end
 
+function Looper:getLoopTicks()
+    return self.bars * 4 * self.PPQN
+end
+
+function Looper:getTicksPerSecond()
+    return self.bpm / 60.0 * self.PPQN
+end
+
+-- An event's position as a 0..1 fraction of the loop (for drawing)
+function Looper:evPhase(ev)
+    return ev.tick / self:getLoopTicks()
+end
+
+-- Refresh the values derived from the playhead
+function Looper:syncPhase()
+    local loop = self:getLoopTicks()
+    self.phase = self.tick / loop
+    self.prevPhase = self.prevTick / loop
+    self.currentBeat = math_floor(self.tick / self.PPQN) + 1
+    self.currentStep = math_floor(self.tick / (self.PPQN / 4)) + 1
+end
+
+-- Move the playhead to a loop fraction without firing anything
+function Looper:seek(phase)
+    self.tick = (phase % 1.0) * self:getLoopTicks()
+    self.prevTick = self.tick
+    self:syncPhase()
+end
+
+-- Back to bar 1.1; events on the downbeat fire on the next frame
+function Looper:resetPlayhead()
+    self.tick, self.prevTick = 0.0, 0.0
+    self.resetPending = true
+    self:syncPhase()
+end
+
 function Looper:getTrackGrid(trackIdx)
     local track = self.tracks[trackIdx]
     return self.GRID_MODES[track.gridIndex] or self.GRID_MODES[3]
@@ -172,35 +219,40 @@ function Looper:recordEvent(ev)
         self:pushUndo({ kind = "take", takeId = self.currentTakeId, trackSlot = trackIdx })
     end
 
-    local grid = self:getTrackGrid(trackIdx)
-    local snapSteps = ev.overrideGridSteps or (grid.stepsPerBar and (grid.stepsPerBar * self.bars) or nil)
+    local loop = self:getLoopTicks()
+    local step
+    if ev.overrideGridSteps then
+        step = loop / ev.overrideGridSteps           -- note repeat: steps per loop -> ticks
+    else
+        step = self:getTrackGrid(trackIdx).stepTicks  -- nil = FREE
+    end
+    ev.overrideGridSteps = nil
 
-    if snapSteps then
-        local step = (math_floor(self.phase * snapSteps + 0.5) % snapSteps) + 1
-        local snappedPhase = (step - 1) / snapSteps
-        ev.step = step
-        ev.gridSteps = snapSteps
-        ev.phase = snappedPhase
-
-        local phaseDiff = (snappedPhase - self.phase) % 1.0
-        if phaseDiff > 0.0 and phaseDiff < 0.05 then
-            ev.justRecorded = true
-        end
-
-        -- Deduplicate same action at same quantized phase window (handling 1.0 circular wrap)
+    local now = self.tick
+    local snapped
+    if step then
+        snapped = (math_floor(now / step + 0.5) * step) % loop
+        -- Same action on the same step replaces the old one (circular distance)
         for i = #track.events, 1, -1 do
             local existing = track.events[i]
             if existing.action == ev.action then
-                local diff = math_abs(existing.phase - snappedPhase)
-                if diff > 0.5 then diff = 1.0 - diff end
-                if diff < (0.4 / snapSteps) then
+                local d = math_abs(existing.tick - snapped)
+                if d > loop * 0.5 then d = loop - d end
+                if d < 0.4 * step then
                     table.remove(track.events, i)
                 end
             end
         end
     else
-        ev.phase = self.phase
-        ev.step = math_floor(self.phase * self:getTotalSixteenths()) + 1
+        snapped = math_floor(now + 0.5) % loop
+    end
+    ev.tick = snapped
+    ev.grid = step
+
+    -- Snapped ahead of the playhead: the live press already played it
+    local ahead = (snapped - now) % loop
+    if ahead > 0 and ahead < loop * 0.05 then
+        ev.justRecorded = true
     end
 
     table.insert(track.events, ev)
@@ -287,49 +339,37 @@ end
 
 function Looper:toggleBars()
     if self.bars == 2 then
-        -- Expand 2 Bars -> 4 Bars by duplicating Bars 1-2 into Bars 3-4!
+        -- 2 -> 4 bars: bars 1-2 stay where they are and are copied into bars 3-4
+        local oldLoop = self:getLoopTicks()
         self.bars = 4
-        local totalSteps = self:getTotalSixteenths()
         for tIdx = 1, 4 do
             local track = self.tracks[tIdx]
-            local origCount = #track.events
-            for i = 1, origCount do
-                local ev = track.events[i]
-                ev.phase = ev.phase * 0.5
-                ev.step = math_floor(ev.phase * totalSteps) + 1
-                if ev.gridSteps then ev.gridSteps = ev.gridSteps * 2 end
+            for i = 1, #track.events do
                 local copy = {}
-                for k, v in pairs(ev) do copy[k] = v end
-                copy.phase = ev.phase + 0.5
-                copy.step = math_floor(copy.phase * totalSteps) + 1
+                for k, v in pairs(track.events[i]) do copy[k] = v end
+                copy.tick = copy.tick + oldLoop
                 copy.justRecorded = false
                 table.insert(track.events, copy)
             end
         end
-        self.phase = self.phase * 0.5
-        self.prevPhase = self.phase
         self:showToast("LOOP LENGTH: 4 BARS (AUTO-DOUBLED BARS 1-2 -> 3-4)")
     else
-        -- Contract 4 Bars -> 2 Bars (keep Bars 1-2)
+        -- 4 -> 2 bars: keep bars 1-2
         self.bars = 2
-        local totalSteps = self:getTotalSixteenths()
+        local loop = self:getLoopTicks()
         for tIdx = 1, 4 do
             local track = self.tracks[tIdx]
             for i = #track.events, 1, -1 do
-                local ev = track.events[i]
-                if ev.phase < 0.5 then
-                    ev.phase = ev.phase * 2.0
-                    ev.step = math_floor(ev.phase * totalSteps) + 1
-                    if ev.gridSteps then ev.gridSteps = math_max(1, math_floor(ev.gridSteps * 0.5)) end
-                else
+                if track.events[i].tick >= loop then
                     table.remove(track.events, i)
                 end
             end
         end
-        self.phase = (self.phase * 2.0) % 1.0
-        self.prevPhase = self.phase
+        self.tick = self.tick % loop
         self:showToast("LOOP LENGTH: 2 BARS")
     end
+    self.prevTick = self.tick
+    self:syncPhase()
 end
 
 function Looper:toggleMute(trackIdx)
@@ -345,60 +385,74 @@ function Looper:update(dt, triggerCallback)
         self.toastTimer = math_max(0, self.toastTimer - dt)
     end
 
+    -- Real time since the last frame (not the clamped dt)
+    local now = love.timer.getTime()
+    local elapsed = self.lastClockTime and math_max(0.0, now - self.lastClockTime) or 0.0
+    self.lastClockTime = now
+
     if not self.playing then return end
 
-    local loopDuration = self:getLoopDuration()
-    local rateMultiplier = Synth.fxHalfSpeed and 0.5 or 1.0
-    local totalSixteenths = self:getTotalSixteenths()
-    local totalBeats = self:getTotalBeats()
+    local loop = self:getLoopTicks()
+    local tps = self:getTicksPerSecond()
+    local rate = Synth.fxHalfSpeed and 0.5 or 1.0
+    local advance = elapsed * tps * rate
+    local window = self.PPQN / 4               -- stutter repeats one 1/16
 
-    self.prevPhase = self.phase
+    self.prevTick = self.tick
+    if self.resetPending then
+        self.prevTick = -1e-6                   -- so events on tick 0 fire
+        self.resetPending = false
+    end
 
     if Synth.fxBeatRepeat then
-        local windowWidth = 1.0 / totalSixteenths
-        local nextPhase = self.phase + (dt / loopDuration) * rateMultiplier
-        if nextPhase >= self.stutterAnchorPhase + windowWidth then
-            self.prevPhase = self.stutterAnchorPhase - 0.0001
-            self.phase = self.stutterAnchorPhase + ((nextPhase - self.stutterAnchorPhase) % windowWidth)
+        local nextTick = self.tick + advance
+        local anchor = self.stutterAnchorTick
+        if nextTick >= anchor + window then
+            self.prevTick = anchor - 1e-6
+            self.tick = anchor + ((nextTick - anchor) % window)
         else
-            self.phase = nextPhase % 1.0
+            self.tick = nextTick % loop
         end
     else
-        self.phase = (self.phase + (dt / loopDuration) * rateMultiplier) % 1.0
-        self.stutterAnchorPhase = math_floor(self.phase * totalSixteenths) / totalSixteenths
+        self.tick = (self.tick + advance) % loop
+        self.stutterAnchorTick = math_floor(self.tick / window) * window
+    end
+
+    -- A long hitch or suspend: keep time, but don't fire a burst of old events
+    if elapsed > self.GAP_LIMIT then
+        self.prevTick = self.tick
     end
 
     local prevBeat = self.currentBeat
-    self.currentBeat = math_floor(self.phase * totalBeats) + 1
+    self:syncPhase()
     if self.clickOn and self.currentBeat ~= prevBeat then
         local downbeat = ((self.currentBeat - 1) % 4 == 0)
         Synth:trigger("perc_wood", downbeat and 5 or 0, downbeat and 0.55 or 0.32, 0.8)
     end
-    self.currentStep = math_floor(self.phase * totalSixteenths) + 1
 
-    local wrapped = (self.phase < self.prevPhase)
-    local prev, cur = self.prevPhase, self.phase
-    local function crossedAt(p)
+    local prev, cur = self.prevTick, self.tick
+    local wrapped = (cur < prev)
+    local function crossedAt(t)
         if not wrapped then
-            return p > prev and p <= cur
+            return t > prev and t <= cur
         end
-        return p > prev or p <= cur
+        return t > prev or t <= cur
     end
-    local graceOffset = self.FLAM_TIME / loopDuration
+    local graceTicks = self.FLAM_TIME * tps
 
     for tIdx = 1, 4 do
         local track = self.tracks[tIdx]
         if not track.muted then
             for i = 1, #track.events do
                 local ev = track.events[i]
-                local p = (ev.phase + self:getSwingOffset(ev, track)) % 1.0
+                local t = (ev.tick + self:getSwingOffset(ev, track)) % loop
 
                 -- Flam grace note sounds just before the main hit
-                if ev.orn == "flam" and not ev.justRecorded and crossedAt((p - graceOffset) % 1.0) then
+                if ev.orn == "flam" and not ev.justRecorded and crossedAt((t - graceTicks) % loop) then
                     triggerCallback(ev, track, true, "grace")
                 end
 
-                if crossedAt(p) then
+                if crossedAt(t) then
                     if ev.justRecorded then
                         ev.justRecorded = false
                     else

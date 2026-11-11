@@ -145,7 +145,7 @@ end
 
 -- Record an event on a track at a given playhead phase (as a live press would)
 function H.record(Looper, slot, action, phase, extra)
-    Looper.phase = phase
+    Looper:seek(phase)
     local ev = { trackSlot = slot, action = action, velocity = 0.85 }
     for k, v in pairs(extra or {}) do ev[k] = v end
     Looper:recordEvent(ev)

@@ -271,8 +271,7 @@ local function updateStartTap()
     end
     local now = love.timer.getTime()
     if (now - Input.lastStartTapTime) < Modes.DOUBLE_TAP then
-        Looper.phase = 0.0
-        Looper.prevPhase = 1.0 - 0.0001
+        Looper:resetPlayhead()
         Looper.playing = true
         Looper:showToast("PLAYHEAD RESET TO BAR 1.1")
     else

@@ -261,16 +261,16 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 - Loop is **2 or 4 bars** of 4/4. Per-track quantize grid: `1/4`, `1/8`, `1/16`, `1/12T`, `FREE`. ✅
 - Per-track **swing** ✅ applied at playback to odd 8ths/16ths (by the event's grid), so it can change after recording; live repeats follow it.
-- 🔧 **Clock from absolute time:** the playhead is derived from `love.timer.getTime()` since the last loop anchor, not accumulated clamped `dt`, so frame drops never slow the tempo.
-- 🔧 **Integer ticks:** positions are stored as ticks at **96 PPQN** (2 bars = 768 ticks; 4 bars = 1536). Snapping, dedup, 2↔4 bar toggling, triplets and swing offsets become exact integer maths. `phase` remains a derived value for drawing.
+- ✅ **Clock from real time:** the playhead advances by the real time between frames (`love.timer.getTime()`), not the clamped frame `dt`, so frame drops never slow the tempo. A frame longer than 0.25 s fires none of its skipped events.
+- ✅ **Integer ticks:** positions are stored as ticks at **480 PPQN** (2 bars = 3840 ticks; 4 bars = 7680; 1 tick ≈ 1.1 ms at 115 BPM). Grid steps: 1/4 = 480, 1/8 = 240, 1/16 = 120, 1/12T = 160; FREE rounds to 1 tick. Snapping, dedup, 2↔4 bar toggling, triplets and swing offsets are exact. `phase` remains a derived value for drawing.
 
 ### 8.2 Event format v2 📐
 
 ```lua
 Event = {
-  tick     = 192,          -- start position (96 PPQN)
-  len      = 48,           -- held length in ticks (0 = one-shot hit)
-  grid     = 24,           -- grid step it was snapped to (for swing), nil = FREE
+  tick     = 960,          -- start position (480 PPQN) ✅
+  len      = 240,          -- held length in ticks (0 = one-shot hit)
+  grid     = 120,          -- grid step it was snapped to (for swing), nil = FREE ✅
   action   = "B",          -- which button
   vel      = 0.85,
   chance   = 1.0,          -- probability of playing (drums Variation)
@@ -281,7 +281,7 @@ Event = {
   octave   = 0,            -- shoulder octave offset
   semis    = 7,            -- absolute pitch at record time (used when FOLLOW = off)
   chordRef = "V",          -- chord that was current at record time (display)
-  bend     = { {dt = 12, degree = 6} },  -- keyframes while held (ticks after start)
+  bend     = { {dt = 60, degree = 6} },  -- keyframes while held (ticks after start)
 
   -- drums only
   soundId  = "kick_808",

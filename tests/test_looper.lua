@@ -1,6 +1,7 @@
 -- Looper: recording, dedup, playback, swing, loop length, undo/erase, click, live FX.
--- These characterise today's behaviour so the tick/event rewrite (Phase A5/A6)
--- can be checked against it. Default: 115 BPM, 2 bars, drums on track 1 at 1/16.
+-- Written against the float-phase looper, then ported to ticks in A5 with the
+-- same musical expectations. Default: 115 BPM, 2 bars (3840 ticks at PPQN 480),
+-- drums on track 1 at 1/16 (120 ticks).
 local H = require("helpers")
 
 local GRID = { Q = 1, E = 2, S = 3, T = 4, FREE = 5 }  -- 1/4, 1/8, 1/16, 1/12T, FREE
@@ -11,9 +12,9 @@ local function setup(gridIndex)
     return M, M.Looper
 end
 
-local function phases(track)
+local function phases(L, track)
     local t = {}
-    for _, ev in ipairs(track.events) do t[#t + 1] = string.format("%.4f", ev.phase) end
+    for _, ev in ipairs(track.events) do t[#t + 1] = string.format("%.4f", L:evPhase(ev)) end
     table.sort(t)
     return table.concat(t, " ")
 end
@@ -26,8 +27,11 @@ end
 
 -- Start playback from `phase` with nothing pending
 local function startAt(L, phase)
-    L.phase, L.prevPhase = phase, phase
+    L:seek(phase)
+    L.lastClockTime = H.time        -- the clock runs from here (in the game it starts on the first frame)
 end
+
+local TICK = 1 / 3840   -- one tick as a loop fraction (2 bars)
 
 return {
     -- ------------------------------------------------------------------
@@ -36,44 +40,42 @@ return {
     { "1/16 snaps to the nearest 32nd of a 2-bar loop", function()
         local _, L = setup(GRID.S)
         local ev = H.record(L, 1, "B", 0.26)
-        H.near(ev.phase, 0.25, "phase")
-        H.eq(ev.step, 9, "step")
-        H.eq(ev.gridSteps, 32, "gridSteps")
+        H.eq(ev.tick, 960, "tick (0.25 of the loop)")
+        H.eq(ev.grid, 120, "grid = one 1/16")
     end },
 
     { "1/4 grid snaps to quarter notes", function()
         local _, L = setup(GRID.Q)
-        H.near(H.record(L, 1, "B", 0.30).phase, 0.25, "0.30 -> 0.25")
-        H.eq(L.tracks[1].events[1].gridSteps, 8, "gridSteps")
+        H.eq(H.record(L, 1, "B", 0.30).tick, 960, "0.30 -> 0.25 (tick 960)")
+        H.eq(L.tracks[1].events[1].grid, 480, "grid = one beat")
     end },
 
     { "1/12T grid snaps to triplets (24 per 2 bars)", function()
         local _, L = setup(GRID.T)
         local ev = H.record(L, 1, "B", 0.10)
-        H.near(ev.phase, 2 / 24, "phase")
-        H.eq(ev.gridSteps, 24, "gridSteps")
+        H.eq(ev.tick, 320, "tick (2 triplet steps)")
+        H.eq(ev.grid, 160, "grid = one triplet step")
     end },
 
-    { "FREE keeps the exact phase", function()
+    { "FREE keeps the phase to the nearest tick (about 1 ms)", function()
         local _, L = setup(GRID.FREE)
         local ev = H.record(L, 1, "B", 0.3141)
-        H.near(ev.phase, 0.3141, "phase")
-        H.eq(ev.gridSteps, nil, "no gridSteps")
-        H.eq(ev.step, 11, "display step")
+        H.near(L:evPhase(ev), 0.3141, "phase", TICK)
+        H.eq(ev.tick, 1206, "tick")
+        H.eq(ev.grid, nil, "no grid")
     end },
 
     { "overrideGridSteps (note repeat) beats the track grid", function()
         local _, L = setup(GRID.S)
         local ev = H.record(L, 1, "B", 0.30, { overrideGridSteps = 8 })
-        H.near(ev.phase, 0.25, "phase")
-        H.eq(ev.gridSteps, 8, "gridSteps")
+        H.eq(ev.tick, 960, "tick")
+        H.eq(ev.grid, 480, "grid from the repeat rate")
     end },
 
     { "a press just before the seam snaps to the loop start", function()
         local _, L = setup(GRID.S)
         local ev = H.record(L, 1, "B", 0.99)
-        H.near(ev.phase, 0.0, "phase")
-        H.eq(ev.step, 1, "step")
+        H.eq(ev.tick, 0, "tick")
         H.truthy(ev.justRecorded, "marked as already played")
     end },
 
@@ -129,7 +131,7 @@ return {
         L.tracks[1].gridIndex = GRID.S
         H.record(L, 1, "B", 0.001)    -- snaps to 0.0, 0.005 away across the seam
         H.eq(#L.tracks[1].events, 1, "events")
-        H.near(L.tracks[1].events[1].phase, 0.0, "new hit kept")
+        H.eq(L.tracks[1].events[1].tick, 0, "new hit kept")
     end },
 
     -- ------------------------------------------------------------------
@@ -207,7 +209,7 @@ return {
         trk.swing = 0.60
         local odd = H.record(L, 1, "B", 1 / 32 + 0.001)
         local even = H.record(L, 1, "A", 2 / 32 + 0.001)
-        H.near(L:getSwingOffset(odd, trk), 0.1 * 2 / 32, "odd offset")
+        H.near(L:getSwingOffset(odd, trk), 0.1 * 2 * 120, "odd offset (ticks)")
         H.near(L:getSwingOffset(even, trk), 0.0, "even offset")
     end },
 
@@ -246,11 +248,11 @@ return {
     { "2 -> 4 bars duplicates bars 1-2 into 3-4", function()
         local _, L = setup(GRID.S)
         H.record(L, 1, "B", 0.26)
-        L.phase = 0.5
+        L:seek(0.5)
         L:toggleBars()
         H.eq(L.bars, 4, "bars")
-        H.eq(phases(L.tracks[1]), "0.1250 0.6250", "phases")
-        H.eq(L.tracks[1].events[1].gridSteps, 64, "gridSteps doubled")
+        H.eq(phases(L, L.tracks[1]), "0.1250 0.6250", "phases")
+        H.eq(L.tracks[1].events[1].grid, 120, "grid unchanged")
         H.near(L.phase, 0.25, "playhead keeps its bar position")
     end },
 
@@ -262,7 +264,7 @@ return {
         L:toggleBars()
         H.eq(L.bars, 2, "bars")
         H.eq(#L.tracks[1].events, 1, "bar-3 hit dropped")
-        H.near(L.tracks[1].events[1].phase, 0.25, "phase rescaled")
+        H.near(L:evPhase(L.tracks[1].events[1]), 0.25, "phase rescaled")
         H.eq(L.tracks[1].events[1].action, "B", "bar-1 hit kept")
     end },
 
@@ -271,8 +273,8 @@ return {
         H.record(L, 1, "B", 0.26)
         H.record(L, 1, "A", 0.76)
         L:toggleBars(); L:toggleBars()
-        H.eq(phases(L.tracks[1]), "0.2500 0.7500", "phases")
-        H.eq(L.tracks[1].events[1].gridSteps, 32, "gridSteps")
+        H.eq(phases(L, L.tracks[1]), "0.2500 0.7500", "phases")
+        H.eq(L.tracks[1].events[1].grid, 120, "grid")
     end },
 
     { "loop duration follows tempo and length", function()
@@ -385,6 +387,84 @@ return {
     end },
 
     -- ------------------------------------------------------------------
+    -- Clock (A5): real time, not frame dt
+    -- ------------------------------------------------------------------
+    { "uneven, slow frames keep exact tempo (dt clamped like main.lua)", function()
+        local _, L = setup(GRID.S)
+        H.record(L, 1, "B", 0.26)
+        startAt(L, 0.5)
+        local loopSec = H.loopSeconds(L)
+        local pattern = { 1 / 60, 0.07, 1 / 30, 0.12, 0.2, 1 / 60, 0.09 }   -- many longer than 0.05
+        local total, fired, i = 0.0, 0, 0
+        local target = loopSec * 4
+        while total < target - 1e-9 do
+            i = i + 1
+            local dt = math.min(pattern[(i - 1) % #pattern + 1], target - total)
+            total = total + dt
+            H.time = H.time + dt
+            L:update(math.min(dt, 0.05), function(_, _, _, part) if not part then fired = fired + 1 end end)
+        end
+        H.near(L.phase, 0.5, "back where it started after 4 loops", 1e-6)
+        H.eq(fired, 4, "one hit per loop, none lost")
+    end },
+
+    { "a hitch longer than 0.25 s skips its events instead of bursting", function()
+        local _, L = setup(GRID.S)
+        for k = 0, 7 do H.record(L, 1, "B", k / 8 + 0.001) end   -- 8 hits, every quarter of a bar
+        startAt(L, 0.01)
+        H.run(L, 0.1)
+        local fired = 0
+        H.time = H.time + H.loopSeconds(L) * 0.5                 -- half a loop frozen
+        L:update(1 / 60, function(_, _, _, part) if not part then fired = fired + 1 end end)
+        H.eq(fired, 0, "nothing fired for the frozen stretch")
+        H.near(L.phase, 0.01 + 0.1 / H.loopSeconds(L) + 0.5, "playhead still follows real time", 1e-6)
+        H.eq(mains(H.run(L, H.loopSeconds(L))), 8, "normal playback afterwards")
+    end },
+
+    { "the playhead follows real time even if dt is 0", function()
+        local _, L = setup(GRID.S)
+        startAt(L, 0.0)
+        L:update(0, function() end)                               -- first frame starts the clock
+        H.time = H.time + H.loopSeconds(L) * 0.25
+        L:update(0, function() end)
+        H.near(L.phase, 0.25, "quarter of the loop", 1e-9)
+    end },
+
+    { "a tempo change takes effect without a jump", function()
+        local _, L = setup(GRID.S)
+        startAt(L, 0.3)
+        H.run(L, 0.1)
+        local before = L.phase
+        L.bpm = 150
+        H.run(L, 1 / 60)
+        local expected = before + (1 / 60) * (150 / 60 * 480) / L:getLoopTicks()
+        H.near(L.phase, expected, "moves on at the new tempo", 1e-9)
+    end },
+
+    { "playhead reset fires events on the downbeat", function()
+        local _, L = setup(GRID.S)
+        H.record(L, 1, "B", 0.01)                                 -- snaps to tick 0
+        startAt(L, 0.5)
+        H.run(L, 0.1)
+        L:resetPlayhead()
+        local fired = H.run(L, 2 / 60)
+        H.eq(mains(fired), 1, "downbeat played right after the reset")
+    end },
+
+    { "grid steps are whole ticks at both loop lengths", function()
+        local _, L = setup(GRID.S)
+        for _, bars in ipairs({ 2, 4 }) do
+            L.bars = bars
+            for _, g in ipairs(L.GRID_MODES) do
+                if g.stepsPerBar then
+                    H.eq(g.stepTicks * g.stepsPerBar, 4 * L.PPQN, g.id .. " fills a bar")
+                    H.eq(L:getLoopTicks() % g.stepTicks, 0, g.id .. " divides the loop")
+                end
+            end
+        end
+    end },
+
+    -- ------------------------------------------------------------------
     -- Click and live FX
     -- ------------------------------------------------------------------
     { "metronome clicks every beat, accented on each bar", function()
@@ -415,7 +495,7 @@ return {
         startAt(L, 0.30)
         H.run(L, 0.05)                         -- establish the stutter anchor
         M.Synth.fxBeatRepeat = true
-        local anchor = L.stutterAnchorPhase
+        local anchor = L.stutterAnchorTick / L:getLoopTicks()
         local maxSeen, minSeen = 0, 1
         for _ = 1, 120 do
             H.run(L, 1 / 60)
