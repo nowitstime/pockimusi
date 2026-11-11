@@ -92,6 +92,7 @@ local function handleGlobalCombos()
 
         if Input.pressed.START then
             Looper:clearTrack(tIdx)
+            Input.startComboUsed = true
         end
 
         Synth.fxBeatRepeat = false
@@ -118,15 +119,15 @@ local function handleGlobalCombos()
         local step = 0.08
         if Looper.mixTrack <= 4 then
             local trk = Looper.tracks[Looper.mixTrack]
-            if Input.pressed.UP or Input.down.UP then
+            if Input.repeated.UP then
                 trk.volume = clamp(trk.volume + step, 0.0, 1.0)
-            elseif Input.pressed.DOWN or Input.down.DOWN then
+            elseif Input.repeated.DOWN then
                 trk.volume = clamp(trk.volume - step, 0.0, 1.0)
             end
         else
-            if Input.pressed.UP or Input.down.UP then
+            if Input.repeated.UP then
                 Synth.masterVolume = clamp(Synth.masterVolume + step, 0.0, 1.0)
-            elseif Input.pressed.DOWN or Input.down.DOWN then
+            elseif Input.repeated.DOWN then
                 Synth.masterVolume = clamp(Synth.masterVolume - step, 0.0, 1.0)
             end
         end
@@ -230,6 +231,7 @@ local function handleGlobalCombos()
     -- ------------------------------------------------------------------------
     if mode == "TRANSPORT" then
         controlsBlocked = true
+        Input.startComboUsed = true
         local tIdx = Looper.activeTrack
 
         if Input.down.Y then
@@ -273,7 +275,7 @@ local function handleGlobalCombos()
     end
 
     -- Tap START (< 0.25s): Play / Pause, 2x tap = reset playhead
-    if Input.released.START and not Input.down.L2 and not Input.down.SELECT and Input.startHoldTime < 0.25 then
+    if Input.released.START and not Input.startComboUsed and not Input.down.L2 and not Input.down.SELECT and Input.startHoldTime < 0.25 then
         local now = love.timer.getTime()
         if (now - Input.lastStartTapTime) < 0.32 then
             Looper.phase = 0.0
@@ -316,6 +318,7 @@ local function handleGlobalCombos()
         if Input.pressed.START then
             Looper:clearTrack(Looper.activeTrack)
             Input.l2ComboUsed = true
+            Input.startComboUsed = true
             controlsBlocked = true
         end
     end

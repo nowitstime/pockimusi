@@ -96,9 +96,11 @@ function Grain:updateInput(dt, state, track, emitEvent)
         shoulderSemis = 12
     end
 
-    local harmonicSteps = { 0, 2, 4, 7, 9, 12 }
-    local scanIdx = clamp(math_floor(state.scanPos * (#harmonicSteps - 1) + 1.5), 1, #harmonicSteps)
-    local scanSemis = Theory:getRootSemis() + harmonicSteps[scanIdx] + shoulderSemis
+    -- Scan walks scale degrees 1, 2, 3, 5, 6, 8 (major pentatonic in a major key,
+    -- and always inside the current scale)
+    local scanDegrees = { 1, 2, 3, 5, 6, 8 }
+    local scanIdx = clamp(math_floor(state.scanPos * (#scanDegrees - 1) + 1.5), 1, #scanDegrees)
+    local scanSemis = Theory:getScaleDegreeSemis(scanDegrees[scanIdx]) + shoulderSemis
 
     local grainInterval = 0.045 + (1.0 - state.density) * 0.12
     local grainDecay = 0.45 + (1.0 - state.density) * 0.95
