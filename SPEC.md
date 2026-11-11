@@ -281,7 +281,8 @@ Event = {
   octave   = 0,            -- shoulder octave offset
   semis    = 7,            -- absolute pitch at record time (used when FOLLOW = off)
   chordRef = "V",          -- chord that was current at record time (display)
-  bend     = { {dt = 60, degree = 6} },  -- keyframes while held (ticks after start)
+  bend     = { {dt = 60, degree = 6, octave = 0, semis = 9} },  -- pitch changes, ticks after start; ✅ format
+                                         -- (keyframes after len = bends in the release tail)
 
   -- drums only
   soundId  = "kick_808",

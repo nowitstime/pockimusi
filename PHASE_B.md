@@ -12,13 +12,14 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §7.3. Builds on Ph
 
 | Topic | Decision | Why |
 | :-- | :-- | :-- |
-| Voices | **Monophonic, last-note priority** | A bass line is one note at a time; pressing a new button ends the old note |
+| Voices | **Monophonic, last-note priority** on `SAW` and `SUB`; **`PLUCK` lets notes overlap** (each press its own voice; bends move the newest note) | A bass line is one note at a time; a pluck should ring on |
 | `B` | **Hold** — normal note, sounds while held | The default way to play |
 | `A` | **Legato** — glides from the note you're holding (or the last note) without a new attack | Slides and smooth lines |
-| `Y` | **Staccato** — short fixed note, ignores how long you hold | Tight, plucky bass |
+| `Y` | **Staccato** — one grid step long (the track's grid; 1/16 on `FREE`), ignores how long you hold | Tight, plucky bass that locks to the groove |
 | `X` | **Accent** — louder, held, with vibrato | Emphasis |
 | Old `Y` / `X` (+octave pop, +fifth) | **Removed.** `R1` is the octave; the fifth is degree 5 on the D-pad | SPEC §7.3: face buttons say *how*, the D-pad says *which note* |
-| D-pad while holding | **Glides** to the new degree at the track's glide speed, recorded as `bend` keyframes | The "ribbon" in Ribbon Bass |
+| D-pad while holding | **Glides gradually** to the new degree at the track's glide speed (never jumps), recorded as `bend` keyframes. The D-pad only ever chooses the note | The "ribbon" in Ribbon Bass |
+| D-pad after letting go | **The release tail keeps following the D-pad** until it is silent or the next note starts; those moves are recorded (keyframes after `len`) and replay too | Glissando after release, as it works today |
 | Shoulders while holding | Octave change glides too (same as a D-pad bend) | Same rule for every pitch change |
 | Neutral D-pad | Degree 1 (root), as now | Releasing the D-pad lands on the root |
 | Track page rows | `PATCH` (3 bass sounds) and `GLIDE` (fast / medium / slow) | `FOLLOW` waits for Phase D, where it does something |
@@ -48,9 +49,12 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
   - `h:bend(fields)` records a pitch change while held: appends `{ dt = ticks since press, degree, octave, semis }` to the recording's `bend` list and calls the instrument's `def:bendTo(h.ev, fields, state, track)` so the live voice follows.
 - Recorded events get `bend = { ... }` only when something was bent (one-shots stay small).
 - **Playback:** the looper already knows which notes are sounding. A shared helper `Instruments:bendAt(ev, elapsedTicks)` returns the latest keyframe at that point, and `def:updateVoices` applies it to playback voices. Elapsed ticks are measured from the note's (swung) start, wrapping across the loop seam.
+- **Release tail:** `h:bend` keeps working after the note is released, until the instrument stops bending it (its voice is silent, or a new note took over). Those keyframes land after `len` (`dt > len`) and playback applies them to the voice while it fades. Keyframes stop if a note is held longer than a whole loop (so `dt` never wraps).
 - Re-recording, erase, undo, 2↔4 bars: `bend` is copied with the event; on 4→2 bars, keyframes past the cut length are dropped.
 
-**Tests:** early release sets `len` correctly; bend keyframes have the right `dt` and order; `bendAt` returns the right keyframe across the seam; one-shots get no `bend`.
+**Tests:** early release sets `len` correctly; bend keyframes have the right `dt` and order; bends after release are recorded with `dt > len`; `bendAt` returns the right keyframe across the seam; one-shots get no `bend`; 2→4 bars copies keyframes (not shared tables).
+
+**Status:** ✅ done (125 tests). `hold(ev)` returns a handle with `release()`, `bend(fields)`, `isHeld()`; time since the press is counted frame by frame (`Handle:advance`), so `len` and bend `dt` are right across the loop seam, a stutter jump back doesn't count, and a note held over a loop caps `len` and stops recording bends. `Instruments:bendAt(ev, elapsed)` is the playback lookup. 2→4 bars gives copies their own keyframes; 4→2 drops keyframes past the new end. Live bends reach `def:bendTo` whether or not recording. Nothing uses bends yet: Bass does in B3–B5.
 
 ---
 
@@ -76,11 +80,11 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 
 - `B` → `hold({ action = "B", degree, octave, semis, vel = 0.85 })`; `noteOn` starts `Synth:noteOn(patch, ...)`, `noteOff` releases it.
 - `X` → same, `vel = 1.0`, vibrato on.
-- `Y` → `play(...)` one-shot with a short decay (the attack layer only); recorded with `len = 0`.
-- **Mono:** pressing any face button first releases the bass's other held note (`h:release()`), so its recorded `len` ends exactly where the new note starts.
+- `Y` → a held voice that releases itself after one grid step (the track's grid; 1/16 on `FREE`); recorded with that `len`, whatever the button does.
+- **Mono** (`SAW`, `SUB`): pressing any face button first releases the bass's other held note (`h:release()`), so its recorded `len` ends exactly where the new note starts. **`PLUCK`** skips that: notes overlap and ring out.
 - Playback voices are kept per event in the bass state, so `noteOff` (and every looper release: mute, clear, undo, swap…) stops the right one.
 
-**Tests:** a held `B` records one event with the held length and sustains on playback for that length; `Y` records `len = 0`; pressing `X` while holding `B` closes `B` at that tick; mute/clear during a playing note stops it; v2 fields (`degree`, `octave`, `semis`) are stored.
+**Tests:** a held `B` records one event with the held length and sustains on playback for that length; `Y` records one grid step whatever the hold; `PLUCK` notes overlap; pressing `X` while holding `B` closes `B` at that tick; mute/clear during a playing note stops it; v2 fields (`degree`, `octave`, `semis`) are stored.
 
 ---
 
@@ -97,7 +101,8 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 ## B5 · Bends
 
 - While a held note sounds, each frame the bass recomputes the target from the D-pad and shoulders. When it changes, `h:bend({ degree, octave, semis })`: the live voice glides there and the recording gets a keyframe.
-- `Y` (staccato) ignores bends.
+- After letting go, the bends go to the fading note until it is silent or the next note starts (decision above).
+- `Y` (staccato) and overlapping `PLUCK` notes: bends move the newest note.
 - Playback: `updateVoices` applies `Instruments:bendAt` to each sounding playback note, so the line replays with the same moves at the same points.
 
 **Tests:** a hold with two D-pad moves records two keyframes with increasing `dt` and the right degrees; playback reaches each bent pitch at the right time; octave changes are keyframes too.
@@ -127,9 +132,10 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 - [ ] Bass notes and bends visible on the tape deck
 - [ ] Feels right on the RG35XX; frame rate and boot time noted
 
-## Open questions (settle by playing)
+## Settled questions
 
-1. Do `A`/`Y`/`X` feel right, or should accent be a D-pad gesture like the drums (↑) to free a button?
-2. Should bends snap to scale degrees (as planned) or allow free pitch between them (e.g. holding ↑ longer bends further)?
-3. Staccato length: fixed (about a 1/16) or follow the track grid?
-4. Is mono right for the bass on every patch, or should `PLUCK` allow overlapping notes?
+1. Accent stays on `X`; the D-pad only chooses the note.
+2. Slides glide gradually toward scale degrees at the glide speed.
+3. Staccato follows the track's grid.
+4. `PLUCK` allows overlapping notes.
+5. The release tail keeps following the D-pad, recorded and replayed.

@@ -389,6 +389,14 @@ function Looper:toggleBars()
                 for k, v in pairs(track.events[i]) do copy[k] = v end
                 copy.tick = copy.tick + oldLoop
                 copy.skipOnce = nil
+                if copy.bend then                      -- own keyframe list, not shared
+                    local kfs = {}
+                    for k = 1, #copy.bend do
+                        local kf = copy.bend[k]
+                        kfs[k] = { dt = kf.dt, degree = kf.degree, octave = kf.octave, semis = kf.semis }
+                    end
+                    copy.bend = kfs
+                end
                 table.insert(track.events, copy)
             end
         end
@@ -400,10 +408,18 @@ function Looper:toggleBars()
         for tIdx = 1, 4 do
             local track = self.tracks[tIdx]
             for i = #track.events, 1, -1 do
-                if track.events[i].tick >= loop then
+                local ev = track.events[i]
+                if ev.tick >= loop then
                     table.remove(track.events, i)
-                elseif track.events[i].tick + track.events[i].len > loop then
-                    track.events[i].len = loop - track.events[i].tick   -- cut at the new loop end
+                else
+                    if ev.tick + ev.len > loop then
+                        ev.len = loop - ev.tick                 -- cut at the new loop end
+                    end
+                    if ev.bend then                             -- and its bends
+                        for k = #ev.bend, 1, -1 do
+                            if ev.tick + ev.bend[k].dt >= loop then table.remove(ev.bend, k) end
+                        end
+                    end
                 end
             end
         end
