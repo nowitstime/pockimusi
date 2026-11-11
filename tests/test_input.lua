@@ -42,12 +42,29 @@ return {
         H.falsy(I.repeated.UP, "no repeat after release")
     end },
 
-    { "START press clears the combo flag", function()
+    { "combo flags clear when the modifier is pressed again", function()
         local I = H.fresh().Input
-        I.startComboUsed = true
-        H.keys["return"] = true
+        for mod, key in pairs({ L2 = "lshift", R2 = "space", SELECT = "tab", START = "return" }) do
+            I.comboUsed[mod] = true
+            H.keys[key] = true
+            frames(I, 1)
+            H.falsy(I.comboUsed[mod], mod .. " cleared on press")
+            H.keys[key] = false
+            frames(I, 1)
+        end
+    end },
+
+    { "combo flags survive the release frame until cleared", function()
+        local I = H.fresh().Input
+        H.keys["tab"] = true
         frames(I, 1)
-        H.falsy(I.startComboUsed, "cleared on press")
+        I.comboUsed.SELECT = true
+        H.keys["tab"] = false
+        frames(I, 1)
+        H.truthy(I.released.SELECT, "release frame")
+        H.truthy(I.comboUsed.SELECT, "still set so the tap check can see it")
+        I:clearReleasedCombos()
+        H.falsy(I.comboUsed.SELECT, "cleared after the frame")
     end },
 
     { "8-way direction from the D-pad", function()

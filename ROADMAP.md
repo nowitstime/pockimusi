@@ -62,7 +62,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 - [x] A1 Quick fixes + build script packs every file (device check pending)
 - [x] A2 Real tests (characterise today's looper first) — `python3 tests/run.py`
-- [ ] A3 Modes module (move combo handling out of `main.lua`)
+- [x] A3 Modes module (move combo handling out of `main.lua`)
 - [ ] A4 Setting rows + safe instrument swap (first row: Harp `COLOUR`)
 - [ ] A5 Clock from absolute time + integer ticks
 - [ ] A6 Event format v2 + note-on/note-off playback

@@ -1,16 +1,10 @@
 -- Modes: every global combo in SPEC §3.4–3.6, driven through the real game loop.
--- Written before the modes refactor (A3) so it can check nothing changed.
+-- Written against main.lua before the modes refactor (A3), then kept as the
+-- spec for src/modes.lua.
 local H = require("helpers")
 
-local function page()
-    local Modes = package.loaded["src.modes"]
-    return Modes and Modes.trackPage or package.loaded["src.looper"].trackPage
-end
-
-local function mixTrack()
-    local Modes = package.loaded["src.modes"]
-    return Modes and Modes.mixTrack or package.loaded["src.looper"].mixTrack
-end
+local function page() return package.loaded["src.modes"].trackPage end
+local function mixTrack() return package.loaded["src.modes"].mixTrack end
 
 local function boot()
     local M = H.loadMain()
@@ -199,6 +193,16 @@ return {
         H.eq(L.playing, playing, "closing Transport does not toggle play")
     end },
 
+    { "SELECT tap on the Transport page changes track (to set its grid/swing)", function()
+        local _, L = boot()
+        H.hold("START"); H.play(0.3)
+        H.tap("SELECT")
+        H.eq(L.activeTrack, 2, "track 2")
+        H.tap("A")
+        H.eq(L:getTrackGrid(2).id, "1/4", "A changed track 2's grid (harp FREE -> 1/4)")
+        H.release("START"); H.play(0.1)
+    end },
+
     { "START tap pauses and resumes; double tap resets to bar 1", function()
         local _, L = boot()
         H.tap("START")
@@ -232,6 +236,16 @@ return {
         H.release("LEFT", "R2"); H.play(0.1)
         H.falsy(S.fxLowPass, "FX off when R2 released")
         H.eq(#L.tracks[1].events, 0, "R2 + face never plays the pads")
+    end },
+
+    { "live FX switch off when another page takes over from R2", function()
+        local M = boot()
+        H.hold("R2", "UP"); H.play(0.1)
+        H.truthy(M.Synth.fxBeatRepeat, "stutter on")
+        H.hold("SELECT"); H.play(0.1)
+        H.eq(H.mode(), "MIX", "SELECT + R2 = mix page")
+        H.falsy(M.Synth.fxBeatRepeat, "stutter stopped in the mix page")
+        H.release("R2", "UP", "SELECT"); H.play(0.1)
     end },
 
     -- ------------------------------------------------------------------

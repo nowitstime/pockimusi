@@ -12,15 +12,14 @@ local Input = {
     down = {},
     pressed = {},
     released = {},
-    selectComboUsed = false,
     selectHoldTime = 0.0,
-    l2ComboUsed = false,
     l2HoldTime = 0.0,
     recLatched = false,
-    r2ComboUsed = false,
     lastStartTapTime = -10.0,
     startHoldTime = 0.0,
-    startComboUsed = false,   -- START held into Transport or a combo: release is not a tap
+    -- A modifier used in a combo or page this press: its release is not a tap.
+    -- Cleared when the modifier is pressed again and at the end of its release frame.
+    comboUsed = { L2 = false, R2 = false, SELECT = false, START = false },
     repeated = {},            -- pressed, then auto-repeats while held (see REPEAT_*)
     repeatTimer = {},
 }
@@ -140,17 +139,27 @@ function Input:update(dt)
         self.l2HoldTime = self.l2HoldTime + (dt or 0.016)
     end
 
+    for mod in pairs(self.comboUsed) do
+        if self.pressed[mod] then self.comboUsed[mod] = false end
+    end
+
     if self.pressed.START then
         self.startHoldTime = 0.0
-        self.startComboUsed = false
     elseif self.down.START then
         self.startHoldTime = self.startHoldTime + (dt or 0.016)
     end
 end
 
+-- Call once per frame after all combo handling has read the flags
+function Input:clearReleasedCombos()
+    for mod in pairs(self.comboUsed) do
+        if self.released[mod] then self.comboUsed[mod] = false end
+    end
+end
+
 function Input:isRecording()
     if self.recLatched then return true end
-    if self.down.L2 and not self.down.R2 and not self.l2ComboUsed then return true end
+    if self.down.L2 and not self.down.R2 and not self.comboUsed.L2 then return true end
     return false
 end
 

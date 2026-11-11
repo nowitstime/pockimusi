@@ -363,13 +363,13 @@ pockimusi/
  └── pocketgroove/
       ├── main.lua  conf.lua  controls.gptk
       └── src/
-           config.lua  theory.lua  input.lua  looper.lua  harmony.lua (📐)  modes.lua (📐)
+           config.lua  theory.lua  input.lua  looper.lua  harmony.lua (📐)  modes.lua
            instruments/{init,drums,harp,bass,pad,lead}.lua   (grain.lua retired)
            synth/{init,voice (📐),drums_bank,synths_bank}.lua
            ui/chrome.lua
 ```
 
-Structural debt: global combo handling in `main.lua` should move to `modes.lua` with an explicit mode enum shared by the UI.
+Global modes and combos live in `modes.lua` (`Modes.current` is read by the UI); `main.lua` only wires the LÖVE callbacks.
 
 ---
 

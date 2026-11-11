@@ -9,6 +9,7 @@ local Input       = require("src.input")
 local Synth       = require("src.synth")
 local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
+local Modes       = require("src.modes")
 
 local clamp      = Config.clamp
 local math_floor = math.floor
@@ -347,7 +348,7 @@ function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeM
         local fl = (flashMap and flashMap[btn]) or 0.0
         local isActive = (activeMap and activeMap[btn]) or (Input.down[btn] and not Input.down.R2)
         local btnCol = col
-        if Looper.uiMode == "MIX" and Looper.tracks[btn == "B" and 1 or (btn == "A" and 2 or (btn == "Y" and 3 or 4))].muted then
+        if Modes.current == "MIX" and Looper.tracks[btn == "B" and 1 or (btn == "A" and 2 or (btn == "Y" and 3 or 4))].muted then
             btnCol = C.RED
         end
 
@@ -496,7 +497,7 @@ function Chrome:drawTopBar()
     local track = Looper.tracks[sl]
     local instCol = Config.TRACK_COLORS[sl]
     local grid = Looper:getTrackGrid(sl)
-    local mode = Looper.uiMode or "NORMAL"
+    local mode = Modes.current or "NORMAL"
 
     -- Frame with corner accent diamonds
     self:drawFrame(8, 6, 624, 38, C.GRID, 1, instCol)
@@ -617,7 +618,7 @@ function Chrome:drawCenterStage()
     local track = Looper.tracks[sl]
     local def, state = Instruments:getTrackInstrument(sl)
     local instCol = Config.TRACK_COLORS[sl]
-    local mode = Looper.uiMode or "NORMAL"
+    local mode = Modes.current or "NORMAL"
     local playMode = self:isPlayMode(mode)
     local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
@@ -751,7 +752,7 @@ function Chrome:getControlLabels(def, state, mode)
         }
     elseif mode == "TRACK" then
         local fx = Looper.tracks[Looper.activeTrack].fx
-        local held = Looper.trackPage.fxHeld
+        local held = Modes.trackPage.fxHeld
         dpadLabels = held and { UP = "AMT +", DOWN = "AMT -", LEFT = "INST <", RIGHT = "INST >" }
             or { UP = "ROW UP", DOWN = "ROW DOWN", LEFT = "INST <", RIGHT = "INST >" }
         faceLabels = { B = "SPACE", A = "ECHO", Y = "DRIVE", X = "TONE" }
@@ -949,7 +950,7 @@ function Chrome:drawMixerView(t)
         local isMaster = (i == 5)
         local trk = not isMaster and Looper.tracks[i] or nil
         local lvl = isMaster and Synth.masterVolume or trk.volume
-        local isSelected = (Looper.mixTrack == i)
+        local isSelected = (Modes.mixTrack == i)
         local isMuted = not isMaster and trk.muted or false
         local col = isMaster and C.TEXT or Config.TRACK_COLORS[i]
 
@@ -1000,7 +1001,7 @@ function Chrome:drawDrumLanes(def, state, track, col)
     for i, pad in ipairs(def.PADS) do
         local top = 88 + (i - 1) * 44
         local flash = state.padFlash[pad] or 0.0
-        local lit = flash > 0.05 or (Input.down[pad] and Looper.uiMode ~= "FX")
+        local lit = flash > 0.05 or (Input.down[pad] and Modes.current ~= "FX")
 
         if lit then
             self:setColor(col, 0.16 + flash * 0.12)
@@ -1117,7 +1118,7 @@ end
 function Chrome:drawTrackPageView(def, state, track, col)
     local C = Config.COLORS
     local rows = Instruments:getSoundRows(def, state)
-    local sel = Looper.trackPage.row
+    local sel = Modes.trackPage.row
     local n = #rows
     local y0 = (n == 1) and 134 or 108
     local nx = 226
@@ -1313,7 +1314,7 @@ end
 -- ============================================================================
 function Chrome:drawFooterStrip(def)
     local C = Config.COLORS
-    local mode = Looper.uiMode or "NORMAL"
+    local mode = Modes.current or "NORMAL"
     local hintText = "[L2] Record   [SELECT] Track   [SELECT+R2] Mix   [START] Transport"
     local hintCol = C.MUTED
 
@@ -1469,7 +1470,7 @@ function Chrome:drawTapeDeck()
 
     -- Shooting Star Sweeping Playhead
     local px = lx + Looper.phase * lw
-    local isRec = (Looper.uiMode == "REC_LATCH" or Looper.uiMode == "REC_HOLD")
+    local isRec = (Modes.current == "REC_LATCH" or Modes.current == "REC_HOLD")
     local playCol = isRec and C.RED or C.TEXT
 
     -- Comet wake trailing behind playhead
@@ -1490,7 +1491,7 @@ function Chrome:drawTapeDeck()
     self:drawDiamond(px, 366, 2.5, C.TEXT)
 
     -- Dim the deck while a settings page has focus
-    local mode = Looper.uiMode or "NORMAL"
+    local mode = Modes.current or "NORMAL"
     if mode == "TRACK" or mode == "TRANSPORT" or mode == "MIX" then
         self:setColor(C.BG, 0.55)
         love.graphics.rectangle("fill", 7, 361, 626, 114)

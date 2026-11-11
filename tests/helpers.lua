@@ -187,11 +187,9 @@ function H.tap(...)
     H.play(0.05)
 end
 
--- The current UI mode, wherever it lives
+-- The current UI mode
 function H.mode()
-    local Modes = package.loaded["src.modes"]
-    if Modes then return Modes.current end
-    return package.loaded["src.looper"].uiMode
+    return package.loaded["src.modes"].current
 end
 
 -- Run full game frames (update + draw) for `seconds`, with `buttons` held

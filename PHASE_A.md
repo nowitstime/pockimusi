@@ -101,6 +101,14 @@ Then delete `test_looper_logic.py`.
 
 **Done when:** every combo in SPEC §3.4–3.6 behaves as before (manual checklist), and the tests still pass.
 
+**Status:** ✅ done. `main.lua` is 49 lines of LÖVE callbacks; `src/modes.lua` holds one handler per mode.
+
+- `tests/test_modes.lua` (21 tests) was written against the old `main.lua` first and committed as the baseline; the 19 original combo tests pass unchanged on `modes.lua`. These replace the manual checklist.
+- `Input.comboUsed = { L2, R2, SELECT, START }` replaces the four flags; cleared on press and at the end of the release frame (`Input:clearReleasedCombos`).
+- `Looper.uiMode`, `prevUiMode`, `trackPage`, `mixTrack` moved to `Modes.current`, `Modes.previous`, `Modes.trackPage`, `Modes.mixTrack`.
+- Kept on purpose: a `SELECT` tap on the Transport page changes track, so grid and swing can be set per track without leaving it (now tested).
+- One deliberate fix: live FX (`R2` + D-pad) used to stay stuck on when `SELECT` or `START` took over (e.g. stutter kept running in the Mix page). They now switch off whenever the mode isn't `FX`.
+
 ---
 
 ## A4 · Setting rows + safe instrument swap

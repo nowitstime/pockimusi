@@ -19,14 +19,10 @@ local Looper = {
     currentStep = 1,
     stutterAnchorPhase = 0.0,
     activeTrack = 1,   -- Active track slot (1..4)
-    uiMode = "NORMAL", -- NORMAL, REC_LATCH, REC_HOLD, TRACK, MIX, TRANSPORT, ERASE, FX
-    mixTrack = 1,      -- 1..4 selected track in Mix page, 5 = Master
     currentTakeId = 0,
     takeStack = {},    -- Stack of takeIds for Undo Last Take
     tracks = {},
-    prevUiMode = "NORMAL",
     clickOn = false,   -- metronome click (Transport X)
-    trackPage = { row = 1, fxHeld = nil, fxAdjusted = false },
     toastText = "READY - TAP [SELECT] TO SWITCH TRACKS",
     toastTimer = 2.5,
 
