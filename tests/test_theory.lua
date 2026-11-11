@@ -69,6 +69,38 @@ return {
         H.truthy(wide.isWide, "isWide")
     end },
 
+    { "chord colours: notes and names", function()
+        local T = H.fresh().Theory
+        local function c(dir, colour) return T:getChordForDirection(dir, false, false, colour) end
+        local expect = {
+            { "UP", "TRIAD", "C", "0 4 7 12" },
+            { "UP", "7TH", "Cmaj7", "0 4 7 11" },
+            { "UP", "9TH", "Cmaj9", "0 4 11 14" },
+            { "UP", "SUS4", "Csus4", "0 5 7 12" },
+            { "UP", "ADD9", "Cadd9", "0 4 7 14" },
+            { "RIGHT", "7TH", "G7", "7 11 14 17" },
+            { "DOWN", "7TH", "Am7", "9 12 16 19" },
+            { "UP_LEFT", "9TH", "Dm9", "2 5 12 16" },
+            { "DOWN", "ADD9", "Am(add9)", "9 12 16 23" },
+            { "DOWN_LEFT", "7TH", "A#7", "10 14 17 20" },
+            { "DOWN_RIGHT", "7TH", "Fm7", "5 8 12 15" },
+        }
+        for _, e in ipairs(expect) do
+            local chord = c(e[1], e[2])
+            H.eq(chord.name, e[3], e[1] .. " " .. e[2] .. " name")
+            H.eq(notes(chord), e[4], e[1] .. " " .. e[2] .. " notes")
+        end
+    end },
+
+    { "chord colour with shoulders: octave shift and wide voicing", function()
+        local T = H.fresh().Theory
+        H.eq(notes(T:getChordForDirection("UP", true, false, "7TH")), "-12 -8 -5 -1", "L1 maj7")
+        local wide = T:getChordForDirection("UP", true, true, "7TH")
+        H.eq(notes(wide), "-12 7 16 23", "wide maj7: top = 7th")
+        H.eq(wide.name, "Cmaj7 (WIDE)", "wide name")
+        H.eq(notes(T:getChordForDirection("UP", true, true, "SUS4")), "-12 7 17 26", "wide sus4: 4th lifted")
+    end },
+
     { "building a chord leaks no globals", function()
         local T = H.fresh().Theory
         T:getChordForDirection("UP", false, false)

@@ -21,7 +21,8 @@ local Modes = {
     previous = "NORMAL",
 
     -- Page state (read by Chrome)
-    trackPage = { row = 1, fxHeld = nil, fxAdjusted = false },
+    -- pending = instrument id previewed with LEFT/RIGHT, applied on SELECT release
+    trackPage = { row = 1, fxHeld = nil, fxAdjusted = false, pending = nil, pendingSlot = nil },
     mixTrack  = 1,                       -- 1..4 = track, 5 = master
 
     -- Timings (seconds)
@@ -106,7 +107,7 @@ function handlers.ERASE(ctx)
         end
     end
     if Input.pressed.LEFT or Input.pressed.L1 then
-        Looper:undoLastTake()
+        Looper:undo()
     end
     if Input.pressed.START then
         Looper:clearTrack(tIdx)
@@ -158,10 +159,19 @@ function handlers.TRACK(ctx)
     end
     page.row = clamp(page.row, 1, #rows)
 
-    -- Instrument
+    -- Instrument: LEFT/RIGHT only preview; the swap happens on SELECT release
     if Input.pressed.LEFT or Input.pressed.RIGHT then
-        Instruments:cycleTrackInstrument(Looper.activeTrack, Input.pressed.LEFT and -1 or 1)
-        page.row = 1
+        local track = Looper.tracks[Looper.activeTrack]
+        local from = page.pending or track.instrumentId
+        local nextId = Instruments:stepInstrumentId(from, Input.pressed.LEFT and -1 or 1)
+        if nextId == track.instrumentId then
+            page.pending, page.pendingSlot = nil, nil
+            Looper:showToast("INSTRUMENT: NO CHANGE")
+        else
+            page.pending, page.pendingSlot = nextId, track.slot
+            local nextDef = Instruments:getDefinition(nextId)
+            Looper:showToast("RELEASE SELECT TO SWAP TO " .. (nextDef.title or nextDef.name))
+        end
     end
 
     -- Effects on the face buttons: tap = on/off, hold + UP/DOWN = amount
@@ -188,14 +198,10 @@ function handlers.TRACK(ctx)
         page.fxHeld = nil
     end
 
-    -- L1 / R1: previous / next sound for the selected row
+    -- L1 / R1: change the selected row (sound, or setting value)
     local delta = (Input.pressed.L1 and -1) or (Input.pressed.R1 and 1) or nil
     if delta then
-        if def.cycleRowSound then
-            def:cycleRowSound(state, page.row, delta)
-        else
-            Looper:showToast(def.name .. ": ONE PATCH FOR NOW")
-        end
+        Instruments:cycleRow(def, state, page.row, delta)
     end
     return true
 end
@@ -289,8 +295,19 @@ end
 -- ---------------------------------------------------------------------------
 -- Frame entry point
 -- ---------------------------------------------------------------------------
+-- Apply a previewed instrument swap once SELECT is let go
+local function applyPendingSwap()
+    local page = Modes.trackPage
+    if page.pending and Input.released.SELECT then
+        Instruments:swapTrackInstrument(page.pendingSlot, page.pending)
+        page.pending, page.pendingSlot = nil, nil
+        page.row = 1
+    end
+end
+
 function Modes:update()
     updateRecord()
+    applyPendingSwap()
 
     self.previous = self.current
     self.current = self:resolve()

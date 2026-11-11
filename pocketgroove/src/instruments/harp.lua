@@ -27,6 +27,7 @@ local Harp = {
 function Harp:newState()
     return {
         currentChord = nil,
+        colour = "TRIAD",          -- Track page COLOUR row (Theory.COLOURS)
         strings = {
             { button = "B", label = "STR 1 (ROOT)", energy = 0.0, phase = 0.0, lastSemis = 0 },
             { button = "A", label = "STR 2 (3RD)",  energy = 0.0, phase = 0.0, lastSemis = 4 },
@@ -46,11 +47,36 @@ function Harp:updateVisuals(dt, state, controlsBlocked)
     end
 
     local dirKey = controlsBlocked and "NEUTRAL" or Input:get8WayDirection()
-    state.currentChord = Theory:getChordForDirection(dirKey, Input.down.L1, Input.down.R1)
+    state.currentChord = Theory:getChordForDirection(dirKey, Input.down.L1, Input.down.R1, state.colour)
+end
+
+-- ---------------------------------------------------------------------------
+-- Track page rows: one sound row (PATCH) and the COLOUR setting
+-- ---------------------------------------------------------------------------
+function Harp:getSoundRows(state)
+    return {
+        { key = "PATCH", label = "PATCH", value = self.title },
+        { key = "COLOUR", label = "COLOUR", value = state.colour, kind = "setting",
+          hint = string.format("%d/%d", self:colourIndex(state), #Theory.COLOURS) },
+    }
+end
+
+function Harp:colourIndex(state)
+    for i, c in ipairs(Theory.COLOURS) do
+        if c == state.colour then return i end
+    end
+    return 1
+end
+
+function Harp:cycleSetting(state, key, delta)
+    if key ~= "COLOUR" then return end
+    local n = #Theory.COLOURS
+    state.colour = Theory.COLOURS[((self:colourIndex(state) - 1 + delta) % n) + 1]
+    Looper:showToast("CHORD COLOUR: " .. state.colour)
 end
 
 function Harp:updateInput(dt, state, track, emitEvent)
-    local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false)
+    local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
     local faceButtons = { "B", "A", "Y", "X" }
 
     for _, btn in ipairs(faceButtons) do
@@ -89,7 +115,7 @@ end
 
 function Harp:drawStage(state, track, Chrome)
     local C = Config.COLORS
-    local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false)
+    local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
 
     Chrome:setColor(C.MUTED)
     love.graphics.setFont(Chrome.fontSmall)

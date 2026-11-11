@@ -44,20 +44,48 @@ function Instruments:getSoundRows(def, state)
     return { { key = "PATCH", label = "PATCH", value = def.patchName or def.title or def.name } }
 end
 
-function Instruments:cycleTrackInstrument(trackSlot, delta)
-    delta = delta or 1
-    local track = Looper.tracks[trackSlot or Looper.activeTrack]
-    if not track then return end
+-- L1 / R1 on a Track page row: setting rows change their value, sound rows
+-- change the sound (with a preview)
+function Instruments:cycleRow(def, state, rowIdx, delta)
+    local row = self:getSoundRows(def, state)[rowIdx]
+    if not row then return end
+    if row.kind == "setting" then
+        if def.cycleSetting then def:cycleSetting(state, row.key, delta) end
+    elseif def.cycleRowSound then
+        def:cycleRowSound(state, rowIdx, delta)
+    else
+        Looper:showToast(def.name .. ": ONE PATCH FOR NOW")
+    end
+end
+
+-- The instrument `delta` steps away from `instrumentId` in the catalog
+function Instruments:stepInstrumentId(instrumentId, delta)
     local curIdx = 1
     for i, inst in ipairs(self.catalog) do
-        if inst.id == track.instrumentId then
+        if inst.id == instrumentId then
             curIdx = i
             break
         end
     end
-    local nextIdx = ((curIdx - 1 + delta) % #self.catalog) + 1
-    local nextInst = self.catalog[nextIdx]
-    Looper:setTrackInstrument(track.slot, nextInst.id, self)
+    return self.catalog[((curIdx - 1 + delta) % #self.catalog) + 1].id
+end
+
+-- Put a different instrument in a slot. The old instrument, its state and
+-- its events go on the undo stack, so undo brings the track back.
+function Instruments:swapTrackInstrument(trackSlot, instrumentId)
+    local track = Looper.tracks[trackSlot]
+    if not track or track.instrumentId == instrumentId then return end
+    Looper:pushUndo({
+        kind = "swap",
+        trackSlot = trackSlot,
+        instrumentId = track.instrumentId,
+        name = track.name,
+        shortName = track.shortName,
+        gridIndex = track.gridIndex,
+        state = track.state,
+        events = track.events,
+    })
+    Looper:setTrackInstrument(trackSlot, instrumentId, self)
 end
 
 function Instruments:triggerEvent(ev, track, isPlayback, part)

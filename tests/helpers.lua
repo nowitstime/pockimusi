@@ -49,6 +49,7 @@ end
 
 local function fakeFont(size)
     return {
+        size = size,
         getWidth = function(_, text) return #tostring(text) * math.floor(size * 0.6) end,
         getHeight = function() return size end,
     }
@@ -81,7 +82,7 @@ function H.installLove()
             getMaxSourceEffects = function() return 0 end,
             setEffect = noop,
         },
-        graphics = graphics,
+        graphics = H.graphicsOverride or graphics,
         window = { setTitle = noop },
         event = { quit = noop },
     }

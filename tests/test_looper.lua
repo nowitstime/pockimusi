@@ -293,11 +293,11 @@ return {
         H.record(L, 1, "A", 0.51)
         L:beginRecordingTake()
         H.record(L, 1, "Y", 0.76)
-        L:undoLastTake()
+        L:undo()
         H.eq(#L.tracks[1].events, 2, "after first undo")
-        L:undoLastTake()
+        L:undo()
         H.eq(#L.tracks[1].events, 0, "after second undo")
-        L:undoLastTake()
+        L:undo()
         H.eq(L.toastText, "NOTHING TO UNDO", "toast")
     end },
 
@@ -308,7 +308,7 @@ return {
         H.record(L, 1, "B", 0.26)
         L:beginRecordingTake()
         H.record(L, 2, "B", 0.26)
-        L:undoLastTake()
+        L:undo()
         H.eq(#L.tracks[1].events, 1, "track 1 untouched")
         H.eq(#L.tracks[2].events, 0, "track 2 undone")
     end },
@@ -336,12 +336,52 @@ return {
         H.eq(table.concat(seen, " "), "1/12T FREE 1/4", "order")
     end },
 
-    { "swapping an instrument clears the track's events (today; A4 makes it undoable)", function()
+    { "swapping an instrument clears the track; undo brings it all back", function()
         local M, L = setup(GRID.S)
         H.record(L, 1, "B", 0.26)
-        M.Instruments:cycleTrackInstrument(1, 1)
+        local oldState, oldEvents = L.tracks[1].state, L.tracks[1].events
+        M.Instruments:swapTrackInstrument(1, "harp")
         H.eq(L.tracks[1].instrumentId, "harp", "now harp")
         H.eq(#L.tracks[1].events, 0, "events cleared")
+        L:undo()
+        H.eq(L.tracks[1].instrumentId, "drums", "back to drums")
+        H.eq(L.tracks[1].name, "DRUMS", "name restored")
+        H.eq(L.tracks[1].state, oldState, "same state (kit, pad sounds)")
+        H.eq(L.tracks[1].events, oldEvents, "same events")
+        H.eq(L.tracks[1].gridIndex, GRID.S, "grid restored")
+    end },
+
+    { "undo unwinds takes and swaps in order", function()
+        local M, L = setup(GRID.S)
+        L:beginRecordingTake(); H.record(L, 1, "B", 0.26)       -- take 1 on drums
+        M.Instruments:swapTrackInstrument(1, "bass")           -- swap
+        L.tracks[1].gridIndex = GRID.S
+        L:beginRecordingTake(); H.record(L, 1, "A", 0.51)       -- take 2 on bass
+        L:undo()
+        H.eq(L.tracks[1].instrumentId, "bass", "take 2 undone, still bass")
+        H.eq(#L.tracks[1].events, 0, "bass events gone")
+        L:undo()
+        H.eq(L.tracks[1].instrumentId, "drums", "swap undone")
+        H.eq(#L.tracks[1].events, 1, "drum hit back")
+        L:undo()
+        H.eq(#L.tracks[1].events, 0, "take 1 undone")
+        L:undo()
+        H.eq(L.toastText, "NOTHING TO UNDO", "empty")
+    end },
+
+    { "swapping to the same instrument does nothing", function()
+        local M, L = setup(GRID.S)
+        H.record(L, 1, "B", 0.26)
+        M.Instruments:swapTrackInstrument(1, "drums")
+        H.eq(#L.tracks[1].events, 1, "events kept")
+        H.eq(#L.undoStack, 1, "no swap entry (only the take)")
+    end },
+
+    { "instrument steps wrap around the catalog", function()
+        local M = setup(GRID.S)
+        local I = M.Instruments
+        H.eq(I:stepInstrumentId("drums", 1), "harp", "next")
+        H.eq(I:stepInstrumentId("drums", -1), I.catalog[#I.catalog].id, "previous wraps")
     end },
 
     -- ------------------------------------------------------------------

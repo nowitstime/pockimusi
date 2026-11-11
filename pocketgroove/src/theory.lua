@@ -43,7 +43,28 @@ function Theory:getScaleDegreeSemis(degree)
     return self:getRootSemis() + intervals[idx] + (octaves * 12)
 end
 
-function Theory:getChordForDirection(dirKey, l1, r1)
+-- Chord colours (Track page COLOUR row). TRIAD is the default.
+Theory.COLOURS = { "TRIAD", "7TH", "9TH", "SUS4", "ADD9" }
+
+-- Name suffix for a chord with the given third, seventh and colour
+local function colourSuffix(colour, third, seventh)
+    local minor = (third == 3)
+    if colour == "7TH" or colour == "9TH" then
+        local n = (colour == "7TH") and "7" or "9"
+        if minor then return (seventh == 11) and ("mMaj" .. n) or ("m" .. n) end
+        return (seventh == 11) and ("maj" .. n) or n
+    elseif colour == "SUS4" then
+        return "sus4"
+    elseif colour == "ADD9" then
+        return minor and "m(add9)" or "add9"
+    end
+    return minor and "m" or ""
+end
+
+-- `colour` is one of Theory.COLOURS (nil = TRIAD). Strings 1-4 are, per colour:
+--   TRIAD root 3rd 5th 8ve · 7TH root 3rd 5th 7th · 9TH root 3rd 7th 9th
+--   SUS4  root 4th 5th 8ve · ADD9 root 3rd 5th 9th
+function Theory:getChordForDirection(dirKey, l1, r1, colour)
     local scale = self.SCALES[self.scaleIndex].intervals
     local rootBase = self:getRootSemis()
 
@@ -101,7 +122,7 @@ function Theory:getChordForDirection(dirKey, l1, r1)
 
     local absRoot = rootBase + chordRootOffset
     local noteName = self.NOTE_NAMES[(absRoot % 12) + 1]
-    local extLabel = ""
+    colour = colour or "TRIAD"
     local octShift = 0
     if l1 and not r1 then
         octShift = -12
@@ -109,34 +130,43 @@ function Theory:getChordForDirection(dirKey, l1, r1)
         octShift = 12
     end
 
-    local baseVoicings = {
-        absRoot + octShift,
-        absRoot + thirdInterval + octShift,
-        absRoot + fifthInterval + octShift,
-        absRoot + 12 + octShift
-    }
+    -- Chord tones as intervals above the root, by colour
+    local second = (colour == "SUS4") and 5 or thirdInterval     -- string 2
+    local third  = (colour == "9TH") and seventhInterval or fifthInterval  -- string 3
+    local top                                                     -- string 4
+    if colour == "7TH" then top = seventhInterval
+    elseif colour == "9TH" or colour == "ADD9" then top = ninthInterval
+    else top = 12 end
 
     local voicings
-    if l1 and r1 then
-        extLabel = quality .. " (WIDE)"
+    local isWide = (l1 and r1) and true or false
+    if isWide then
+        -- Spread voicing: bass an octave down, upper tones lifted
+        local wideTop = (top == 12) and ninthInterval or top
         voicings = {
             absRoot - 12,
             absRoot + fifthInterval,
-            absRoot + thirdInterval + 12,
-            absRoot + ninthInterval + 12
+            absRoot + second + 12,
+            absRoot + wideTop + 12,
         }
     else
-        extLabel = quality
-        voicings = baseVoicings
+        voicings = {
+            absRoot + octShift,
+            absRoot + second + octShift,
+            absRoot + third + octShift,
+            absRoot + top + octShift,
+        }
     end
 
+    local suffix = colourSuffix(colour, thirdInterval, seventhInterval)
     return {
-        name = noteName .. extLabel,
+        name = noteName .. suffix .. (isWide and " (WIDE)" or ""),
         roman = roman,
         dirKey = dirKey,
+        colour = colour,
         notes = voicings,
         octShift = octShift,
-        isWide = (l1 and r1),
+        isWide = isWide,
     }
 end
 

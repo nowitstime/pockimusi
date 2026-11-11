@@ -139,6 +139,15 @@ Then delete `test_looper_logic.py`.
 
 **Done when:** Harp colour works from the Track page, a swap can be undone, and drum rows behave as today.
 
+**Status:** ✅ done (81 tests).
+
+- `Instruments:cycleRow` sends `L1/R1` to `def:cycleSetting` for `kind = "setting"` rows, otherwise to `def:cycleRowSound`.
+- Harp rows: `PATCH` + `COLOUR` (`TRIAD → 7TH → 9TH → SUS4 → ADD9`). `Theory:getChordForDirection(dir, l1, r1, colour)` takes the 7th from the scale, so V7 = G7 and vi7 = Am7; wide voicings keep the colour.
+- Setting rows draw as hollow rings with a `2/5` counter; the value column spaces itself from the widest label; shoulders read `CHANGE`.
+- Swap preview: pink instrument capsule plus "RELEASE SELECT TO SWAP - UNDO: L2+R2+LEFT"; applied in `Modes` on `SELECT` release via `Instruments:swapTrackInstrument`.
+- `Looper.undoStack` (takes and swaps) replaces `takeStack`; `Looper:undo()` replaces `undoLastTake()`. Take entries are now per take *and* track, so a latched take that spans a track change undoes one track at a time.
+- New tool: `python3 tools/screenshot.py [scene]` renders screens to `screenshots/` (git-ignored) without LÖVE, by recording `love.draw()` and drawing it with Pillow. Close to, not identical with, the device.
+
 ---
 
 ## A5 · Clock from absolute time + integer ticks 📱

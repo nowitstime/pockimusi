@@ -67,7 +67,7 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | **Pad** 📐 | tone / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — ❓ |
 | **Lead / Arp** 📐 | 8 degrees | note + arp modes (§7.5) | oct −1 | oct +1 | arp rate ×2 |
 
-Grain is retired as an instrument; its textures become **Pad sounds** (§6). Today the chord harp still uses `L1`/`R1` for 7th/9th and sus4/add9 — 🔧 these move to the Track page (§3.3).
+Grain is retired as an instrument; its textures become **Pad sounds** (§6). Chord harp shoulders shift the voicing octave; chord colour is on the Track page (§3.3). ✅
 
 ### 3.2a Drums: the D-pad is two axes ✅
 
@@ -90,7 +90,7 @@ The D-pad modifies every hit while held. It is read as two independent axes so a
 D-pad picks one of 8 chords from the current key: `↑`/neutral = I, `↖` ii, `↗` iii, `←` IV, `→` V, `↓` vi, `↙` ♭VII, `↘` iv (borrowed). ✅
 
 - ❓ Neutral and `↑` both give I today. Option: neutral = *keep the last chord*, which makes releasing the D-pad safe.
-- **Chord colour** (triad, 7th, 9th, sus4, add9) is a **Track page setting row** (§3.4), set once and left. 📐
+- **Chord colour** (triad, 7th, 9th, sus4, add9) is a **Track page setting row** (§3.4), set once and left. ✅ Strings per colour: triad root-3rd-5th-8ve · 7th root-3rd-5th-7th · 9th root-3rd-7th-9th · sus4 root-4th-5th-8ve · add9 root-3rd-5th-9th. The 7th comes from the scale, so V7 is dominant (G7) and vi7 is minor (Am7).
 - ❓ Momentary colour gesture for live variation. Decide after playtesting.
 
 ### 3.4 Track page = sound (hold `SELECT`) ✅ / 📐
@@ -101,14 +101,14 @@ The same layout on every instrument:
 | :-- | :-- |
 | `UP / DOWN` | Move the row cursor |
 | `L1 / R1` | Previous / next value for the selected row (sounds play a preview) |
-| `LEFT / RIGHT` | Previous / next instrument for this slot (§7) — 📐 preview, applied on `SELECT` release |
+| `LEFT / RIGHT` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release ✅ |
 | Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space |
 | Face hold + `UP / DOWN` | Effect amount (10 % steps) |
 | `SELECT` tap (< 0.25 s, no combo) | Next track 1→4 |
 
 **Rows** are the place every per-track option lives, so a new option costs a row, not a button. ✅ today: drums have `KIT, X, Y, A, B` (the kit row swaps all four sounds; a pad row swaps one); other instruments have a single `PATCH` row. The cursor opens on the **last pad you hit**, so "hit the snare, hold SELECT, press R1" swaps the snare.
 
-📐 **Setting rows** are added below the sound rows; `L1/R1` change their value the same way:
+**Setting rows** ✅ are added below the sound rows and drawn as hollow rings (sounds are stars); `L1/R1` change their value, with no sound preview. Built so far: Harp `COLOUR`. Planned:
 
 | Instrument | Sound rows | Setting rows |
 | :-- | :-- | :-- |
@@ -120,7 +120,7 @@ The same layout on every instrument:
 
 Keep each instrument at ≤ 6 rows so the constellation fits without scrolling. Timing settings (grid, swing) stay on the Transport page.
 
-📐 **Safe instrument swap:** `LEFT/RIGHT` only previews the next instrument; it is applied when `SELECT` is released. Applying stashes the old instrument, state and events on the undo stack, so **undo restores them**. Same-class swaps (Bass ↔ Lead, both mono-melodic) keep events, because v2 events store degrees (§8).
+✅ **Safe instrument swap:** `LEFT/RIGHT` only previews the next instrument; it is applied when `SELECT` is released. Applying stashes the old instrument, state and events on the undo stack, so **undo restores them** (one stack for takes and swaps, `L2 + R2 + LEFT`). Stepping back to the current instrument cancels. 📐 Same-class swaps (Bass ↔ Lead, both mono-melodic) keep events, because v2 events store degrees (§8).
 
 ### 3.5 Transport = timing (hold `START`) ✅
 
@@ -222,7 +222,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 - ✅ 8 chords on the D-pad; 4 face buttons pluck chord tones.
 - 📐 **Strum** — the signature gesture. Proposal ❓: `B` strum down, `A` strum up (all chord tones, spread by the `STRUM` row), `Y` low string / root, `X` high string. Decide after playtesting.
-- 📐 Shoulders = voicing octave; both = wide voicing (colour moves to the `COLOUR` row).
+- ✅ Shoulders = voicing octave; both = wide voicing. ✅ Colour on the `COLOUR` row.
 - 📐 Records `chord` events that drive Harmony (§5).
 
 ### 7.3 Bass 🔧 — *next instrument pass*

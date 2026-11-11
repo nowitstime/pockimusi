@@ -655,7 +655,7 @@ function Chrome:drawCenterStage()
     local lOn, rOn = Input.down.L1, Input.down.R1
     local l1Label, r1Label = "L1: -", "R1: +"
     if mode == "TRACK" then
-        l1Label, r1Label = "L1: SOUND <", "R1: SOUND >"
+        l1Label, r1Label = "L1: CHANGE <", "R1: CHANGE >"
     elseif mode == "TRANSPORT" then
         l1Label, r1Label = "L1: SCALE <", "R1: SCALE >"
     elseif mode == "MIX" then
@@ -774,7 +774,7 @@ function Chrome:getControlLabels(def, state, mode)
         flashMap = state.padFlash
     elseif def.id == "harp" then
         dpadLabels = { UP = "I", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
-        local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false)
+        local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         local n = chord.notes
         faceLabels = {
             B = Theory.NOTE_NAMES[(n[1] % 12) + 1],
@@ -805,7 +805,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     if def.id == "drums" then
         self:drawDrumLanes(def, state, track, col)
     elseif def.id == "harp" then
-        local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false)
+        local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         self:setColor(C.TEXT)
         love.graphics.setFont(self.fontHuge)
         local cw = self.fontHuge:getWidth(chord.name)
@@ -1123,6 +1123,13 @@ function Chrome:drawTrackPageView(def, state, track, col)
     local y0 = (n == 1) and 134 or 108
     local nx = 226
 
+    -- Value column starts after the widest label (KIT, X ... COLOUR)
+    local labelW = 0
+    for _, row in ipairs(rows) do
+        labelW = math.max(labelW, self.fontTiny:getWidth(row.label))
+    end
+    local valueX = math.max(282, 250 + labelW + 10)
+
     if n > 1 then
         self:setColor(col, 0.3)
         for yy = y0, y0 + (n - 1) * 26, 4 do
@@ -1133,11 +1140,23 @@ function Chrome:drawTrackPageView(def, state, track, col)
     for i, row in ipairs(rows) do
         local y = y0 + (i - 1) * 26
         local isSel = (i == sel)
+        local isSetting = (row.kind == "setting")
         if isSel then
             self:setColor(col, 0.6)
             self:drawDashedCircle(nx, y, 11, 2, 3)
-            self:drawStarGlint(nx, y, 7, col, 1.0)
+            if isSetting then
+                self:setColor(col)
+                love.graphics.setLineWidth(1.5)
+                love.graphics.circle("line", nx, y, 5)
+                love.graphics.setLineWidth(1)
+            else
+                self:drawStarGlint(nx, y, 7, col, 1.0)
+            end
             self:drawCapsule(240, y - 10, 192, 20, "", col, col, col, self.fontSmall, 0.18)
+        elseif isSetting then
+            -- Settings are hollow rings; sounds are stars
+            self:setColor(C.MUTED, 0.9)
+            love.graphics.circle("line", nx, y, 3.5)
         else
             self:drawStarGlint(nx, y, (i == 1) and 4.5 or 3.2, C.MUTED, 0.9)
         end
@@ -1149,21 +1168,30 @@ function Chrome:drawTrackPageView(def, state, track, col)
         local value = isSel and ("<  " .. row.value .. "  >") or row.value
         love.graphics.setFont(self.fontSmall)
         self:setColor(isSel and C.TEXT or C.MUTED)
-        love.graphics.print(value, 282, y - 7)
+        love.graphics.print(value, valueX, y - 7)
 
         if isSel then
             love.graphics.setFont(self.fontTiny)
             self:setColor(col)
-            local hint = "L1/R1"
+            local hint = (isSetting and row.hint) or "L1/R1"
             love.graphics.print(hint, math_floor(424 - self.fontTiny:getWidth(hint)), y - 6)
         end
     end
 
-    -- Instrument
+    -- Instrument: a previewed swap is highlighted until SELECT is released
     love.graphics.setFont(self.fontTiny)
     self:setColor(C.MUTED)
     love.graphics.print("INSTRUMENT", 212, 232)
-    self:drawCapsule(272, 228, 156, 18, "<  " .. (def.title or def.name) .. "  >", C.DIM, nil, C.MUTED, self.fontTiny)
+    local pending = Modes.trackPage.pending
+    if pending then
+        local pDef = Instruments:getDefinition(pending)
+        self:drawCapsule(272, 228, 156, 18, "<  " .. (pDef.title or pDef.name) .. "  >", col, col, C.BG, self.fontTiny)
+        self:setColor(col)
+        local note = "RELEASE SELECT TO SWAP - UNDO: L2+R2+LEFT"
+        love.graphics.print(note, math_floor(320 - self.fontTiny:getWidth(note) * 0.5), 249)
+    else
+        self:drawCapsule(272, 228, 156, 18, "<  " .. (def.title or def.name) .. "  >", C.DIM, nil, C.MUTED, self.fontTiny)
+    end
 
     -- Effects as moon phases (X tone, Y drive, A echo, B space)
     local names = { tone = "TONE", drive = "DRIVE", echo = "ECHO", space = "SPACE" }
@@ -1325,7 +1353,7 @@ function Chrome:drawFooterStrip(def)
         hintText = "REC (HOLD) | Release L2 to stop punch-in | Quick tap latches"
         hintCol = C.RED
     elseif mode == "TRACK" then
-        hintText = "TRACK SOUND | UP/DN Row | L1/R1 Sound | < > Instrument | Face FX, hold + UP/DN amount"
+        hintText = "TRACK | UP/DN Row | L1/R1 Change | < > Instrument (on release) | Face FX, hold + UP/DN"
         hintCol = C.PINK
     elseif mode == "MIX" then
         hintText = "MIXER | < > Track | UP/DN Volume | B/A/Y/X Mute | L1/R1 Master"

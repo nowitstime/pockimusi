@@ -20,7 +20,7 @@ local Looper = {
     stutterAnchorPhase = 0.0,
     activeTrack = 1,   -- Active track slot (1..4)
     currentTakeId = 0,
-    takeStack = {},    -- Stack of takeIds for Undo Last Take
+    undoStack = {},    -- { kind = "take", takeId, trackSlot } or { kind = "swap", ... }
     tracks = {},
     clickOn = false,   -- metronome click (Transport X)
     toastText = "READY - TAP [SELECT] TO SWITCH TRACKS",
@@ -167,8 +167,9 @@ function Looper:recordEvent(ev)
     ev.instrumentId = ev.instrumentId or track.instrumentId
     ev.takeId = self.currentTakeId
 
-    if #self.takeStack == 0 or self.takeStack[#self.takeStack].takeId ~= self.currentTakeId then
-        table.insert(self.takeStack, { takeId = self.currentTakeId, trackSlot = trackIdx })
+    local top = self.undoStack[#self.undoStack]
+    if not (top and top.kind == "take" and top.takeId == self.currentTakeId and top.trackSlot == trackIdx) then
+        self:pushUndo({ kind = "take", takeId = self.currentTakeId, trackSlot = trackIdx })
     end
 
     local grid = self:getTrackGrid(trackIdx)
@@ -205,24 +206,37 @@ function Looper:recordEvent(ev)
     table.insert(track.events, ev)
 end
 
--- Undo most recent L2 recording take
-function Looper:undoLastTake()
-    for s = #self.takeStack, 1, -1 do
-        local entry = self.takeStack[s]
+function Looper:pushUndo(entry)
+    table.insert(self.undoStack, entry)
+end
+
+-- Undo the most recent take or instrument swap. Takes whose events are all
+-- gone already (erased, cleared) are skipped.
+function Looper:undo()
+    while #self.undoStack > 0 do
+        local entry = table.remove(self.undoStack)
         local track = self.tracks[entry.trackSlot]
-        local removedCount = 0
-        if track then
+        if entry.kind == "swap" and track then
+            track.instrumentId = entry.instrumentId
+            track.name = entry.name
+            track.shortName = entry.shortName
+            track.gridIndex = entry.gridIndex
+            track.state = entry.state
+            track.events = entry.events
+            self:showToast(string.format("UNDO: TRACK %d BACK TO %s (%d EVENTS)", entry.trackSlot, entry.name, #entry.events))
+            return
+        elseif entry.kind == "take" and track then
+            local removed = 0
             for i = #track.events, 1, -1 do
                 if track.events[i].takeId == entry.takeId then
                     table.remove(track.events, i)
-                    removedCount = removedCount + 1
+                    removed = removed + 1
                 end
             end
-        end
-        table.remove(self.takeStack, s)
-        if removedCount > 0 then
-            self:showToast(string.format("UNDO TAKE #%d (%d HITS REMOVED)", entry.takeId, removedCount))
-            return
+            if removed > 0 then
+                self:showToast(string.format("UNDO TAKE #%d (%d HITS REMOVED)", entry.takeId, removed))
+                return
+            end
         end
     end
     self:showToast("NOTHING TO UNDO")

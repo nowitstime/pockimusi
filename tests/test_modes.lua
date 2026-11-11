@@ -128,14 +128,68 @@ return {
         H.release("SELECT"); H.play(0.1)
     end },
 
-    { "Track page: LEFT/RIGHT swap the instrument", function()
+    { "Track page: LEFT/RIGHT preview an instrument; release SELECT applies it", function()
         local _, L = boot()
+        H.tap("L2"); H.tap("B"); H.tap("L2")
         H.hold("SELECT"); H.play(0.3)
         H.tap("RIGHT")
-        H.eq(L.tracks[1].instrumentId, "harp", "RIGHT -> harp")
-        H.tap("LEFT")
-        H.eq(L.tracks[1].instrumentId, "drums", "LEFT -> drums")
+        H.eq(page().pending, "harp", "harp previewed")
+        H.eq(L.tracks[1].instrumentId, "drums", "not swapped yet")
+        H.tap("RIGHT")
+        H.eq(page().pending, "bass", "next preview")
         H.release("SELECT"); H.play(0.1)
+        H.eq(L.tracks[1].instrumentId, "bass", "swapped on release")
+        H.eq(#L.tracks[1].events, 0, "drum events stashed")
+        H.eq(page().pending, nil, "preview cleared")
+        H.eq(L.activeTrack, 1, "release did not change track")
+    end },
+
+    { "Track page: stepping back to the current instrument cancels the swap", function()
+        local _, L = boot()
+        H.hold("SELECT"); H.play(0.3)
+        H.tap("RIGHT"); H.tap("LEFT")
+        H.eq(page().pending, nil, "no preview")
+        H.release("SELECT"); H.play(0.1)
+        H.eq(L.tracks[1].instrumentId, "drums", "still drums")
+        H.eq(#L.undoStack, 0, "nothing to undo")
+    end },
+
+    { "L2 + R2 + LEFT undoes an instrument swap", function()
+        local _, L = boot()
+        H.tap("L2"); H.tap("B"); H.tap("L2")
+        local kit = L.tracks[1].state.kitIndex
+        H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.release("SELECT"); H.play(0.1)
+        H.eq(L.tracks[1].instrumentId, "harp", "swapped")
+        H.hold("L2", "R2"); H.play(0.1); H.tap("LEFT"); H.release("L2", "R2"); H.play(0.1)
+        H.eq(L.tracks[1].instrumentId, "drums", "drums back")
+        H.eq(#L.tracks[1].events, 1, "hit back")
+        H.eq(L.tracks[1].state.kitIndex, kit, "kit kept")
+    end },
+
+    { "Track page: harp COLOUR row changes the chord", function()
+        local _, L = boot()
+        H.tap("SELECT")                                   -- track 2 = harp
+        local st = L.tracks[2].state
+        H.eq(st.currentChord.name, "C", "triad")
+        H.hold("SELECT"); H.play(0.3)
+        H.eq(page().row, 1, "opens on PATCH")
+        H.tap("DOWN")
+        H.eq(page().row, 2, "COLOUR row")
+        H.tap("R1")
+        H.eq(st.colour, "7TH", "R1 -> 7TH")
+        H.release("SELECT"); H.play(0.1)
+        H.eq(st.currentChord.name, "Cmaj7", "chord is maj7")
+        H.eq(st.currentChord.notes[4], 11, "string 4 = major 7th")
+        H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("L1"); H.tap("L1")
+        H.eq(st.colour, "ADD9", "L1 twice wraps back to ADD9")
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "Track page: L1/R1 on a PATCH-only row just shows a toast", function()
+        local _, L = boot()
+        H.tap("SELECT"); H.tap("SELECT")                  -- track 3 = bass
+        H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.release("SELECT"); H.play(0.1)
+        H.eq(L.toastText, "RIBBON BASS: ONE PATCH FOR NOW", "toast")
     end },
 
     { "Track page blocks playing: face buttons don't trigger the instrument", function()

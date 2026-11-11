@@ -12,3 +12,6 @@ log.txt
 Thumbs.db
 .vscode/
 .idea/
+
+# Generated previews (python3 tools/screenshot.py)
+screenshots/
