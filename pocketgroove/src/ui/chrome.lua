@@ -1385,6 +1385,40 @@ end
 -- ============================================================================
 -- REGION 3: THEMATIC CONSTELLATION TAPE DECK (y: 362..474)
 -- ============================================================================
+-- A held note on a tape-deck lane: from x, w pixels long, wrapping from the
+-- lane end (x1) back to its start (x0). `lit` = sounding now, `open` = still
+-- being held while recording.
+function Chrome:drawRibbon(x, w, x0, x1, cy, col, lit, open)
+    local C = Config.COLORS
+    w = math_max(w, 3)
+    local h = 5            -- ribbon height (one sub-row of the lane per button)
+    local segs = { { x, math.min(w, x1 - x) } }
+    if x + w > x1 then
+        table.insert(segs, { x0, x + w - x1 })
+    end
+    for _, sg in ipairs(segs) do
+        local sx, sw = sg[1], math_max(sg[2], 1)
+        self:setColor(col, lit and 0.35 or 0.18)
+        love.graphics.rectangle("fill", sx, cy - h * 0.5, sw, h, 2, 2)
+        self:setColor(col, lit and 1.0 or 0.75)
+        love.graphics.rectangle("fill", sx, cy - 1, sw, 2, 1, 1)
+    end
+    -- Note start
+    self:setColor(lit and C.TEXT or col)
+    love.graphics.circle("fill", x, cy, lit and 2.3 or 1.9)
+    if open then
+        -- Growing end, pulsing
+        local ex = x + w
+        if ex > x1 then ex = x0 + (ex - x1) end
+        local pulse = 0.6 + 0.4 * math.sin(love.timer.getTime() * 10)
+        self:setColor(C.TEXT, pulse)
+        love.graphics.circle("fill", ex, cy, 1.8)
+    end
+end
+
+-- Held notes sit on one sub-row per button, ordered like the button diamond
+Chrome.RIBBON_ROW = { X = -6, Y = -2, A = 2, B = 6 }
+
 function Chrome:drawTapeDeck()
     local C = Config.COLORS
     local activeCol = Config.TRACK_COLORS[Looper.activeTrack]
@@ -1454,17 +1488,21 @@ function Chrome:drawTapeDeck()
         self:drawDiamond(lx, cy, isSel and 2.8 or 1.8, isSel and tColor or C.DIM)
         self:drawDiamond(lx + lw, cy, isSel and 2.8 or 1.8, isSel and tColor or C.DIM)
 
-        -- Recorded Events: Starlight beads & aurora ribbons
+        -- Recorded events: beads for hits, ribbons for held notes
         local col = track.muted and C.DIM or tColor
+        local loopTicks = Looper:getLoopTicks()
+        local laneW = lw - 4
         for _, ev in ipairs(track.events) do
-            local x = lx + Looper:evPhase(ev) * (lw - 4)
-            if ev.duration or ev.dur then
-                local w = math_max(6, (ev.duration or ev.dur) * lw)
-                self:setColor(col, 0.28)
-                love.graphics.rectangle("fill", x, cy - 4.5, w, 9, 3, 3)
-                self:setColor(col, 0.9)
-                love.graphics.rectangle("fill", x, cy - 2.5, w, 5, 2, 2)
-                self:drawDiamond(x + 2, cy, 2.0, C.TEXT)
+            local x = lx + Looper:evPhase(ev) * laneW
+            local len = ev.len or 0
+            if ev.open then
+                -- Being held while recording: grows up to the playhead
+                len = (Looper.tick - ev.tick) % loopTicks
+            end
+            if len > 0 or ev.open then
+                local lit = track.sounding[ev] or ev.open
+                local ry2 = cy + (self.RIBBON_ROW[ev.action] or 0)
+                self:drawRibbon(x, len / loopTicks * laneW, lx, lx + laneW, ry2, col, lit, ev.open)
             else
                 local vel = ev.vel or 0.85
                 if vel >= 0.88 and not track.muted then
