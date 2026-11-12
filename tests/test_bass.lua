@@ -385,4 +385,50 @@ return {
         H.tap("L2")
         H.truthy(track.events[1].bend, "bend on the staccato note")
     end },
+
+    -- ------------------------------------------------------------------
+    -- B6: stage view data
+    -- ------------------------------------------------------------------
+    { "the view follows the live voice: trace samples its pitch, silence is empty", function()
+        local M, _, track = boot()
+        local Bass = M.Instruments:getDefinition("bass")
+        local st = track.state
+        H.eq(Bass:getDisplayVoice(st), nil, "idle: nothing sounding")
+        H.hold("B"); H.play(0.3)
+        local trace = Bass:getTrace(st)
+        H.eq(#trace, Bass.TRACE_SAMPLES, "fixed length")
+        H.near(trace[#trace].semis, 0, "newest sample at C", 0.01)
+        H.truthy(trace[#trace].level > 0, "with a level")
+        H.hold("UP"); H.play(0.5)
+        trace = Bass:getTrace(st)
+        H.near(trace[#trace].semis, 7, "followed the glide to G", 0.05)
+        local mid = trace[#trace - 20].semis
+        H.truthy(mid > 0, "earlier samples show the way up")
+        H.release("B", "UP"); H.play(1.5)
+        trace = Bass:getTrace(st)
+        H.eq(trace[#trace], false, "silent again")
+        H.eq(Bass:getDisplayVoice(st), nil, "nothing to show")
+    end },
+
+    { "the view follows playback when nothing is played live", function()
+        local M, L, track = boot()
+        local Bass = M.Instruments:getDefinition("bass")
+        H.tap("L2"); H.hold("B"); H.play(1.0); H.release("B"); H.play(0.05); H.tap("L2")
+        local seen = false
+        for _ = 1, math.floor(L:getLoopDuration() * 60) do
+            H.play(1 / 60)
+            if Bass:getDisplayVoice(track.state) then seen = true end
+        end
+        H.truthy(seen, "playback voice shown")
+    end },
+
+    { "the oscilloscope follows the voice's real pitch and level", function()
+        local M, _, track = boot()
+        local st = track.state
+        H.hold("B", "R1"); H.play(0.5)
+        H.near(st.oscFreqRatio, 2.0, "an octave up = twice the speed", 0.01)
+        H.truthy(st.oscAmp > 0.5, "loud while held")
+        H.release("B", "R1"); H.play(1.0)
+        H.truthy(st.oscAmp <= 0.1, "settles when silent")
+    end },
 }

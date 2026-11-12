@@ -68,16 +68,16 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] A6 Event format v2 + note-on/note-off playback (Grain = held notes)
 - [x] A7 Sustained voice engine (device listen pending)
 
-## Phase B · Bass pass ← **next up** — working plan in [PHASE_B.md](PHASE_B.md)
+## Phase B · Bass pass ✅ (device look of the new view pending) — details in [PHASE_B.md](PHASE_B.md)
 
 - [x] B1 Held-note handles: end early, record bends incl. the release tail (shared by Bass, Pad, Lead)
 - [x] B2 Bass sounds: `SAW`, `SUB`, `PLUCK` patches + `PATCH` and `GLIDE` rows
 - [x] B3 Held notes: `B` hold, `Y` staccato (one grid step), `X` accent + vibrato; mono (`PLUCK` overlaps)
 - [x] B4 Legato `A`: glide without a new attack, live and on playback
 - [x] B5 Bends: D-pad and shoulders while holding (and in the release tail) glide, record, replay
-- [ ] B6 Stage view (pitch trace, live scope); device check. (Bend marks on the tape deck: done)
+- [x] B6 Stage view (pitch trace, live scope, real face labels) + bend marks on the tape deck (device look pending)
 
-## Phase C · Autosave
+## Phase C · Autosave ← **next up**
 
 - [ ] Serialise session (globals + tracks + settings + FX + events) with `version = 2`
 - [ ] Save on quit and every ~30 s; load on start; ignore or upgrade older versions
@@ -147,4 +147,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B, the Bass pass, is next: step-by-step plan, decisions and open questions in [PHASE_B.md](PHASE_B.md).
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C, autosave, is next.

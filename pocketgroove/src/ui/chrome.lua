@@ -788,7 +788,7 @@ function Chrome:getControlLabels(def, state, mode)
         end
     elseif def.id == "bass" then
         dpadLabels = { DOWN = "1", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
-        faceLabels = { B = "PLUCK", A = "GLIDE", Y = "+OCT", X = "+5TH" }
+        faceLabels = { B = "HOLD", A = "LEGATO", Y = "STAC", X = "ACCENT" }
     elseif def.id == "grain" then
         dpadLabels = { UP = "DENSE", DOWN = "SPARSE", LEFT = "SCAN <", RIGHT = "SCAN >" }
         faceLabels = { B = "PAD", A = "BELL", Y = "CHOIR", X = "DRONE" }
@@ -853,58 +853,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         end
 
     elseif def.id == "bass" then
-        self:setColor(col)
-        love.graphics.setFont(self.fontHuge)
-        local deg = state.activeDegree or 1
-        local s = Theory:getScaleDegreeSemis(deg)
-        local noteName = Theory.NOTE_NAMES[(s % 12) + 1]
-        local nw = self.fontHuge:getWidth(noteName)
-        love.graphics.print(noteName, math_floor(320 - nw * 0.5), 116)
-
-        love.graphics.setFont(self.fontSmall)
-        self:setColor(C.MUTED)
-        local oct = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
-        local sub = string.format("DEGREE %d  -  OCT %s%d", deg, (oct > 0 and "+" or ""), oct)
-        local sw = self.fontSmall:getWidth(sub)
-        love.graphics.print(sub, math_floor(320 - sw * 0.5), 154)
-
-        -- Oscilloscope waveform
-        self:setColor(C.BG)
-        love.graphics.rectangle("fill", 212, 174, 216, 64, 4, 4)
-        self:setColor(C.GRID)
-        love.graphics.rectangle("line", 212, 174, 216, 64, 4, 4)
-
-        local pts = {}
-        local midY = 174 + 32
-        for x = 0, 208, 4 do
-            local normX = x / 208
-            local w = normX * math_pi * 2.0 * 2.5 * state.oscFreqRatio + state.oscPhase
-            local saw = (math_sin(w) + 0.5 * math_sin(w * 2.0) + 0.25 * math_sin(w * 3.0)) * 0.6
-            table.insert(pts, 216 + x)
-            table.insert(pts, midY + saw * 22.0 * state.oscAmp)
-        end
-        self:setColor(col)
-        love.graphics.setLineWidth(1.8)
-        love.graphics.line(pts)
-        love.graphics.setLineWidth(1)
-
-        -- Pitch bend ribbon
-        self:setColor(C.BG)
-        love.graphics.rectangle("fill", 212, 246, 216, 30, 4, 4)
-        self:setColor(C.GRID)
-        love.graphics.rectangle("line", 212, 246, 216, 30, 4, 4)
-
-        self:setColor(col)
-        love.graphics.setLineWidth(2)
-        local ribbonPts = {}
-        for x = 0, 200, 5 do
-            local frac = x / 200.0
-            local bend = math_sin(frac * math_pi) * 8.0 * (Input.down.A and 1.5 or 0.6)
-            table.insert(ribbonPts, 220 + x)
-            table.insert(ribbonPts, 261 - bend)
-        end
-        love.graphics.line(ribbonPts)
-        love.graphics.setLineWidth(1)
+        self:drawBassView(def, state, track, col)
 
     elseif def.id == "grain" then
         self:setColor(C.BG)
@@ -1418,6 +1367,99 @@ end
 
 -- Held notes sit on one sub-row per button, ordered like the button diamond
 Chrome.RIBBON_ROW = { X = -6, Y = -2, A = 2, B = 6 }
+
+-- ============================================================================
+-- BASS VIEW: sounding note, live oscilloscope, pitch trace of the last 1.2 s
+-- ============================================================================
+function Chrome:drawBassView(def, state, track, col)
+    local C = Config.COLORS
+    local voice = def:getDisplayVoice(state)
+
+    -- Note name: what's sounding now (mid-glide too), else the D-pad's degree
+    local semis = voice and math_floor(voice.currentSemis + 0.5) or Theory:getScaleDegreeSemis(state.activeDegree or 1)
+    local noteName = Theory.NOTE_NAMES[(semis % 12) + 1]
+    self:setColor(voice and C.TEXT or col)
+    love.graphics.setFont(self.fontHuge)
+    local nw = self.fontHuge:getWidth(noteName)
+    love.graphics.print(noteName, math_floor(320 - nw * 0.5), 112)
+
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(C.MUTED)
+    local oct = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
+    local sub = string.format("DEG %d  -  OCT %s%d  -  %s", state.activeDegree or 1, (oct > 0 and "+" or ""), oct,
+        voice and (state.lastArticulation or "HOLD") or "READY")
+    local sw = self.fontSmall:getWidth(sub)
+    love.graphics.print(sub, math_floor(320 - sw * 0.5), 148)
+
+    -- Patch and glide
+    local patch = def:getPatch(state)
+    self:drawCapsuleRow(320, 166, 16, {
+        { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
+        { "GLIDE " .. (state.glide or "MEDIUM"), C.GRID, C.PANEL_HI, C.MUTED },
+    })
+
+    -- Oscilloscope: the live voice's real pitch and level
+    local ox, oy, ow, oh = 212, 188, 216, 50
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", ox, oy, ow, oh, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", ox, oy, ow, oh, 4, 4)
+    local pts = {}
+    local midY = oy + oh * 0.5
+    for x = 0, ow - 8, 4 do
+        local w = (x / (ow - 8)) * math_pi * 2.0 * 2.5 * state.oscFreqRatio + state.oscPhase
+        local wave = (math_sin(w) + 0.5 * math_sin(w * 2.0) + 0.25 * math_sin(w * 3.0)) * 0.6
+        table.insert(pts, ox + 4 + x)
+        table.insert(pts, midY + wave * (oh * 0.36) * state.oscAmp)
+    end
+    self:setColor(col, voice and 1.0 or 0.4)
+    love.graphics.setLineWidth(1.6)
+    love.graphics.line(pts)
+    love.graphics.setLineWidth(1)
+
+    -- Pitch trace: last 1.2 s, newest on the right; brighter = louder
+    local tx, ty, tw, th = 212, 244, 216, 34
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", tx, ty, tw, th, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", tx, ty, tw, th, 4, 4)
+    local trace = def:getTrace(state)
+    local lo, hi = nil, nil
+    for _, smp in ipairs(trace) do
+        if smp then
+            lo = lo and math_min(lo, smp.semis) or smp.semis
+            hi = hi and math_max(hi, smp.semis) or smp.semis
+        end
+    end
+    if lo then
+        -- at least an octave tall, centred on what was played
+        local mid = (lo + hi) * 0.5
+        local span = math_max(12, hi - lo + 4)
+        lo, hi = mid - span * 0.5, mid + span * 0.5
+        local n = #trace
+        local function px(i) return tx + 4 + (i - 1) / (n - 1) * (tw - 8) end
+        local function py(semis) return ty + th - 4 - (semis - lo) / (hi - lo) * (th - 8) end
+        love.graphics.setLineWidth(2)
+        for i = 2, n do
+            local a, b = trace[i - 1], trace[i]
+            if a and b then
+                self:setColor(col, 0.35 + 0.65 * math_min(1.0, b.level * 1.6))
+                love.graphics.line(px(i - 1), py(a.semis), px(i), py(b.semis))
+            end
+        end
+        love.graphics.setLineWidth(1)
+        local last = trace[n]
+        if last then
+            self:setColor(C.TEXT)
+            love.graphics.circle("fill", px(n), py(last.semis), 2.2)
+        end
+    else
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(C.DIM)
+        local hint = "PITCH TRACE"
+        love.graphics.print(hint, math_floor(320 - self.fontTiny:getWidth(hint) * 0.5), ty + 12)
+    end
+end
 
 function Chrome:drawTapeDeck()
     local C = Config.COLORS

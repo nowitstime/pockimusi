@@ -34,6 +34,10 @@ SCENES = {
     "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("R1");'
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
+    "bass-idle": 'H.tap("SELECT"); H.tap("SELECT"); H.play(0.2)',
+    "bass-glide": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("B"); H.play(0.3); H.hold("UP"); H.play(0.35);'
+                  ' H.release("UP"); H.hold("RIGHT"); H.play(0.3); H.hold("R1"); H.play(0.25)',
+    "bass-legato": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("B"); H.play(0.4); H.hold("UP", "A"); H.play(0.5)',
     "bass-line": 'H.tap("SELECT"); H.tap("SELECT"); H.tap("L2"); H.play(0.2); H.hold("B"); H.play(0.5);'
                  ' H.hold("UP"); H.play(0.4); H.release("UP"); H.hold("RIGHT"); H.play(0.3); H.release("RIGHT", "B");'
                  ' H.play(0.4); H.hold("Y"); H.play(0.05); H.release("Y"); H.play(0.3); H.hold("X", "R1"); H.play(0.6);'
