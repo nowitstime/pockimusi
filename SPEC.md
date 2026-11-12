@@ -147,6 +147,7 @@ BPM, key, scale and bars are global. Grid and swing belong to the active track a
 | `L2 + R2` + `B/A/Y/X` | Erase that pad/action on the active track |
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
+| `L2 + R2 + SELECT` (hold ~1 s) | 📐 Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
