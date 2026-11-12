@@ -324,10 +324,12 @@ Event = {
 
 ---
 
-## 10. Persistence 📐
+## 10. Persistence 📐 (plan: [PHASE_C.md](PHASE_C.md))
 
-- **Autosave** on quit and every ~30 s: BPM, key, scale, bars, click, and each track's instrument, sounds, settings, FX, swing, grid, mute, level and events. Versioned file via `love.filesystem`; loaded on start.
-- Later: named **patterns** (A–H) and a simple chain = "song". ❓ Exact definition.
+- **Autosave** every 10 s when something changed, and on quit / focus loss: tempo, key, scale, bars, click, master volume, active track, and each track's instrument, settings, grid, swing, volume, mute, effects and events. Not saved: undo history, record latch, playhead.
+- Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-table text (`format = 1`, events v2), read back in an empty sandbox; unreadable or newer files are ignored and the game still boots.
+- **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
+- Later: named **patterns** (A–H) and a simple chain = "song" (the format leaves room). ❓ Exact definition.
 - Later ❓: export the loop to `.wav`.
 
 ---
