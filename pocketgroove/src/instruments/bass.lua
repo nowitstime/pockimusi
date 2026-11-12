@@ -5,6 +5,7 @@
 local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
+local Looper = require("src.looper")
 
 local math_max   = math.max
 
@@ -13,8 +14,14 @@ local Bass = {
     name = "RIBBON BASS",
     shortName = "BASS",
     title = "RIBBON BASS & LEAD",
-    patchName = "SUB RIBBON",
     defaultGridIndex = 3, -- 1/16
+
+    -- Track page PATCH row: synth patches (src/synth/synths_bank.lua)
+    PATCHES = { "bass_saw", "bass_sub", "bass_pluck" },
+    -- Track page GLIDE row: how fast legato and bends reach the new pitch
+    -- (fraction of the remaining distance covered per second)
+    GLIDES = { "FAST", "MEDIUM", "SLOW" },
+    GLIDE_RATES = { FAST = 40.0, MEDIUM = 18.0, SLOW = 8.0 },
     COMPASS_DEGREE_MAP = {
         DOWN       = 1,
         DOWN_LEFT  = 2,
@@ -37,7 +44,55 @@ function Bass:newState()
         oscAmp = 0.08,
         oscFreqRatio = 1.0,
         lastArticulation = "PLUCK",
+        patch = "bass_saw",        -- Track page PATCH row
+        glide = "MEDIUM",          -- Track page GLIDE row
     }
+end
+
+-- ---------------------------------------------------------------------------
+-- Track page rows: PATCH (sound) and GLIDE (setting)
+-- ---------------------------------------------------------------------------
+local function indexOf(list, value)
+    for i, v in ipairs(list) do
+        if v == value then return i end
+    end
+    return 1
+end
+
+function Bass:getPatch(state)
+    return Synth.patches[state.patch] or Synth.patches[self.PATCHES[1]]
+end
+
+function Bass:getGlideRate(state)
+    return self.GLIDE_RATES[state.glide] or self.GLIDE_RATES.MEDIUM
+end
+
+function Bass:getSoundRows(state)
+    local patch = self:getPatch(state)
+    return {
+        { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
+          hint = string.format("%d/%d", indexOf(self.PATCHES, state.patch), #self.PATCHES) },
+        { key = "GLIDE", label = "GLIDE", value = state.glide, kind = "setting",
+          hint = string.format("%d/%d", indexOf(self.GLIDES, state.glide), #self.GLIDES) },
+    }
+end
+
+function Bass:cycleRowSound(state, rowIdx, delta)
+    if rowIdx ~= 1 then return end
+    local n = #self.PATCHES
+    state.patch = self.PATCHES[((indexOf(self.PATCHES, state.patch) - 1 + delta) % n) + 1]
+    local patch = self:getPatch(state)
+    if patch then
+        Synth:trigger(patch.attack, Theory:getRootSemis(), 0.85, 0.7)   -- preview
+        Looper:showToast("BASS PATCH: " .. patch.label)
+    end
+end
+
+function Bass:cycleSetting(state, key, delta)
+    if key ~= "GLIDE" then return end
+    local n = #self.GLIDES
+    state.glide = self.GLIDES[((indexOf(self.GLIDES, state.glide) - 1 + delta) % n) + 1]
+    Looper:showToast("BASS GLIDE: " .. state.glide)
 end
 
 function Bass:updateVisuals(dt, state)
@@ -94,7 +149,8 @@ end
 
 function Bass:noteOn(ev, state, track, isPlayback)
     local semis = ev.semis or 0
-    local voice = Synth:trigger("bass", semis, ev.vel or 0.85, ev.decay or 1.0, ev.glideFrom, track.volume, track)
+    local patch = self:getPatch(state)
+    local voice = Synth:trigger(patch and patch.attack or "bass", semis, ev.vel or 0.85, ev.decay or 1.0, ev.glideFrom, track.volume, track)
     if voice and ev.action == "X" then
         voice.vibrato = true
     end

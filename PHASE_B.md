@@ -74,6 +74,8 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 
 **Tests:** rows list `PATCH` and `GLIDE`; cycling changes `state.patch` / `state.glide`; each patch loop is seamless and in tune (reuses the A7 seam check).
 
+**Status:** ✅ done (132 tests, new `tests/test_bass.lua`). Patches `bass_saw` (today's sound; attack = the `bass` one-shot), `bass_sub` and `bass_pluck` (new attack buffers + loops; `PLUCK` has `overlap = true`, low sustain and a 0.45 s ring). `state.patch` / `state.glide` per track (kept through swap + undo). `PATCH` previews the attack on change; `GLIDE` is a setting row (FAST 40 / MEDIUM 18 / SLOW 8 per second, used from B4). Until B3, the bass's one-shot notes already play the chosen patch's attack, so the row is audible now.
+
 ---
 
 ## B3 · Held notes: hold, staccato, accent, mono

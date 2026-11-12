@@ -75,7 +75,7 @@ return {
             H.truthy(S.pools[patch.attack] ~= nil, id .. " has its attack pool")
         end
         table.sort(names)
-        H.eq(table.concat(names, " "), "bass grain_bell grain_choir grain_drone grain_pad", "patches")
+        H.eq(table.concat(names, " "), "bass_pluck bass_saw bass_sub grain_bell grain_choir grain_drone grain_pad", "patches")
         H.truthy(S.bootTimes and S.bootTimes.sustain >= 0, "boot time measured")
     end },
 

@@ -34,6 +34,7 @@ SCENES = {
     "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("R1");'
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
+    "track-bass": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.tap("R1"); H.tap("DOWN")',
     "grain-hold": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("B", "RIGHT"); H.play(0.8)',
     "grain-recording": 'for _ = 1, 3 do H.tap("SELECT") end; H.play(1.0); H.tap("L2"); H.hold("B"); H.play(1.0)',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'

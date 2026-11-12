@@ -16,6 +16,7 @@ local FILES = {
     "test_modes",
     "test_notes",
     "test_voices",
+    "test_bass",
     "test_smoke",
 }
 
