@@ -229,7 +229,7 @@ No `trackSlot`, `instrumentId`, `phase`, `velocity`, `pitchSemis` or `decayMod` 
 | `bass` | `bass` one-shot | saw (9 harmonics) + square sub, fundamental C2 | 0.55 / 0.18 s / 0.10 s |
 | `grain_pad`, `grain_bell`, `grain_choir`, `grain_drone` | the Grain one-shots | harmonic re-voicings, fundamental C3 | 0.6 / 0.12 s / 0.35 s |
 
-The loop versions leave out the one-shots' detune, noise and inharmonic FM, which can't loop seamlessly in a short buffer. Pad (Phase F) can add movement back (chorus between two loop sources, brightness crossfade). The harp stays a pluck (no loop).
+The loop versions leave out the one-shots' detune, noise and inharmonic FM, which can't loop seamlessly in a short buffer. Pad (Phase E) can add movement back (chorus between two loop sources, brightness crossfade). The harp stays a pluck (no loop).
 
 **Voices** (`src/synth/voice.lua`, installed into `Synth`):
 
