@@ -47,10 +47,10 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | **B** | **Bass pass** | Hardest test of v2: held notes, glide/bend, degrees. Proves the engine |
 | **C** | **Autosave** | Format is now stable; stop losing jams |
 | **D** | **Chord Harp pass + Harmony (chord-follow)** | Bass already stores degrees, so follow just switches on |
-| **E** | **Drums pass 2** — Variation, chance, per-pad tune/level | Pass 1 is done; add the randomness on v2 events |
-| **F** | **Pad** (replaces Grain) | Reuses sustained voices + Harmony; Grain textures become patches |
-| **G** | **Lead / Arp** | Same class as Bass; arp needs the clock-locked scheduling from A |
-| **H** | **Mix & FX finish** — master low-pass, meters, count-in, takes per pass | Most effects already exist |
+| **E** | **Pad** (replaces Grain) | Reuses sustained voices + Harmony; Grain textures become patches |
+| **F** | **Lead / Arp** | Same class as Bass; arp needs the clock-locked scheduling from A |
+| **G** | **Mix & FX finish** — master low-pass, meters, count-in, takes per pass | Most effects already exist |
+| **H** | **Drums pass 2** — Variation, chance, per-pad tune/level | Pass 1 is done and plays fine; randomness and per-pad tune/level land once the mix tools (meters) exist |
 | **I** | **Tape deck v2 & visual polish** | Ribbons/bends/chord lane need v2 data; final look across all stages |
 | **J** | **Patterns / song, `.wav` export, sample loading** | Later, once the jam loop is great |
 
@@ -94,15 +94,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] Stage view in template (keep the harp character)
 - [ ] Device check
 
-## Phase E · Drums pass 2
-
-- [ ] Already on v2 from A5; check flam/ratchet/choke/repeat still behave
-- [ ] `VARIATION` row: Off / Light / Wild (velocity jitter → timing nudge + fills)
-- [ ] Chance hits ❓ gesture (proposal: ghost hit while Variation ≠ Off)
-- [ ] Per-pad tune and level ❓ where
-- [ ] Device check
-
-## Phase F · Pad (replaces Grain)
+## Phase E · Pad (replaces Grain)
 
 - [ ] Grain textures → Pad patches (warm pad, glass bell, choir, drone)
 - [ ] Holds the current chord; `B` full, `A` open, `Y` high, `X` swell
@@ -112,7 +104,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] Stage view in template
 - [ ] Device check
 
-## Phase G · Lead / Arp
+## Phase F · Lead / Arp
 
 - [ ] D-pad degree; `B` note, `A` arp up, `Y` arp down, `X` up-down
 - [ ] Arp locked to the clock and swing; rate 1/8, 1/16, 1/8T; `L1 + R1` = rate ×2
@@ -122,12 +114,20 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] ❓ Arp latch
 - [ ] Device check
 
-## Phase H · Mix & FX finish
+## Phase G · Mix & FX finish
 
 - [ ] Real low-pass for master `R2 + ←` (reuse the tone filter)
 - [ ] Level meters in the Mix page and tape deck
 - [ ] Count-in ❓ control
 - [ ] Record takes split per loop pass; ❓ replace vs overdub
+
+## Phase H · Drums pass 2
+
+- [ ] Already on v2 from A5; check flam/ratchet/choke/repeat still behave
+- [ ] `VARIATION` row: Off / Light / Wild (velocity jitter → timing nudge + fills)
+- [ ] Chance hits ❓ gesture (proposal: ghost hit while Variation ≠ Off)
+- [ ] Per-pad tune and level ❓ where
+- [ ] Device check
 
 ## Phase I · Tape deck v2 & visual polish
 

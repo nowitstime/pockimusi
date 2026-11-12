@@ -169,7 +169,7 @@ function SynthsBank.buildSustain(Synth)
     Synth:definePatch("bass_pluck", { label = "PLUCK", attack = "bass_pluck", loop = "bass_pluck_loop", tune = pluckTune,
                                       sustain = 0.25, xfade = 0.10, release = 0.45, overlap = true })
 
-    -- Grain textures as sustained patches (become Pad sounds in Phase F).
+    -- Grain textures as sustained patches (become Pad sounds in Phase E).
     -- Fundamental C3 (130.81 Hz); the one-shots' "f" (C4) is harmonic 2.
     local textures = {
         pad = function(a)       -- warm: octave-down sub, fundamental, fifth, octave
