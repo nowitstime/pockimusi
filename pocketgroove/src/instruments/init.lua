@@ -183,10 +183,13 @@ function Handle:bend(fields)
     end
 end
 
--- Held note from a live press; returns its handle
-function Instruments:holdNote(track, ev)
+-- Held note from a live press; returns its handle.
+-- opts.fixedLen = ticks: the note lasts exactly that long whatever the button
+-- does (staccato); it still ends early if a page takes the controls.
+function Instruments:holdNote(track, ev, opts)
     defOf(self, track):noteOn(ev, track.state, track, false)
-    local h = setmetatable({ ev = ev, track = track, held = true, elapsed = 0.0, lastTick = Looper.tick }, Handle)
+    local h = setmetatable({ ev = ev, track = track, held = true, elapsed = 0.0, lastTick = Looper.tick,
+                             ageSec = 0.0, fixedLen = opts and opts.fixedLen or nil }, Handle)
     if Input:isRecording() then
         local rec = copyEvent(ev)
         rec.open = true                    -- not played back until released
@@ -201,7 +204,8 @@ function Instruments:releaseNote(track, h)
     if def.noteOff then def:noteOff(h.ev, track.state, track, false) end
     if h.rec then
         local loop = Looper:getLoopTicks()
-        h.rec.len = math.max(1, math.min(loop - 1, math.floor(h:advance() + 0.5)))
+        local len = h.fixedLen or math.floor(h:advance() + 0.5)
+        h.rec.len = math.max(1, math.min(loop - 1, len))
         h.rec.open = nil
     end
 end
@@ -255,7 +259,7 @@ function Instruments:update(dt, controlsBlocked)
     if not controlsBlocked and def.updateInput then
         def:updateInput(dt, state, track,
             function(ev) self:playNote(track, ev) end,
-            function(ev) return self:holdNote(track, ev) end)
+            function(ev, opts) return self:holdNote(track, ev, opts) end)
     end
 
     -- Held notes end when their button goes up, a page takes the controls,
@@ -265,7 +269,15 @@ function Instruments:update(dt, controlsBlocked)
         for i = #list, 1, -1 do
             local h = list[i]
             h:advance()
-            if controlsBlocked or s ~= Looper.activeTrack or not Input.down[h.ev.action] then
+            h.ageSec = h.ageSec + dt
+            local done
+            if h.fixedLen then
+                -- fixed length: by ticks, or by time when the clock is paused
+                done = h.elapsed >= h.fixedLen or h.ageSec >= h.fixedLen / Looper:getTicksPerSecond()
+            else
+                done = not Input.down[h.ev.action]
+            end
+            if done or controlsBlocked or s ~= Looper.activeTrack then
                 h:release()
             end
         end

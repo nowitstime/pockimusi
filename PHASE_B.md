@@ -88,6 +88,8 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 
 **Tests:** a held `B` records one event with the held length and sustains on playback for that length; `Y` records one grid step whatever the hold; `PLUCK` notes overlap; pressing `X` while holding `B` closes `B` at that tick; mute/clear during a playing note stops it; v2 fields (`degree`, `octave`, `semis`) are stored.
 
+**Status:** ✅ done. Bass notes are held voices (`Synth:noteOn` with the track's patch); `Y` uses `hold(ev, { fixedLen = grid step })`, which the router releases by length instead of by button. Mono patches end the held note on a new press and set the old note's recorded `len` to end exactly at the new note's snapped start (no gap or overlap on playback). A note counts as held only while its button is down (the router releases it a moment later in the same frame), so letting go and pressing in one frame is not legato.
+
 ---
 
 ## B4 · Legato (`A`)
@@ -97,6 +99,8 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 - **Playback:** when an `A` note starts and the track's previous bass voice is still sounding or only just released (≤ 30 ms), it takes that voice over the same way; otherwise it starts a voice with `glideFrom`. This keeps recorded slides smooth even though the old note's note-off and the new note's note-on land on the same tick.
 
 **Tests:** live legato reuses the voice (no attack trigger) and glides; playback legato reuses the previous voice; without a previous note it glides from `glideFrom`.
+
+**Status:** ✅ done. Live legato marks the event `legato = true` (plus `glideFrom`, `glideFromDegree`, `glideFromOctave`); on playback only those notes take over the previous voice (sounding, or released ≤ 50 ms ago). A plain `A` with nothing held glides up from the last note with its own attack, live and on playback.
 
 ---
 
@@ -108,6 +112,10 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 - Playback: `updateVoices` applies `Instruments:bendAt` to each sounding playback note, so the line replays with the same moves at the same points.
 
 **Tests:** a hold with two D-pad moves records two keyframes with increasing `dt` and the right degrees; playback reaches each bent pitch at the right time; octave changes are keyframes too.
+
+**Status:** ✅ done. Pitch changes go to the newest held note, or the newest note's fading tail. In the tail only a D-pad direction moves the note: neutral, or letting go of a shoulder, keeps the pitch (otherwise releasing everything together swooped the tail down to the root). Playback applies keyframes through the release tail. Pulled forward from B6: glide marks on tape-deck ribbons (tick above = up, below = down).
+
+**Tests for B3–B5:** 18 in `tests/test_bass.lua` (150 total). Removing the held-button check, the tail neutral rule, the end alignment, the legato flag or tail bends each fails its tests.
 
 ---
 

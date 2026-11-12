@@ -318,8 +318,9 @@ return {
         H.eq(b.degree, 5, "bass degree")
         H.eq(b.octave, 0, "bass octave")
         H.eq(b.semis, 7, "bass pitch (G)")
+        H.truthy(b.len > 0, "bass notes are held notes (Phase B)")
         for _, ev in ipairs({ d, h, b }) do
-            H.eq(ev.len, 0, "one-shot")
+            if ev ~= b then H.eq(ev.len, 0, "one-shot") end
             for _, old in ipairs({ "trackSlot", "instrumentId", "velocity", "pitchSemis", "decayMod", "phase" }) do
                 H.eq(ev[old], nil, "no old field " .. old)
             end

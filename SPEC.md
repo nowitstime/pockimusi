@@ -228,9 +228,9 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 ### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
 
 - ✅ D-pad = scale degrees 1–8 (neutral = 1); `L1/R1` = octave.
-- 📐 **Monophonic, held notes:** a note sounds while its button is held and releases on button-up (§9.2); a new press ends the previous note.
-- 📐 Face buttons = articulations only: `B` hold, `A` legato (glides from the held or last note without a new attack), `Y` staccato (short, fixed), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
-- 📐 Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed.
+- ✅ **Held notes:** a note sounds while its button is held and releases on button-up (§9.2). `SAW`/`SUB` are mono (a new press ends the previous note, exactly at the new note's start); `PLUCK` notes overlap.
+- ✅ Face buttons = articulations only: `B` hold, `A` legato (glides from the held note without a new attack, or from the last note), `Y` staccato (one step of the track's grid), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
+- ✅ Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed. After letting go, the fading tail keeps following D-pad directions (not neutral), also recorded. Glide points show as ticks on the tape-deck ribbon.
 - ✅ Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`; `PLUCK` notes overlap and ring), `GLIDE` (fast / medium / slow). 📐 `FOLLOW` comes with chord-follow (§5, Phase D).
 
 ### 7.4 Pad 📐 (replaces Grain)

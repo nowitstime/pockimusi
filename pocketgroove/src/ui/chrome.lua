@@ -1503,6 +1503,25 @@ function Chrome:drawTapeDeck()
                 local lit = track.sounding[ev] or ev.open
                 local ry2 = cy + (self.RIBBON_ROW[ev.action] or 0)
                 self:drawRibbon(x, len / loopTicks * laneW, lx, lx + laneW, ry2, col, lit, ev.open)
+                -- Glide points: a tick above the ribbon for a glide up, below for down
+                -- (tail glides land past the ribbon's end)
+                if ev.bend then
+                    local prevSemis = ev.semis or 0
+                    for _, kf in ipairs(ev.bend) do
+                        local bx = x + kf.dt / loopTicks * laneW
+                        if bx > lx + laneW then bx = bx - laneW end
+                        local up = (kf.semis or prevSemis) >= prevSemis
+                        prevSemis = kf.semis or prevSemis
+                        self:setColor(lit and C.TEXT or col)
+                        love.graphics.setLineWidth(1.5)
+                        if up then
+                            love.graphics.line(bx, ry2 - 1, bx, ry2 - 5)
+                        else
+                            love.graphics.line(bx, ry2 + 1, bx, ry2 + 5)
+                        end
+                        love.graphics.setLineWidth(1)
+                    end
+                end
             else
                 local vel = ev.vel or 0.85
                 if vel >= 0.88 and not track.muted then
