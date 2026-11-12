@@ -130,16 +130,25 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 - Screenshot scenes for each articulation and a recorded bent line.
 - **Device check:** feel of hold/legato/staccato, glide speeds, the three patches, CPU/frame rate with several bass notes and track effects on, and the `log.txt` boot time.
 
+
+**Status:** ✅ built (153 tests); ⬜ device look and feel.
+
+- `Chrome:drawBassView`: the sounding note's name (mid-glide too; the D-pad's degree in the track colour when idle), `DEG · OCT · articulation` (or `READY`), patch and glide capsules, oscilloscope, pitch trace.
+- `Bass:sampleTrace` (every frame, from `updateVoices`) records the display voice's pitch and level into a 72-sample ring (1.2 s); `Bass:getDisplayVoice` = newest live note while it sounds, else the newest playback note. The oscilloscope's speed and height come from the same voice.
+- The trace scales to at least an octave around what was played; brighter = louder; a dot marks the newest sample; "PITCH TRACE" when empty.
+- Face labels fixed: `HOLD`, `LEGATO`, `STAC`, `ACCENT` (they still showed the pre-B3 `PLUCK / GLIDE / +OCT / +5TH`).
+- Glide marks on tape-deck ribbons were done in B5.
+- Screenshot scenes: `bass-idle`, `bass-glide`, `bass-legato`, `bass-line`, `track-bass`.
 ---
 
 ## Exit checklist for Phase B
 
-- [ ] `python3 tests/run.py` green
-- [ ] Held bass notes sustain exactly as long as held, live and on playback
-- [ ] Legato glides without a new attack, live and on playback
-- [ ] D-pad / shoulder bends glide live, record, and replay in time
-- [ ] Three patches and three glide speeds selectable on the Track page
-- [ ] Bass notes and bends visible on the tape deck
+- [x] `python3 tests/run.py` green (153)
+- [x] Held bass notes sustain exactly as long as held, live and on playback (tested on device)
+- [x] Legato glides without a new attack, live and on playback (tested on device)
+- [x] D-pad / shoulder bends glide live, record, and replay in time (tested on device)
+- [x] Three patches and three glide speeds selectable on the Track page
+- [x] Bass notes and bends visible on the tape deck
 - [ ] Feels right on the RG35XX; frame rate and boot time noted
 
 ## Settled questions

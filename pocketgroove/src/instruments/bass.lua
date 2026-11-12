@@ -63,6 +63,9 @@ function Bass:newState()
         -- Playback
         playing = {},              -- [recorded ev] = { voice, elapsed, lastTick, semis }
         lastPlay = nil,            -- newest playback entry (legato takes its voice over)
+        -- Stage view: the sounding voice's pitch and level, one sample per frame
+        trace = {},                -- ring of { semis, level, released } or false (silent)
+        traceHead = 0,
     }
 end
 -- ---------------------------------------------------------------------------
@@ -301,9 +304,50 @@ function Bass:bendTo(ev, fields, state, track)
     end
 end
 
+Bass.TRACE_SAMPLES = 72            -- 1.2 s at 60 fps
+
+-- The voice the stage view follows: the newest live note while it sounds,
+-- otherwise the newest playback note
+function Bass:getDisplayVoice(state)
+    local h = state.handles[#state.handles]
+    local v = h and state.voices[h.ev]
+    if v and v.isSounding and v:isSounding() then return v, h.ev end
+    local p = state.lastPlay
+    if p and p.voice.isSounding and p.voice:isSounding() then return p.voice end
+    return nil
+end
+
+-- Pitch trace samples, oldest first (false = silent)
+function Bass:getTrace(state)
+    local out, n = {}, self.TRACE_SAMPLES
+    for i = 1, n do
+        local idx = ((state.traceHead + i - 1) % n) + 1
+        local v = state.trace[idx]
+        if v == nil then v = false end
+        out[i] = v
+    end
+    return out
+end
+
+function Bass:sampleTrace(state)
+    local v = self:getDisplayVoice(state)
+    local n = self.TRACE_SAMPLES
+    state.traceHead = (state.traceHead % n) + 1
+    if v and v.envelope then
+        local level = v:envelope() * v.vel
+        state.trace[state.traceHead] = { semis = v.currentSemis, level = level, released = v.releasedAt ~= nil }
+        -- the oscilloscope follows the real voice
+        state.oscFreqRatio = 2.0 ^ (v.currentSemis / 12.0)
+        state.oscAmp = math_max(0.08, math.min(1.0, level * 1.6))
+    else
+        state.trace[state.traceHead] = false
+    end
+end
+
 -- Playback: apply recorded bends (including the release tail); drop notes
 -- that have gone silent
 function Bass:updateVoices(dt, state, track)
+    self:sampleTrace(state)
     local loop = Looper:getLoopTicks()
     for ev, p in pairs(state.playing) do
         local v = p.voice
