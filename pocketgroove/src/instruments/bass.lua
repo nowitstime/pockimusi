@@ -9,6 +9,17 @@ local Looper = require("src.looper")
 
 local math_max   = math.max
 
+-- The latest bend keyframe at `elapsed` ticks into a note (same rule as
+-- Instruments:bendAt; local to avoid a circular require)
+local function Instruments_bendAt(ev, elapsed)
+    local bend, found = ev.bend, nil
+    if not bend then return nil end
+    for i = 1, #bend do
+        if bend[i].dt <= elapsed then found = bend[i] else break end
+    end
+    return found
+end
+
 local Bass = {
     id = "bass",
     name = "RIBBON BASS",
@@ -39,16 +50,21 @@ function Bass:newState()
     return {
         activeDegree = 1,
         lastSemis = 0,
-        sustainedVoice = nil,
         oscPhase = 0.0,
         oscAmp = 0.08,
         oscFreqRatio = 1.0,
-        lastArticulation = "PLUCK",
+        lastArticulation = "HOLD",
         patch = "bass_saw",        -- Track page PATCH row
         glide = "MEDIUM",          -- Track page GLIDE row
+
+        -- Live playing
+        voices = {},               -- [live ev] = voice
+        handles = {},              -- live held-note handles, newest last (kept while their tail sounds)
+        -- Playback
+        playing = {},              -- [recorded ev] = { voice, elapsed, lastTick, semis }
+        lastPlay = nil,            -- newest playback entry (legato takes its voice over)
     }
 end
-
 -- ---------------------------------------------------------------------------
 -- Track page rows: PATCH (sound) and GLIDE (setting)
 -- ---------------------------------------------------------------------------
@@ -100,66 +116,214 @@ function Bass:updateVisuals(dt, state)
     state.oscPhase = state.oscPhase + dt * 18.0 * state.oscFreqRatio
 end
 
-function Bass:updateInput(dt, state, track, emitEvent)
-    local dirKey = Input:get8WayDirection()
-    local deg = self.COMPASS_DEGREE_MAP[dirKey] or 1
+-- ---------------------------------------------------------------------------
+-- Live input
+--   B hold · A legato · Y staccato (one grid step) · X accent + vibrato
+--   D-pad = degree, L1/R1 = octave. While a note is held, or still fading
+--   after release, pitch changes glide and are recorded as bends.
+-- ---------------------------------------------------------------------------
+local ARTICULATION = { B = "HOLD", A = "LEGATO", Y = "STACCATO", X = "ACCENT" }
+
+-- Held right now? The handle is released a moment after its button goes up
+-- (after this instrument has read the input), so check the button too.
+-- Staccato notes (fixed length) don't depend on the button.
+local function physicallyHeld(h)
+    return h:isHeld() and (h.fixedLen ~= nil or Input.down[h.ev.action])
+end
+
+-- The note that pitch changes go to: the newest held note, or the newest
+-- note's fading tail
+local function bendTarget(state)
+    local h = state.handles[#state.handles]
+    if not h then return nil end
+    local v = state.voices[h.ev]
+    if h:isHeld() or (v and v:isSounding()) then return h end
+    return nil
+end
+
+function Bass:updateInput(dt, state, track, play, hold)
+    local deg = self.COMPASS_DEGREE_MAP[Input:get8WayDirection()] or 1
     state.activeDegree = deg
+    local octave = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
+    local semis = Theory:getScaleDegreeSemis(deg) + octave * 12
 
-    local octShift = 0
-    if Input.down.L1 then octShift = octShift - 12 end
-    if Input.down.R1 then octShift = octShift + 12 end
-    local baseSemis = Theory:getScaleDegreeSemis(deg) + octShift
-
-    if state.sustainedVoice and (not state.sustainedVoice.source or not state.sustainedVoice.source:isPlaying()) then
-        state.sustainedVoice = nil
-    end
-
-    if Input.down.A and state.sustainedVoice then
-        state.sustainedVoice.hasGlide = true
-        state.sustainedVoice.targetSemis = baseSemis
-        state.oscFreqRatio = 2.0 ^ (baseSemis / 12.0)
+    -- Forget handles whose notes are over (keep the newest: its tail may still bend)
+    for i = #state.handles - 1, 1, -1 do
+        local h = state.handles[i]
+        local v = state.voices[h.ev]
+        if not h:isHeld() and not (v and v:isSounding()) then
+            state.voices[h.ev] = nil
+            table.remove(state.handles, i)
+        end
     end
 
-    -- One-shots for now (A7/Phase B make them sustain). Events store the
-    -- degree and octave as well as the absolute pitch (SPEC §8.2).
-    local octave = octShift / 12
-    local function note(action, semis, vel, decay, extra)
-        local ev = { action = action, degree = deg, octave = octave, semis = semis, vel = vel, decay = decay }
-        for k, v in pairs(extra or {}) do ev[k] = v end
-        emitEvent(ev)
+    local patch = self:getPatch(state)
+    local mono = not (patch and patch.overlap)
+
+    for _, btn in ipairs({ "B", "A", "Y", "X" }) do
+        if Input.pressed[btn] then
+            local prev = state.handles[#state.handles]
+            local ev = { action = btn, degree = deg, octave = octave, semis = semis,
+                         vel = (btn == "X") and 1.0 or 0.85 }
+            local opts
+
+            if btn == "A" then
+                ev.glideFrom = state.lastSemis
+                ev.glideFromDegree, ev.glideFromOctave = state.lastDegree, state.lastOctave
+                -- Legato: take over the held note's voice (no new attack)
+                if prev and physicallyHeld(prev) and mono then
+                    state.takeover = state.voices[prev.ev]
+                    state.voices[prev.ev] = nil      -- so releasing it doesn't stop the voice
+                    ev.legato = true                 -- replays on the same voice too
+                end
+            elseif btn == "Y" then
+                local grid = Looper:getTrackGrid(track.slot)
+                opts = { fixedLen = grid.stepTicks or (Looper.PPQN / 4) }
+            end
+
+            local cut = mono and prev and physicallyHeld(prev)
+            if cut then
+                prev:release()                       -- mono: the new note ends the old one here
+            end
+
+            state.lastArticulation = ARTICULATION[btn]
+            local h = hold(ev, opts)
+            h.bentSemis, h.bentOctave = semis, octave
+            table.insert(state.handles, h)
+            state.takeover = nil
+
+            -- Both notes snap to the grid on their own: make the old one end
+            -- exactly where the new one starts, so playback has no gap or overlap
+            if cut and prev.rec and h.rec then
+                local len = (h.rec.tick - prev.rec.tick) % Looper:getLoopTicks()
+                if len > 0 then prev.rec.len = len end
+            end
+        end
     end
 
-    if Input.pressed.B then
-        state.lastArticulation = "PLUCK"
-        note("B", baseSemis, 0.88, 0.48)
+    -- Pitch changes glide the held note (or its fading tail) and are recorded.
+    -- In the tail, only a D-pad direction moves the note: letting go of the
+    -- D-pad or a shoulder together with the button doesn't drag it down.
+    local h = bendTarget(state)
+    if h then
+        local tDeg, tOct = deg, octave
+        if not physicallyHeld(h) then
+            if Input:get8WayDirection() == "NEUTRAL" then tDeg = nil end
+            if not (Input.down.L1 or Input.down.R1) then tOct = h.bentOctave end
+        end
+        if tDeg then
+            local tSemis = Theory:getScaleDegreeSemis(tDeg) + tOct * 12
+            if tSemis ~= h.bentSemis then
+                h.bentSemis, h.bentOctave = tSemis, tOct
+                h:bend({ degree = tDeg, octave = tOct, semis = tSemis })
+                state.lastSemis, state.lastDegree, state.lastOctave = tSemis, tDeg, tOct
+            end
+        end
     end
-    if Input.pressed.A then
-        state.lastArticulation = "GLIDE"
-        note("A", baseSemis, 0.88, 1.35, { glideFrom = state.lastSemis })
-    end
-    if Input.pressed.Y then
-        state.lastArticulation = "+OCT POP"
-        note("Y", baseSemis + 12, 0.90, 0.42)
-    end
-    if Input.pressed.X then
-        state.lastArticulation = "+5TH VIB"
-        note("X", baseSemis + 7, 0.85, 0.95)
-    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Sound
+-- ---------------------------------------------------------------------------
+function Bass:startVoice(ev, state, track)
+    local patch = self:getPatch(state)
+    return Synth:noteOn(state.patch, ev.semis or 0, ev.vel or 0.85, {
+        track = track,
+        glideFrom = ev.glideFrom,
+        glideRate = self:getGlideRate(state),
+        vibrato = (ev.action == "X"),
+    }) or (patch and Synth:trigger(patch.attack, ev.semis or 0, ev.vel or 0.85, 1.0, nil, track.volume, track))
+end
+
+function Bass:showNote(state, semis)
+    state.lastSemis = semis
+    state.oscAmp = 1.0
+    state.oscFreqRatio = 2.0 ^ (semis / 12.0)
 end
 
 function Bass:noteOn(ev, state, track, isPlayback)
     local semis = ev.semis or 0
-    local patch = self:getPatch(state)
-    local voice = Synth:trigger(patch and patch.attack or "bass", semis, ev.vel or 0.85, ev.decay or 1.0, ev.glideFrom, track.volume, track)
-    if voice and ev.action == "X" then
-        voice.vibrato = true
+    if not isPlayback then
+        local voice = state.takeover
+        if voice and voice:isSounding() then
+            voice:resume()
+            voice.glideRate = self:getGlideRate(state)
+            voice:setPitch(semis)                     -- legato: glide, no new attack
+        else
+            voice = self:startVoice(ev, state, track)
+        end
+        state.voices[ev] = voice
+        state.lastDegree, state.lastOctave = ev.degree, ev.octave
+    else
+        -- Legato on playback: a note recorded as legato takes over the
+        -- previous note's voice if it is still sounding or released only just
+        -- now (the old note ends on this note's tick)
+        local voice
+        local prev = state.lastPlay
+        if ev.legato and prev and prev.voice:isSounding() then
+            local since = prev.voice:releasedFor()
+            if not since or since <= 0.05 then
+                voice = prev.voice
+                voice:resume()
+                voice.glideRate = self:getGlideRate(state)
+                voice:setPitch(semis)
+                for e, p in pairs(state.playing) do
+                    if p == prev then state.playing[e] = nil end
+                end
+            end
+        end
+        voice = voice or self:startVoice(ev, state, track)
+        local entry = { voice = voice, elapsed = 0.0, lastTick = Looper.tick, semis = semis }
+        state.playing[ev] = entry
+        state.lastPlay = entry
     end
-    if not isPlayback and ev.action == "A" then
-        state.sustainedVoice = voice
+    self:showNote(state, semis)
+end
+
+function Bass:noteOff(ev, state, track, isPlayback)
+    local voice
+    if isPlayback then
+        local p = state.playing[ev]
+        voice = p and p.voice                         -- entry stays: its tail may still bend
+    else
+        voice = state.voices[ev]
     end
-    state.lastSemis = semis
-    state.oscAmp = 1.0
-    state.oscFreqRatio = 2.0 ^ (semis / 12.0)
+    if voice and voice.noteOff then voice:noteOff() end
+end
+
+-- Live pitch change from a handle (B5)
+function Bass:bendTo(ev, fields, state, track)
+    local voice = state.voices[ev]
+    if voice and voice.setPitch then
+        voice.glideRate = self:getGlideRate(state)
+        voice:setPitch(fields.semis)
+        self:showNote(state, fields.semis)
+    end
+end
+
+-- Playback: apply recorded bends (including the release tail); drop notes
+-- that have gone silent
+function Bass:updateVoices(dt, state, track)
+    local loop = Looper:getLoopTicks()
+    for ev, p in pairs(state.playing) do
+        local v = p.voice
+        if not (v.isSounding and v:isSounding()) then
+            state.playing[ev] = nil
+            if state.lastPlay == p then state.lastPlay = nil end
+        else
+            local d = (Looper.tick - p.lastTick) % loop
+            if d < loop * 0.5 then p.elapsed = p.elapsed + d end
+            p.lastTick = Looper.tick
+            local kf = Instruments_bendAt(ev, p.elapsed)
+            local target = kf and kf.semis or ev.semis
+            if target and target ~= p.semis then
+                p.semis = target
+                v.glideRate = self:getGlideRate(state)
+                v:setPitch(target)
+                self:showNote(state, target)
+            end
+        end
+    end
 end
 
 return Bass

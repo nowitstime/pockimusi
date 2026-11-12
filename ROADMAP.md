@@ -72,10 +72,10 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 - [x] B1 Held-note handles: end early, record bends incl. the release tail (shared by Bass, Pad, Lead)
 - [x] B2 Bass sounds: `SAW`, `SUB`, `PLUCK` patches + `PATCH` and `GLIDE` rows
-- [ ] B3 Held notes: `B` hold, `Y` staccato, `X` accent + vibrato; monophonic
-- [ ] B4 Legato `A`: glide without a new attack, live and on playback
-- [ ] B5 Bends: D-pad and shoulders while holding glide, record, replay
-- [ ] B6 Stage view (pitch trace, live scope) + bend marks on the tape deck; device check
+- [x] B3 Held notes: `B` hold, `Y` staccato (one grid step), `X` accent + vibrato; mono (`PLUCK` overlaps)
+- [x] B4 Legato `A`: glide without a new attack, live and on playback
+- [x] B5 Bends: D-pad and shoulders while holding (and in the release tail) glide, record, replay
+- [ ] B6 Stage view (pitch trace, live scope); device check. (Bend marks on the tape deck: done)
 
 ## Phase C · Autosave
 

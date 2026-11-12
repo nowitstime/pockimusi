@@ -146,6 +146,16 @@ function Voice:noteOff()
     end
 end
 
+-- Cancel a release that has started (legato takes the voice over)
+function Voice:resume()
+    if self.alive then self.releasedAt = nil end
+end
+
+-- Seconds since noteOff, or nil if not released
+function Voice:releasedFor()
+    return self.releasedAt and (self.age - self.releasedAt) or nil
+end
+
 -- Stop at once (voice stealing)
 function Voice:kill()
     if not self.alive then return end
