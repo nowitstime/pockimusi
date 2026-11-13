@@ -48,6 +48,12 @@ local function encodeNumber(n)
     if n == math.floor(n) and n >= -2^53 and n <= 2^53 then
         return string_format("%d", n)
     end
+    -- Shortest text that reads back as exactly the same number (0.85, not
+    -- 0.84999999999999998)
+    for digits = 15, 17 do
+        local text = string_format("%." .. digits .. "g", n)
+        if tonumber(text) == n then return text end
+    end
     return string_format("%.17g", n)
 end
 

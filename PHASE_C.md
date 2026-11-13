@@ -64,6 +64,15 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 **Tests:** full round trip in the running game (record on all four tracks with bends, chord colours, kit edits, effects, swing, mutes; snapshot → encode → decode → restore into a fresh boot → identical); invalid values are fixed up, not trusted; runtime flags never saved; a held note mid-save comes back with a length.
 
+
+**Status:** ✅ done (176 tests, new `tests/test_session.lua`).
+
+- `src/session.lua`: `Session.snapshot()` and `Session.restore(data)` (returns `true`, or `false, message` for a non-session or another `format`, leaving the game untouched).
+- `saveState` / `loadState` on Drums (kit, edited flag, last pad, pad sounds **by id**), Harp (colour), Bass (patch, glide), Grain (scan, density). `loadState` starts from a fresh state and only accepts known values.
+- Restore releases held notes, silences playback, turns the record latch off, clears undo, puts the playhead at bar 1, continues take numbers after the highest saved one, and toasts `SESSION RESTORED`. Unknown instruments fall back to the slot's default; numbers are clamped; events outside the loop, with an unknown button or not a table are dropped; bad bend keyframes are dropped and the rest sorted.
+- A typical small session is about 2 KB of readable text. Numbers are written in their shortest exact form (`0.85`, not `0.84999999999999998`).
+
+**Tests:** save → fresh boot → restore → save gives byte-identical text, plus explicit checks of every setting against what was set (so a setting an instrument forgets to save is caught, not hidden by the text compare); restored drums play back; open notes saved with their length so far and no runtime flags; pad sounds by name survive a reordered catalogue; a deliberately bad session is fixed up value by value; unknown formats refused; restore silences and clears undo and the latch; take numbers continue; swapped instruments return. Removing a saved setting, a load, the runtime-flag filter, the tick check or the undo reset each fails a test.
 ---
 
 ## C3 · Autosave 📱

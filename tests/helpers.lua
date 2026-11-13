@@ -184,6 +184,9 @@ function H.loadMain()
         Input       = require("src.input"),
         Synth       = require("src.synth"),
         Instruments = require("src.instruments"),
+        Theory      = require("src.theory"),
+        Session     = require("src.session"),
+        Save        = require("src.save"),
     }
 end
 
