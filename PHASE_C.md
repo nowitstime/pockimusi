@@ -15,9 +15,9 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 | What's saved | Tempo, key, scale, bars, click, master volume, active track; per track: instrument, its settings (kit and pad sounds, chord colour, bass patch and glide, grain scan and density), grid, swing, volume, mute, effects, and every event (bends and chords included) | Everything you set or played |
 | Not saved | Undo history, record latch, playhead position, live voices and animations | You start jam-safe at bar 1; undo starts empty |
 | When | **Every 10 s if anything changed**, and on quit / when the app loses focus | A hard power-off loses at most ~10 s; unchanged sessions write nothing |
-| Change detection | Build the save text and compare it with the last one written | No need to flag "dirty" in dozens of places |
+| Change detection | Only after a button was pressed since the last save (playback alone never changes the session), build the save text and compare it with the last one written; prefer a moment with no buttons held | Cheap: an untouched session costs nothing, and the text compare catches every real change without flagging "dirty" in dozens of places |
 | Safe writes | **Two slots** (`session_a`, `session_b`), alternating, each with a sequence number; load the newest one that reads cleanly | A power cut mid-write can only spoil the slot being written; the other is the previous good save |
-| Format | A plain Lua table written as text, read back in an empty sandbox (no code can run); `format = 1`, events in format v2 | Readable, no library; room for patterns later (`patterns = { A = ... }`) |
+| Format | A plain Lua-style table written as text, read back by **our own small parser** that only understands that format (it never runs the file as code); `format = 1`, events in format v2 | Readable, no library; a damaged or tampered file can only fail to load, it can't run anything or hang the boot (a sandbox would still allow `while true do end`); room for patterns later (`patterns = { A = ... }`) |
 | Bad or newer files | Ignored with a toast; the other slot or a fresh session is used | Never crash on boot |
 | Fresh session | **Hold `L2 + R2 + SELECT` for about 1 s**: clears every track's notes and mutes. **Keeps** tempo, key, scale, instruments, sounds and effects. The cleared session is kept, and undo (`L2 + R2 + LEFT`) brings it all back | A hold can't happen by accident; your setup stays ready to jam |
 | Save location | LÖVE's save folder for identity `pocketgroove`; the path is printed to `log.txt`. Proposal: set `XDG_DATA_HOME="$GAMEDIR/conf"` in `PocketGroove.sh` so saves live in the port folder (easy to find, back up, and survive a PortMaster runtime update) ❓ confirm on device | Today the folder depends on how the PortMaster LÖVE runtime sets things up |
@@ -37,11 +37,13 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 ## C1 · Save text
 
-- `Save.encode(value)` writes numbers, strings, booleans and tables (string or number keys, sorted so the text is stable for change detection). Anything else (functions, sources, voices) is an error, so runtime objects can't sneak into a save.
-- `Save.decode(text)` loads the text as a chunk with an **empty environment** (`setfenv`) and a size limit; it must return a table. A file that tries to call anything fails to load instead of running.
-- Numbers keep full precision (`%.17g`), so ticks and amounts come back exactly.
+**Status:** ✅ done (167 tests, new `tests/test_save.lua`).
 
-**Tests:** round trip of nested tables, strings with quotes and newlines, negative and fractional numbers; stable output for the same table; functions rejected; a file containing code (`os.exit()`, `print(...)`) doesn't run; garbage text returns an error, not a crash.
+- `Save.encode(value)` (`src/save.lua`) writes numbers, strings, booleans and tables. Keys are sorted (numbers, then strings) so the same data always gives the same text. The list part (1, 2, 3 … up to the first gap) is written without keys; other keys as `name=`, `["any string"]=` or `[number]=`. Tables of plain values sit on one line (an event, a keyframe); bigger tables are indented. Strings escape `\`, `"` and every control byte as `\ddd`. Integers print exactly; other numbers with `%.17g`. Functions, coroutines, NaN, infinity, table keys and tables that contain themselves are errors.
+- `Save.decode(text)` is a small parser for exactly that format (plus spaces, `--` comments, `;` separators, for hand edits). It never runs the text, so a file with code in it just fails to load. Limits: 32 levels deep, 8 MB. Returns `value` or `nil, message`; it never throws.
+- **Speed** (headless): a 2000-event session is 208 KB of text, 9.5 ms to encode, 13 ms to decode. That is why C3 only encodes after input (see Decisions).
+
+**Tests:** exact round trip (quotes, backslashes, control bytes, NUL, fractional / negative / huge numbers, reserved-word and odd keys, holes); a list that lost a middle item keeps the rest in place (this caught a real bug in the first draft: using `#t` shifted items after a gap); stable text regardless of insertion order; readable output; runtime objects rejected; eight files containing code are refused and nothing runs; every truncation of a real save and a list of junk inputs return nil without crashing; depth and size limits; comments and spacing accepted.
 
 ---
 

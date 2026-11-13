@@ -79,7 +79,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Phase C · Autosave ← **next up** — working plan in [PHASE_C.md](PHASE_C.md)
 
-- [ ] C1 Save text: write a table, read it back in a sandbox (`src/save.lua`)
+- [x] C1 Save text: write a table, read it back with a parser that never runs code (`src/save.lua`)
 - [ ] C2 Session snapshot and restore (per-instrument settings, events, effects)
 - [ ] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot
 - [ ] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; save folder check

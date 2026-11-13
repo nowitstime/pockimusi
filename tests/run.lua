@@ -10,6 +10,7 @@
 package.path = "pocketgroove/?.lua;pocketgroove/?/init.lua;tests/?.lua;" .. package.path
 
 local FILES = {
+    "test_save",
     "test_theory",
     "test_input",
     "test_looper",
