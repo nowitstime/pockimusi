@@ -35,6 +35,7 @@ SCENES = {
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
     "bass-idle": 'H.tap("SELECT"); H.tap("SELECT"); H.play(0.2)',
+    "bass-low5": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("DOWN", "B"); H.play(0.4)',
     "bass-glide": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("B"); H.play(0.3); H.hold("UP"); H.play(0.35);'
                   ' H.release("UP"); H.hold("RIGHT"); H.play(0.3); H.hold("R1"); H.play(0.25)',
     "bass-legato": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("B"); H.play(0.4); H.hold("UP", "A"); H.play(0.5)',

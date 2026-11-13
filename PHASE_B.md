@@ -21,7 +21,7 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §7.3. Builds on Ph
 | D-pad while holding | **Glides gradually** to the new degree at the track's glide speed (never jumps), recorded as `bend` keyframes. The D-pad only ever chooses the note | The "ribbon" in Ribbon Bass |
 | D-pad after letting go | **The release tail keeps following the D-pad** until it is silent or the next note starts; those moves are recorded (keyframes after `len`) and replay too | Glissando after release, as it works today |
 | Shoulders while holding | Octave change glides too (same as a D-pad bend) | Same rule for every pitch change |
-| Neutral D-pad | Degree 1 (root), as now | Releasing the D-pad lands on the root |
+| Neutral D-pad | Degree 1 (root); `↓` became **L5**, the 5th below the root (it used to duplicate the root) | Releasing the D-pad lands on the root, and root / low fifth / octave are each one move away. Tried after B6 on request |
 | Track page rows | `PATCH` (3 bass sounds) and `GLIDE` (fast / medium / slow) | `FOLLOW` waits for Phase D, where it does something |
 | Swing | Stays on the Transport page (`START` + `Y`), not a bass row | Already built there for every track |
 

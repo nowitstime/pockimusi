@@ -431,4 +431,56 @@ return {
         H.release("B", "R1"); H.play(1.0)
         H.truthy(st.oscAmp <= 0.1, "settles when silent")
     end },
+
+    -- ------------------------------------------------------------------
+    -- D-pad map: neutral = root, DOWN = the 5th below
+    -- ------------------------------------------------------------------
+    { "neutral plays the root; DOWN plays the 5th below it", function()
+        local M, _, track = boot()
+        local S = M.Synth
+        H.hold("B"); H.play(0.1)
+        H.near(S.sustainVoices[1].currentSemis, 0, "neutral = C", 1e-6)
+        H.release("B"); H.play(0.3)
+        H.hold("DOWN", "B"); H.play(0.1)
+        local v = S.sustainVoices[#S.sustainVoices]
+        H.near(v.targetSemis, -5, "DOWN = G below", 1e-6)
+        H.eq(track.state.activeDegree, -2, "stored as degree -2")
+        H.release("DOWN", "B"); H.play(0.3)
+    end },
+
+    { "the low 5th follows key, scale and octave", function()
+        local M = boot()
+        local T = require("src.theory")
+        T.rootIndex = 10                                 -- A
+        T.scaleIndex = 2                                 -- minor
+        H.eq(T:getScaleDegreeSemis(-2), 9 - 5, "A minor: E below A")
+        T.rootIndex, T.scaleIndex = 1, 1
+        H.hold("DOWN", "L1", "B"); H.play(0.1)
+        local v = M.Synth.sustainVoices[#M.Synth.sustainVoices]
+        H.near(v.targetSemis, -17, "with L1: an octave lower still", 1e-6)
+        H.release("DOWN", "L1", "B"); H.play(0.3)
+    end },
+
+    { "notes on the low 5th record degree -2 and replay at that pitch", function()
+        local M, L, track = boot()
+        H.tap("L2"); H.hold("DOWN", "B"); H.play(0.3); H.release("DOWN", "B"); H.play(0.05); H.tap("L2")
+        local ev = track.events[1]
+        H.eq(ev.degree, -2, "degree")
+        H.eq(ev.semis, -5, "pitch")
+        local heard = false
+        for _ = 1, math.floor(L:getLoopDuration() * 60) do
+            H.play(1 / 60)
+            for _, v in ipairs(M.Synth.sustainVoices) do
+                if math.abs(v.targetSemis + 5) < 1e-6 then heard = true end
+            end
+        end
+        H.truthy(heard, "replayed on G below")
+    end },
+
+    { "degree labels: L5 for the low 5th", function()
+        local M = boot()
+        local Bass = M.Instruments:getDefinition("bass")
+        H.eq(Bass:degreeLabel(-2), "L5", "low 5th")
+        H.eq(Bass:degreeLabel(7), "7", "others are numbers")
+    end },
 }

@@ -63,7 +63,7 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **Drums** ✅ | dynamics × articulation (§3.2a) | 4 pads | 1/4 repeat | 1/8 repeat | 1/16 repeat (1/12T on triplet grid) |
 | **Chord Harp** 🔧 | 8 chords (§3.3) | strum / strings ❓ (§7.2) | voicing −1 oct | voicing +1 oct | wide voicing |
-| **Bass** 🔧 | 8 degrees (1–8) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
+| **Bass** ✅ | root on neutral + 8 directions (2–8, `↓` = 5th below) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
 | **Pad** 📐 | tone / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — ❓ |
 | **Lead / Arp** 📐 | 8 degrees | note + arp modes (§7.5) | oct −1 | oct +1 | arp rate ×2 |
 
@@ -228,7 +228,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 ### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
 
-- ✅ D-pad = scale degrees 1–8 (neutral = 1); `L1/R1` = octave.
+- ✅ D-pad = scale degrees: neutral = **1** (the root, the easiest note to land on, and the chord root once chord-follow arrives), `↙` 2, `←` 3, `↖` 4, `↑` 5, `↗` 6, `→` 7, `↘` 8, and `↓` = **L5**, the 5th below the root (stored as degree −2). Root, low fifth and octave are all one move away. `L1/R1` = octave.
 - ✅ **Held notes:** a note sounds while its button is held and releases on button-up (§9.2). `SAW`/`SUB` are mono (a new press ends the previous note, exactly at the new note's start); `PLUCK` notes overlap.
 - ✅ Face buttons = articulations only: `B` hold, `A` legato (glides from the held note without a new attack, or from the last note), `Y` staccato (one step of the track's grid), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
 - ✅ Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed. After letting go, the fading tail keeps following D-pad directions (not neutral), also recorded. Glide points show as ticks on the tape-deck ribbon.
