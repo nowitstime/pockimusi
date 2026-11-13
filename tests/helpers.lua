@@ -78,6 +78,8 @@ local graphics = setmetatable({
 }, { __index = function() return noop end })
 
 function H.installLove()
+    if not H.keepFiles then H.files = {} end
+    H.diskFull = false
     H.time = 0.0
     H.keys = {}          -- keyboard keys currently held, e.g. H.keys["w"] = true
     love = {
@@ -99,6 +101,19 @@ function H.installLove()
             setEffect = noop,
         },
         graphics = H.graphicsOverride or graphics,
+        filesystem = {
+            -- In-memory files. Each boot starts with an empty disk unless
+            -- H.keepFiles is set (to test restoring after a "reboot").
+            write = function(name, text)
+                if H.diskFull then return false, "disk full" end
+                H.files[name] = text
+                return true
+            end,
+            read = function(name) return H.files[name] end,
+            getInfo = function(name) return H.files[name] and { type = "file", size = #H.files[name] } or nil end,
+            remove = function(name) H.files[name] = nil return true end,
+            getSaveDirectory = function() return "/fake/save" end,
+        },
         window = { setTitle = noop },
         event = { quit = noop },
     }

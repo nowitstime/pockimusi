@@ -87,6 +87,18 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 **Device check:** where the files land, how long a save takes (should be a few ms), and that a session survives a normal quit *and* holding the power button.
 
+
+**Status:** ✅ built (190 tests, new `tests/test_autosave.lua`); ⬜ device check.
+
+- `src/autosave.lua`: `Autosave:load()` at the end of `love.load`, `Autosave:update(dt)` every frame, `Autosave:saveNow()` from `love.quit` and `love.focus(false)`.
+- Files `session_a.txt` / `session_b.txt` hold `{seq=N,session={...}}` (the session text is wrapped as-is, so one encode per save). Boot sorts the readable files newest first and restores the first that `Session.restore` accepts; the next save goes to the other slot with `seq + 1`.
+- Saves only after a button press/release since the last save, ≥ 10 s after the last save, with no button held (or after 30 s regardless); only when the text changed.
+- `log.txt` gets the save folder at boot, each restore, each save (`saved session_b (seq 12, 1.9 KB, 3 ms)`) and anything unreadable.
+- Toasts: `SESSION RESTORED`; `SAVE COULDN'T BE READ - FRESH SESSION` if files existed but none worked; `AUTOSAVE FAILED - SEE LOG` once if a write fails (saving resumes on its own).
+
+**Tests:** untouched → no writes; a change saved after ~10 s; waits while a button is held, saves at 30 s anyway; slots alternate with rising sequence; button presses that change nothing don't rewrite; quit and focus loss save at once; reboot restores the newest (tempo, active track, events) and continues the sequence in the other slot; a restored session isn't rewritten until it changes; a half-written file (power cut) is ignored and the previous save loads; a damaged newest falls back to the older; a newer-format file is skipped; unreadable files → fresh session with a message, and saving works again; first boot is silent; a failed write warns once and recovers. Removing the slot alternation, the newest-first order, the quiet-moment wait, the unchanged check or the fallback each fails tests.
+
+**On the device:** check `log.txt` for the save folder and save times; quit and relaunch; and hold the power button mid-jam, then relaunch (at most ~10 s lost).
 ---
 
 ## C4 · Fresh session 📱

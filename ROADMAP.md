@@ -81,7 +81,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 - [x] C1 Save text: write a table, read it back with a parser that never runs code (`src/save.lua`)
 - [x] C2 Session snapshot and restore (per-instrument settings, events, effects; every value checked)
-- [ ] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot
+- [x] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot (device check pending)
 - [ ] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; save folder check
 
 ## Phase D · Chord Harp + Harmony

@@ -10,6 +10,7 @@ local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Chrome      = require("src.ui.chrome")
+local Autosave    = require("src.autosave")
 
 local math_min = math.min
 
@@ -25,6 +26,17 @@ function love.load()
         Instruments:handleLooperNote(kind, ev, track)
     end)
     Chrome:init()
+    Autosave:load()            -- the last session comes back
+end
+
+-- Save on the way out, and when the app goes to the background
+function love.quit()
+    Autosave:saveNow()
+    return false
+end
+
+function love.focus(focused)
+    if not focused then Autosave:saveNow() end
 end
 
 function love.update(dt)
@@ -37,6 +49,7 @@ function love.update(dt)
 
     Instruments:update(dt, controlsBlocked)
     Synth:update(dt)
+    Autosave:update(dt)
 end
 
 function love.draw()
