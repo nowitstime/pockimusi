@@ -237,6 +237,14 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
     local anyActive = (activeDirKey and activeDirKey ~= "NEUTRAL")
     self:drawStarGlint(cx, cy, anyActive and 10 or 7, anyActive and col or C.MUTED, anyActive and 0.9 or 0.45)
 
+    -- Optional label for the resting D-pad (e.g. the bass root), lit while neutral
+    if labels and labels.NEUTRAL then
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(anyActive and C.MUTED or col, anyActive and 0.6 or 1.0)
+        local t = labels.NEUTRAL
+        love.graphics.print(t, math_floor(cx - self.fontTiny:getWidth(t) * 0.5), cy + 12)
+    end
+
     -- Draw tips, labels, and active star point outlines
     love.graphics.setFont(self.fontSmall)
     for i, d in ipairs(dirDefs) do
@@ -787,7 +795,7 @@ function Chrome:getControlLabels(def, state, mode)
             flashMap[s.button] = s.energy
         end
     elseif def.id == "bass" then
-        dpadLabels = { DOWN = "1", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
+        dpadLabels = { NEUTRAL = "1", DOWN = "L5", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
         faceLabels = { B = "HOLD", A = "LEGATO", Y = "STAC", X = "ACCENT" }
     elseif def.id == "grain" then
         dpadLabels = { UP = "DENSE", DOWN = "SPARSE", LEFT = "SCAN <", RIGHT = "SCAN >" }
@@ -1386,7 +1394,7 @@ function Chrome:drawBassView(def, state, track, col)
     love.graphics.setFont(self.fontSmall)
     self:setColor(C.MUTED)
     local oct = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
-    local sub = string.format("DEG %d  -  OCT %s%d  -  %s", state.activeDegree or 1, (oct > 0 and "+" or ""), oct,
+    local sub = string.format("DEG %s  -  OCT %s%d  -  %s", def:degreeLabel(state.activeDegree or 1), (oct > 0 and "+" or ""), oct,
         voice and (state.lastArticulation or "HOLD") or "READY")
     local sw = self.fontSmall:getWidth(sub)
     love.graphics.print(sub, math_floor(320 - sw * 0.5), 148)

@@ -63,7 +63,7 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **Drums** ✅ | dynamics × articulation (§3.2a) | 4 pads | 1/4 repeat | 1/8 repeat | 1/16 repeat (1/12T on triplet grid) |
 | **Chord Harp** 🔧 | 8 chords (§3.3) | strum / strings ❓ (§7.2) | voicing −1 oct | voicing +1 oct | wide voicing |
-| **Bass** 🔧 | 8 degrees (1–8) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
+| **Bass** ✅ | root on neutral + 8 directions (2–8, `↓` = 5th below) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
 | **Pad** 📐 | tone / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — ❓ |
 | **Lead / Arp** 📐 | 8 degrees | note + arp modes (§7.5) | oct −1 | oct +1 | arp rate ×2 |
 
@@ -147,6 +147,7 @@ BPM, key, scale and bars are global. Grid and swing belong to the active track a
 | `L2 + R2` + `B/A/Y/X` | Erase that pad/action on the active track |
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
+| `L2 + R2 + SELECT` (hold ~1 s) | 📐 Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
@@ -227,7 +228,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 ### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
 
-- ✅ D-pad = scale degrees 1–8 (neutral = 1); `L1/R1` = octave.
+- ✅ D-pad = scale degrees: neutral = **1** (the root, the easiest note to land on, and the chord root once chord-follow arrives), `↙` 2, `←` 3, `↖` 4, `↑` 5, `↗` 6, `→` 7, `↘` 8, and `↓` = **L5**, the 5th below the root (stored as degree −2). Root, low fifth and octave are all one move away. `L1/R1` = octave.
 - ✅ **Held notes:** a note sounds while its button is held and releases on button-up (§9.2). `SAW`/`SUB` are mono (a new press ends the previous note, exactly at the new note's start); `PLUCK` notes overlap.
 - ✅ Face buttons = articulations only: `B` hold, `A` legato (glides from the held note without a new attack, or from the last note), `Y` staccato (one step of the track's grid), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
 - ✅ Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed. After letting go, the fading tail keeps following D-pad directions (not neutral), also recorded. Glide points show as ticks on the tape-deck ribbon.
@@ -324,10 +325,12 @@ Event = {
 
 ---
 
-## 10. Persistence 📐
+## 10. Persistence 📐 (plan: [PHASE_C.md](PHASE_C.md))
 
-- **Autosave** on quit and every ~30 s: BPM, key, scale, bars, click, and each track's instrument, sounds, settings, FX, swing, grid, mute, level and events. Versioned file via `love.filesystem`; loaded on start.
-- Later: named **patterns** (A–H) and a simple chain = "song". ❓ Exact definition.
+- **Autosave** every 10 s when something changed, and on quit / focus loss: tempo, key, scale, bars, click, master volume, active track, and each track's instrument, settings, grid, swing, volume, mute, effects and events. Not saved: undo history, record latch, playhead.
+- Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-table text (`format = 1`, events v2), read back in an empty sandbox; unreadable or newer files are ignored and the game still boots.
+- **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
+- Later: named **patterns** (A–H) and a simple chain = "song" (the format leaves room). ❓ Exact definition.
 - Later ❓: export the loop to `.wav`.
 
 ---

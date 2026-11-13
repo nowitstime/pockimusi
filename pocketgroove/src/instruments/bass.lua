@@ -34,7 +34,7 @@ local Bass = {
     GLIDES = { "FAST", "MEDIUM", "SLOW" },
     GLIDE_RATES = { FAST = 40.0, MEDIUM = 18.0, SLOW = 8.0 },
     COMPASS_DEGREE_MAP = {
-        DOWN       = 1,
+        DOWN       = -2,      -- the 5th below the root (shown as "L5")
         DOWN_LEFT  = 2,
         LEFT       = 3,
         UP_LEFT    = 4,
@@ -42,7 +42,7 @@ local Bass = {
         UP_RIGHT   = 6,
         RIGHT      = 7,
         DOWN_RIGHT = 8,
-        NEUTRAL    = 1,
+        NEUTRAL    = 1,       -- resting D-pad = the root
     },
 }
 
@@ -68,6 +68,12 @@ function Bass:newState()
         traceHead = 0,
     }
 end
+-- How a degree is shown: 1..8, and "L5" for the 5th below the root (-2)
+function Bass:degreeLabel(deg)
+    if deg == -2 then return "L5" end
+    return tostring(deg)
+end
+
 -- ---------------------------------------------------------------------------
 -- Track page rows: PATCH (sound) and GLIDE (setting)
 -- ---------------------------------------------------------------------------
