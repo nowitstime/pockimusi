@@ -147,7 +147,7 @@ BPM, key, scale and bars are global. Grid and swing belong to the active track a
 | `L2 + R2` + `B/A/Y/X` | Erase that pad/action on the active track |
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
-| `L2 + R2 + SELECT` (hold ~1 s) | 📐 Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
+| `L2 + R2 + SELECT` (hold ~1 s) | ✅ Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
@@ -325,9 +325,10 @@ Event = {
 
 ---
 
-## 10. Persistence 🔧 (autosave ✅, fresh-session hold 📐; details: [PHASE_C.md](PHASE_C.md))
+## 10. Persistence ✅ (details: [PHASE_C.md](PHASE_C.md))
 
 - **Autosave** after you touched something (≥ 10 s apart, at a moment with no buttons held, or after 30 s regardless), and on quit / focus loss: tempo, key, scale, bars, click, master volume, active track, and each track's instrument, settings, grid, swing, volume, mute, effects and events. Not saved: undo history, record latch, playhead.
+- Files live in the port folder (`conf/love/pocketgroove/`, via `XDG_DATA_HOME` in `PocketGroove.sh`).
 - Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-style table text (`format = 1`, events v2), read back by a parser that never runs it as code; unreadable or newer files are ignored and the game still boots.
 - **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
 - Later: named **patterns** (A–H) and a simple chain = "song" (the format leaves room). ❓ Exact definition.

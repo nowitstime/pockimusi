@@ -4,6 +4,10 @@
 -- Engine: LÖVE (Love2D 11.x) — Modular Pluggable Track/Instrument Architecture
 -- ============================================================================
 
+-- Send each log line to log.txt as it's printed (stdout is a pipe on the
+-- device, and the runtime may not flush a buffer when it exits)
+if io and io.stdout and io.stdout.setvbuf then io.stdout:setvbuf("line") end
+
 local Input       = require("src.input")
 local Synth       = require("src.synth")
 local Looper      = require("src.looper")
@@ -43,7 +47,7 @@ function love.update(dt)
     dt = math_min(dt, 0.05)
 
     Input:update(dt)
-    local controlsBlocked = Modes:update()
+    local controlsBlocked = Modes:update(dt)
 
     Looper:update(dt)
 

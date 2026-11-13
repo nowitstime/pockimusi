@@ -111,15 +111,26 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 **Tests:** a short press does nothing; a 1 s hold clears all four tracks once (not repeatedly while still held); settings, instruments and tempo survive; undo brings back every note and mute; existing erase / undo / clear combos still work.
 
+
+**Status:** ✅ built (195 tests); ⬜ device check.
+
+- Mode `NEW` (above `ERASE`): `L2 + R2 + SELECT`; `Modes:update(dt)` times the hold; fires once per hold at 1 s: releases live notes, then `Looper:freshSession()` clears every track's events and mutes, silences playback and pushes a `fresh` undo entry. Undo puts every track's notes and mutes back (notes recorded after the fresh start are kept after them).
+- Screen: red frame, `FRESH START` badge, a ring that fills over the second, then "FRESH SESSION / LET GO - UNDO WITH L2 + R2 + LEFT". The erase page and its hint mention `+ hold SELECT`.
+- **Logging fix:** the first device `log.txt` had none of the game's lines (not even the boot timing from A7): stdout is a pipe to `tee` there and the runtime didn't flush it. `main.lua` now sets line buffering first thing.
+- **Save folder:** `PocketGroove.sh` now exports `XDG_DATA_HOME="$GAMEDIR/conf"` just before starting LÖVE, so saves are in `ports/pocketgroove/conf/love/pocketgroove/` (`session_a.txt`, `session_b.txt`). Saves made before this went to the runtime's default folder and won't be found after the change (one fresh start).
+
+**Tests:** a short hold does nothing and a 1 s hold clears all tracks once (not again while held), releasing latches nothing and keeps the track; tempo, key, instruments, sounds, effects and swing survive; undo brings back every note and mute; a playing note is silenced; `L2 + R2` erase still works without `SELECT`.
+
+**On the device:** copy both `PocketGroove.love` **and** `PocketGroove.sh`; check `log.txt` now shows the `[PocketGroove]` lines (save folder, sound generation, saves with their ms); check `conf/love/pocketgroove/` holds the two files; try the hold and its undo.
 ---
 
 ## Exit checklist for Phase C
 
-- [ ] `python3 tests/run.py` green
+- [x] `python3 tests/run.py` green (195)
 - [ ] Quit and relaunch: the session is back exactly
 - [ ] Power off mid-jam: at most ~10 s lost, and the game still boots
-- [ ] A corrupted save never stops the game from booting
-- [ ] Fresh-session hold works and is undoable
+- [x] A corrupted save never stops the game from booting (tested headless)
+- [x] Fresh-session hold works and is undoable (tested headless; ⬜ device)
 - [ ] Save folder known (and in the port folder, if agreed)
 
 ## Later (not Phase C)

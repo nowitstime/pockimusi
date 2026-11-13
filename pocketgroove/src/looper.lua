@@ -305,7 +305,22 @@ function Looper:undo()
     while #self.undoStack > 0 do
         local entry = table.remove(self.undoStack)
         local track = self.tracks[entry.trackSlot]
-        if entry.kind == "swap" and track then
+        if entry.kind == "fresh" then
+            self:silenceAll()
+            local total = 0
+            for slot = 1, 4 do
+                local t = self.tracks[slot]
+                local saved = entry.tracks[slot]
+                -- notes recorded since the fresh start stay, after the restored ones
+                local kept = t.events
+                t.events = saved.events
+                for _, ev in ipairs(kept) do table.insert(t.events, ev) end
+                t.muted = saved.muted
+                total = total + #saved.events
+            end
+            self:showToast(string.format("UNDO: SESSION BACK (%d NOTES)", total))
+            return
+        elseif entry.kind == "swap" and track then
             self:silenceTrack(entry.trackSlot)
             track.instrumentId = entry.instrumentId
             track.name = entry.name
@@ -356,6 +371,22 @@ function Looper:countTrackAction(trackIdx, action)
         end
     end
     return count
+end
+
+-- Fresh session: clear every track's notes and mutes; tempo, key,
+-- instruments, sounds and effects stay. One undo entry brings it all back.
+function Looper:freshSession()
+    self:silenceAll()
+    local saved, total = {}, 0
+    for slot = 1, 4 do
+        local track = self.tracks[slot]
+        saved[slot] = { events = track.events, muted = track.muted }
+        total = total + #track.events
+        track.events = {}
+        track.muted = false
+    end
+    self:pushUndo({ kind = "fresh", tracks = saved })
+    self:showToast(string.format("FRESH SESSION (%d NOTES CLEARED - L2+R2+LEFT UNDOES)", total))
 end
 
 function Looper:clearTrack(trackIdx)

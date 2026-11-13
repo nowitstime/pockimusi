@@ -368,4 +368,80 @@ return {
         H.falsy(I.recLatched, "not latched")
         H.truthy(L.playing, "still playing")
     end },
+
+    -- ------------------------------------------------------------------
+    -- Fresh session: hold L2 + R2 + SELECT (C4)
+    -- ------------------------------------------------------------------
+    { "a short L2 + R2 + SELECT does nothing; a 1 s hold clears every track once", function()
+        local M, L = boot()
+        H.tap("L2"); H.tap("B"); H.tap("L2")                 -- drums
+        H.tap("SELECT"); H.tap("L2"); H.tap("A"); H.tap("L2") -- harp
+        L.tracks[2].muted = true
+        H.hold("L2", "R2", "SELECT"); H.play(0.5)
+        H.eq(H.mode(), "NEW", "fresh-session mode")
+        H.eq(#L.tracks[1].events, 1, "not yet after 0.5 s")
+        H.play(0.6)
+        H.eq(#L.tracks[1].events, 0, "drums cleared")
+        H.eq(#L.tracks[2].events, 0, "harp cleared")
+        H.falsy(L.tracks[2].muted, "mutes cleared")
+        L.tracks[1].events[1] = { tick = 0, len = 0, action = "B", vel = 0.8 }   -- something new
+        H.play(1.5)
+        H.eq(#L.tracks[1].events, 1, "fires once per hold, not again while held")
+        H.release("L2", "R2", "SELECT"); H.play(0.1)
+        H.falsy(M.Input.recLatched, "releasing doesn't latch recording")
+        H.eq(L.activeTrack, 2, "releasing SELECT doesn't change track")
+    end },
+
+    { "a fresh session keeps tempo, key, instruments, sounds and effects", function()
+        local M, L = boot()
+        L.bpm = 140
+        M.Theory.rootIndex = 5
+        M.Instruments:swapTrackInstrument(4, "bass")
+        L.tracks[4].state.patch = "bass_sub"
+        L.tracks[1].fx.on.space = true
+        L.tracks[1].swing = 0.6
+        H.hold("L2", "R2", "SELECT"); H.play(1.2); H.release("L2", "R2", "SELECT"); H.play(0.1)
+        H.eq(L.bpm, 140, "tempo")
+        H.eq(M.Theory.rootIndex, 5, "key")
+        H.eq(L.tracks[4].instrumentId, "bass", "instrument")
+        H.eq(L.tracks[4].state.patch, "bass_sub", "sound")
+        H.truthy(L.tracks[1].fx.on.space, "effect")
+        H.eq(L.tracks[1].swing, 0.6, "swing")
+    end },
+
+    { "undo brings the whole session back", function()
+        local M, L = boot()
+        H.tap("L2"); H.tap("B"); H.play(0.3); H.tap("Y"); H.tap("L2")
+        H.tap("SELECT"); H.tap("L2"); H.tap("A"); H.tap("L2")
+        L.tracks[3].muted = true
+        H.hold("L2", "R2", "SELECT"); H.play(1.2); H.release("SELECT"); H.play(0.1)
+        H.tap("LEFT")                                          -- still holding L2 + R2: undo
+        H.release("L2", "R2"); H.play(0.1)
+        H.eq(#L.tracks[1].events, 2, "drum notes back")
+        H.eq(#L.tracks[2].events, 1, "harp note back")
+        H.truthy(L.tracks[3].muted, "mute back")
+    end },
+
+    { "a fresh session silences what's playing", function()
+        local M, L = boot()
+        for _ = 1, 3 do H.tap("SELECT") end
+        H.tap("L2"); H.hold("B"); H.play(1.5); H.release("B"); H.play(0.05); H.tap("L2")
+        local st = L.tracks[4].state
+        local t = 0
+        while next(st.spawners) == nil and t < L:getLoopDuration() * 1.2 do H.play(1 / 60); t = t + 1 / 60 end
+        H.truthy(next(st.spawners) ~= nil, "grain playing")
+        H.hold("L2", "R2", "SELECT"); H.play(1.2)
+        H.eq(next(st.spawners), nil, "silenced")
+        H.release("L2", "R2", "SELECT"); H.play(0.1)
+    end },
+
+    { "erase, undo and clear-track still work with L2 + R2 alone", function()
+        local _, L = boot()
+        H.tap("L2"); H.tap("B"); H.play(0.3); H.tap("Y"); H.tap("L2")
+        H.hold("L2", "R2"); H.play(0.1)
+        H.eq(H.mode(), "ERASE", "erase mode without SELECT")
+        H.tap("B")
+        H.release("L2", "R2"); H.play(0.1)
+        H.eq(#L.tracks[1].events, 1, "pad B erased only")
+    end },
 }

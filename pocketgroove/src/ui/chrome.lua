@@ -577,6 +577,7 @@ function Chrome:drawTopBar()
         MIX       = { label = "MIXER",       icon = "FADERS",  stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
         TRANSPORT = { label = "TRANSPORT",   icon = "GLINT",   stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
         ERASE     = { label = "ERASE",       icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
+        NEW       = { label = "FRESH START", icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         FX        = { label = "LIVE FX",     icon = "GLINT",   stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
@@ -641,7 +642,7 @@ function Chrome:drawCenterStage()
             love.graphics.rectangle("line", 8 - i, 50 - i, 624 + i * 2, 306 + i * 2, 6 + i, 6 + i)
         end
         love.graphics.setLineWidth(1)
-        if mode == "ERASE" then
+        if mode == "ERASE" or mode == "NEW" then
             self:setColor(C.RED, 0.07)
             love.graphics.rectangle("fill", 9, 51, 622, 304, 6, 6)
         end
@@ -670,6 +671,8 @@ function Chrome:drawCenterStage()
         l1Label, r1Label = "L1: MST -", "R1: MST +"
     elseif mode == "ERASE" then
         l1Label, r1Label = "L1: UNDO", "R1: -"
+    elseif mode == "NEW" then
+        l1Label, r1Label = "L1: -", "R1: -"
     elseif def.id == "drums" then
         l1Label, r1Label = "L1: 1/4", "R1: 1/8"
     elseif def.id == "harp" then
@@ -694,6 +697,7 @@ function Chrome:drawCenterStage()
     elseif mode == "MIX" then titleStr = "4-TRACK LEVEL & MUTE MIXER"
     elseif mode == "TRANSPORT" then titleStr = "MASTER CLOCK"
     elseif mode == "ERASE" then titleStr = "SELECTIVE ERASE & UNDO"
+    elseif mode == "NEW" then titleStr = "FRESH SESSION"
     elseif mode == "FX" then titleStr = "LIVE PERFORMANCE FX"
     end
 
@@ -735,6 +739,8 @@ function Chrome:drawCenterStage()
         self:drawTransportView(track, instCol, accent)
     elseif mode == "ERASE" then
         self:drawEraseView(track)
+    elseif mode == "NEW" then
+        self:drawFreshSessionView()
     else
         self:drawInstrumentVisualizer(def, state, track, instCol, t)
     end
@@ -776,6 +782,9 @@ function Chrome:getControlLabels(def, state, mode)
     elseif mode == "ERASE" then
         dpadLabels = { LEFT = "UNDO" }
         faceLabels = { B = "CLR B", A = "CLR A", Y = "CLR Y", X = "CLR X" }
+    elseif mode == "NEW" then
+        dpadLabels = {}
+        faceLabels = { B = "", A = "", Y = "", X = "" }
     elseif def.id == "drums" then
         dpadLabels = { UP = "ACCENT", DOWN = "GHOST", LEFT = "FLAM", RIGHT = "RATCHET" }
         faceLabels = { B = "", A = "", Y = "", X = "" }
@@ -1289,9 +1298,41 @@ function Chrome:drawEraseView(track)
     love.graphics.print("B / A / Y / X - Clear pad lane", 232, 178)
     love.graphics.print("LEFT / L1 - Undo last overdub", 232, 202)
     love.graphics.print("START - Clear entire track", 232, 226)
-
     self:setColor(C.MUTED)
-    love.graphics.print(string.format("%d EVENTS ON TRACK %d", #track.events, track.slot), 244, 260)
+    love.graphics.print("+ hold SELECT - Fresh session", 232, 250)
+    love.graphics.print(string.format("%d EVENTS ON TRACK %d", #track.events, track.slot), 244, 276)
+end
+
+-- Hold L2 + R2 + SELECT: a ring fills over NEW_HOLD seconds
+function Chrome:drawFreshSessionView()
+    local C = Config.COLORS
+    local cx, cy, r = 320, 176, 34
+    local frac = math_min(1.0, Modes.newHold / Modes.NEW_HOLD)
+    local done = Modes.newFired
+
+    self:setColor(C.RED, 0.25)
+    love.graphics.setLineWidth(4)
+    love.graphics.circle("line", cx, cy, r)
+    if frac > 0 then
+        self:setColor(C.RED)
+        love.graphics.arc("line", "open", cx, cy, r, -math_pi * 0.5, -math_pi * 0.5 + frac * math_pi * 2.0)
+    end
+    love.graphics.setLineWidth(1)
+    if done then self:drawStarGlint(cx, cy, 12, C.RED, 1.0) end
+
+    local function centred(text, y, font, col)
+        love.graphics.setFont(font)
+        self:setColor(col)
+        love.graphics.print(text, math_floor(320 - font:getWidth(text) * 0.5), y)
+    end
+    if done then
+        centred("FRESH SESSION", 222, self.fontLarge, C.RED)
+        centred("LET GO - UNDO WITH L2 + R2 + LEFT", 246, self.fontSmall, C.TEXT)
+    else
+        centred("KEEP HOLDING", 222, self.fontLarge, C.RED)
+        centred("CLEARS THE NOTES ON ALL 4 TRACKS", 246, self.fontSmall, C.TEXT)
+        centred("TEMPO, KEY, SOUNDS AND EFFECTS STAY", 264, self.fontSmall, C.MUTED)
+    end
 end
 
 -- ============================================================================
@@ -1319,7 +1360,9 @@ function Chrome:drawFooterStrip(def)
         hintText = "TRANSPORT | UP/DN BPM | < > Key | L1/R1 Scale | A Grid | Y+UP/DN Swing | X Click"
         hintCol = C.AMBER
     elseif mode == "ERASE" then
-        hintText = "ERASE | B/A/Y/X Clear pad | LEFT or L1 Undo take | START Clear all"
+        hintText = "ERASE | B/A/Y/X Clear pad | LEFT Undo | START Clear track | +SELECT Fresh"
+    elseif mode == "NEW" then
+        hintText = "FRESH SESSION | Hold 1 s: clear all notes | Undo: L2 + R2 + LEFT"
         hintCol = C.RED
     elseif mode == "FX" then
         hintText = "LIVE FX | UP Stutter | DN Slow | LEFT Duck | RIGHT Bitcrush | B/A/Y/X Mute"

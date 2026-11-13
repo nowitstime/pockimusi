@@ -77,12 +77,12 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] B5 Bends: D-pad and shoulders while holding (and in the release tail) glide, record, replay
 - [x] B6 Stage view (pitch trace, live scope, real face labels) + bend marks on the tape deck (device look pending)
 
-## Phase C · Autosave ← **next up** — working plan in [PHASE_C.md](PHASE_C.md)
+## Phase C · Autosave ✅ (device check pending) — details in [PHASE_C.md](PHASE_C.md)
 
 - [x] C1 Save text: write a table, read it back with a parser that never runs code (`src/save.lua`)
 - [x] C2 Session snapshot and restore (per-instrument settings, events, effects; every value checked)
 - [x] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot (device check pending)
-- [ ] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; save folder check
+- [x] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; saves in the port folder; log.txt fix (device check pending)
 
 ## Phase D · Chord Harp + Harmony
 
@@ -148,4 +148,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C, autosave, is next: plan and decisions in [PHASE_C.md](PHASE_C.md).
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Next: Phase D, Chord Harp + chord-follow.

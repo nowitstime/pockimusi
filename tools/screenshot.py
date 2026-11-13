@@ -34,6 +34,9 @@ SCENES = {
     "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("R1");'
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
+    "erase": 'H.hold("L2", "R2"); H.play(0.2)',
+    "fresh-holding": 'H.hold("L2", "R2", "SELECT"); H.play(0.6)',
+    "fresh-done": 'H.tap("L2"); H.tap("B"); H.tap("L2"); H.hold("L2", "R2", "SELECT"); H.play(1.3)',
     "bass-idle": 'H.tap("SELECT"); H.tap("SELECT"); H.play(0.2)',
     "bass-low5": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("DOWN", "B"); H.play(0.4)',
     "bass-glide": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("B"); H.play(0.3); H.hold("UP"); H.play(0.35);'
