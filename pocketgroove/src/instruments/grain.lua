@@ -162,4 +162,15 @@ function Grain:updateVoices(dt, state, track)
     end
 end
 
+-- Save / load (Phase C)
+function Grain:saveState(state)
+    return { scanPos = state.scanPos, density = state.density }
+end
+
+function Grain:loadState(state, data)
+    if type(data) ~= "table" then return end
+    if type(data.scanPos) == "number" then state.scanPos = clamp(data.scanPos, 0.0, 1.0) end
+    if type(data.density) == "number" then state.density = clamp(data.density, 0.1, 1.0) end
+end
+
 return Grain

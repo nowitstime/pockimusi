@@ -376,4 +376,19 @@ function Bass:updateVoices(dt, state, track)
     end
 end
 
+-- Save / load (Phase C)
+function Bass:saveState(state)
+    return { patch = state.patch, glide = state.glide }
+end
+
+function Bass:loadState(state, data)
+    if type(data) ~= "table" then return end
+    for _, p in ipairs(self.PATCHES) do
+        if data.patch == p then state.patch = p end
+    end
+    for _, g in ipairs(self.GLIDES) do
+        if data.glide == g then state.glide = g end
+    end
+end
+
 return Bass

@@ -26,6 +26,11 @@ export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 
 source $controlfolder/runtimes/"love_11.5"/love.txt
 
+# Keep saves in the port folder: conf/love/pocketgroove/session_a.txt and
+# session_b.txt (set here, after PortMaster has used XDG_DATA_HOME to find itself)
+export XDG_DATA_HOME="$GAMEDIR/conf"
+mkdir -p "$XDG_DATA_HOME"
+
 $GPTOKEYB "$LOVE_GPTK" -c "$GAMEDIR/controls.gptk" &
 pm_platform_helper "$LOVE_BINARY"
 

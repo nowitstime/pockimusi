@@ -64,6 +64,15 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 **Tests:** full round trip in the running game (record on all four tracks with bends, chord colours, kit edits, effects, swing, mutes; snapshot → encode → decode → restore into a fresh boot → identical); invalid values are fixed up, not trusted; runtime flags never saved; a held note mid-save comes back with a length.
 
+
+**Status:** ✅ done (176 tests, new `tests/test_session.lua`).
+
+- `src/session.lua`: `Session.snapshot()` and `Session.restore(data)` (returns `true`, or `false, message` for a non-session or another `format`, leaving the game untouched).
+- `saveState` / `loadState` on Drums (kit, edited flag, last pad, pad sounds **by id**), Harp (colour), Bass (patch, glide), Grain (scan, density). `loadState` starts from a fresh state and only accepts known values.
+- Restore releases held notes, silences playback, turns the record latch off, clears undo, puts the playhead at bar 1, continues take numbers after the highest saved one, and toasts `SESSION RESTORED`. Unknown instruments fall back to the slot's default; numbers are clamped; events outside the loop, with an unknown button or not a table are dropped; bad bend keyframes are dropped and the rest sorted.
+- A typical small session is about 2 KB of readable text. Numbers are written in their shortest exact form (`0.85`, not `0.84999999999999998`).
+
+**Tests:** save → fresh boot → restore → save gives byte-identical text, plus explicit checks of every setting against what was set (so a setting an instrument forgets to save is caught, not hidden by the text compare); restored drums play back; open notes saved with their length so far and no runtime flags; pad sounds by name survive a reordered catalogue; a deliberately bad session is fixed up value by value; unknown formats refused; restore silences and clears undo and the latch; take numbers continue; swapped instruments return. Removing a saved setting, a load, the runtime-flag filter, the tick check or the undo reset each fails a test.
 ---
 
 ## C3 · Autosave 📱
@@ -78,6 +87,18 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 **Device check:** where the files land, how long a save takes (should be a few ms), and that a session survives a normal quit *and* holding the power button.
 
+
+**Status:** ✅ built (190 tests, new `tests/test_autosave.lua`); ⬜ device check.
+
+- `src/autosave.lua`: `Autosave:load()` at the end of `love.load`, `Autosave:update(dt)` every frame, `Autosave:saveNow()` from `love.quit` and `love.focus(false)`.
+- Files `session_a.txt` / `session_b.txt` hold `{seq=N,session={...}}` (the session text is wrapped as-is, so one encode per save). Boot sorts the readable files newest first and restores the first that `Session.restore` accepts; the next save goes to the other slot with `seq + 1`.
+- Saves only after a button press/release since the last save, ≥ 10 s after the last save, with no button held (or after 30 s regardless); only when the text changed.
+- `log.txt` gets the save folder at boot, each restore, each save (`saved session_b (seq 12, 1.9 KB, 3 ms)`) and anything unreadable.
+- Toasts: `SESSION RESTORED`; `SAVE COULDN'T BE READ - FRESH SESSION` if files existed but none worked; `AUTOSAVE FAILED - SEE LOG` once if a write fails (saving resumes on its own).
+
+**Tests:** untouched → no writes; a change saved after ~10 s; waits while a button is held, saves at 30 s anyway; slots alternate with rising sequence; button presses that change nothing don't rewrite; quit and focus loss save at once; reboot restores the newest (tempo, active track, events) and continues the sequence in the other slot; a restored session isn't rewritten until it changes; a half-written file (power cut) is ignored and the previous save loads; a damaged newest falls back to the older; a newer-format file is skipped; unreadable files → fresh session with a message, and saving works again; first boot is silent; a failed write warns once and recovers. Removing the slot alternation, the newest-first order, the quiet-moment wait, the unchanged check or the fallback each fails tests.
+
+**On the device:** check `log.txt` for the save folder and save times; quit and relaunch; and hold the power button mid-jam, then relaunch (at most ~10 s lost).
 ---
 
 ## C4 · Fresh session 📱
@@ -90,15 +111,26 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 
 **Tests:** a short press does nothing; a 1 s hold clears all four tracks once (not repeatedly while still held); settings, instruments and tempo survive; undo brings back every note and mute; existing erase / undo / clear combos still work.
 
+
+**Status:** ✅ built (195 tests); ⬜ device check.
+
+- Mode `NEW` (above `ERASE`): `L2 + R2 + SELECT`; `Modes:update(dt)` times the hold; fires once per hold at 1 s: releases live notes, then `Looper:freshSession()` clears every track's events and mutes, silences playback and pushes a `fresh` undo entry. Undo puts every track's notes and mutes back (notes recorded after the fresh start are kept after them).
+- Screen: red frame, `FRESH START` badge, a ring that fills over the second, then "FRESH SESSION / LET GO - UNDO WITH L2 + R2 + LEFT". The erase page and its hint mention `+ hold SELECT`.
+- **Logging fix:** the first device `log.txt` had none of the game's lines (not even the boot timing from A7): stdout is a pipe to `tee` there and the runtime didn't flush it. `main.lua` now sets line buffering first thing.
+- **Save folder:** `PocketGroove.sh` now exports `XDG_DATA_HOME="$GAMEDIR/conf"` just before starting LÖVE, so saves are in `ports/pocketgroove/conf/love/pocketgroove/` (`session_a.txt`, `session_b.txt`). Saves made before this went to the runtime's default folder and won't be found after the change (one fresh start).
+
+**Tests:** a short hold does nothing and a 1 s hold clears all tracks once (not again while held), releasing latches nothing and keeps the track; tempo, key, instruments, sounds, effects and swing survive; undo brings back every note and mute; a playing note is silenced; `L2 + R2` erase still works without `SELECT`.
+
+**On the device:** copy both `PocketGroove.love` **and** `PocketGroove.sh`; check `log.txt` now shows the `[PocketGroove]` lines (save folder, sound generation, saves with their ms); check `conf/love/pocketgroove/` holds the two files; try the hold and its undo.
 ---
 
 ## Exit checklist for Phase C
 
-- [ ] `python3 tests/run.py` green
+- [x] `python3 tests/run.py` green (195)
 - [ ] Quit and relaunch: the session is back exactly
 - [ ] Power off mid-jam: at most ~10 s lost, and the game still boots
-- [ ] A corrupted save never stops the game from booting
-- [ ] Fresh-session hold works and is undoable
+- [x] A corrupted save never stops the game from booting (tested headless)
+- [x] Fresh-session hold works and is undoable (tested headless; ⬜ device)
 - [ ] Save folder known (and in the port folder, if agreed)
 
 ## Later (not Phase C)

@@ -87,9 +87,8 @@ The D-pad modifies every hit while held. It is read as two independent axes so a
 
 ### 3.3 Chord map & colour
 
-D-pad picks one of 8 chords from the current key: `↑`/neutral = I, `↖` ii, `↗` iii, `←` IV, `→` V, `↓` vi, `↙` ♭VII, `↘` iv (borrowed). ✅
+D-pad picks one of 9 chords from the current key: neutral = **I**, `↑` = **♭VI** 📐 (was a second I), `↖` ii, `↗` iii, `←` IV, `→` V, `↓` vi, `↙` ♭VII, `↘` iv (borrowed). ✅ (plan: [PHASE_D.md](PHASE_D.md))
 
-- ❓ Neutral and `↑` both give I today. Option: neutral = *keep the last chord*, which makes releasing the D-pad safe.
 - **Chord colour** (triad, 7th, 9th, sus4, add9) is a **Track page setting row** (§3.4), set once and left. ✅ Strings per colour: triad root-3rd-5th-8ve · 7th root-3rd-5th-7th · 9th root-3rd-7th-9th · sus4 root-4th-5th-8ve · add9 root-3rd-5th-9th. The 7th comes from the scale, so V7 is dominant (G7) and vi7 is minor (Am7).
 - ❓ Momentary colour gesture for live variation. Decide after playtesting.
 
@@ -147,7 +146,7 @@ BPM, key, scale and bars are global. Grid and swing belong to the active track a
 | `L2 + R2` + `B/A/Y/X` | Erase that pad/action on the active track |
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
-| `L2 + R2 + SELECT` (hold ~1 s) | 📐 Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
+| `L2 + R2 + SELECT` (hold ~1 s) | ✅ Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
@@ -170,25 +169,26 @@ Hybrid **latch / momentary** on `L2` ✅:
 
 ---
 
-## 5. Harmony: the chord track & chord-follow 📐
+## 5. Harmony: the chord track & chord-follow 📐 (plan: [PHASE_D.md](PHASE_D.md))
 
 There is always a **current chord** at every point in the loop. A small `Harmony` module resolves it:
 
-1. If a track holds a **Chord Harp** with recorded chord events, the current chord is the most recent chord at that loop position (wrapping around the loop). If several tracks are chord harps, the lowest-numbered one is the **chord source**.
-2. Otherwise the current chord is the **tonic** (I of the current key and scale).
+1. If a track holds a **Chord Harp** with recorded chords, the current chord is the most recent chord at that loop position (wrapping: before the loop's first chord, the last one carries over). With several harp tracks, the lowest-numbered one is the **chord source**. Muting it doesn't change harmony.
+2. If the harp has no recorded chords, the chord you last played live on it.
+3. Otherwise the **tonic** (I of the current key and scale).
 
 So nothing depends on recording chords first: with no chord track, followers simply play in the key.
 
-**Followers** (Bass, Pad, Lead/Arp) have a **FOLLOW** setting row (Track page, default **on**):
+**Followers** (Bass now; Pad and Lead/Arp later) have a **FOLLOW** setting row (Track page, default **on**):
 
-- **On:** a note's stored *degree* is played relative to the current chord at playback time. Adding or changing chords later re-harmonises lines already recorded.
+- **On:** a note's stored *degree* is played relative to the chord at the note's start. Recording or changing chords later re-harmonises lines already recorded. A held note keeps its pitch through a chord change.
 - **Off:** the note's stored *absolute pitch* is played, exactly as recorded.
 
 Live playing uses the same rule, so what you hear while playing is what replays.
 
-Mapping (follow on): degree 1 = chord root, 3 = chord third, 5 = chord fifth; other degrees walk the scale from the chord root. ❓ Tune after playtesting (e.g. borrowed chords).
+Mapping (follow on): degree 1 = chord root, 3 = chord third, 5 = chord fifth, 7 = chord seventh, 8 = octave, L5 = fifth below. On diatonic chords, 2, 4 and 6 walk the key's scale from the chord root; on borrowed chords (♭VI, ♭VII, iv) they are +2, +5 and +8/+9 above the root. ❓ Tune after playtesting.
 
-Erasing or swapping away the chord source makes followers fall back to the tonic; nothing breaks.
+Erasing or swapping away the chord source makes followers fall back (live chord, then tonic); nothing breaks.
 
 ---
 
@@ -219,12 +219,12 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - 📐 **Chance hits:** events carry `chance` (0–1). ❓ Gesture — proposal: a *ghost* hit recorded while Variation ≠ Off gets `chance = 0.5`.
 - 📐 Per-pad tune and level ❓ (rows, or a pad sub-row).
 
-### 7.2 Chord Harp 🔧
+### 7.2 Chord Harp 🔧 (plan: [PHASE_D.md](PHASE_D.md))
 
-- ✅ 8 chords on the D-pad; 4 face buttons pluck chord tones.
-- 📐 **Strum** — the signature gesture. Proposal ❓: `B` strum down, `A` strum up (all chord tones, spread by the `STRUM` row), `Y` low string / root, `X` high string. Decide after playtesting.
-- ✅ Shoulders = voicing octave; both = wide voicing. ✅ Colour on the `COLOUR` row.
-- 📐 Records `chord` events that drive Harmony (§5).
+- ✅ Chords on the D-pad (§3.3).
+- 📐 Face buttons: `B` **strum down**, `A` **strum up** (all four strings, spaced by the `STRUM` row: fast / medium / slow), `Y` the chord's **low root**, `X` the **top string**. One event per press.
+- ✅ Shoulders = voicing octave; both = wide voicing. ✅ Colour on the `COLOUR` row. 📐 `STRUM` row.
+- 📐 Every harp event stores its chord relative to the key (root offset, 3rd, 5th, 7th, name, numeral, colour); the lowest-numbered harp track with chords is the **chord source** for Harmony (§5).
 
 ### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
 
@@ -325,9 +325,10 @@ Event = {
 
 ---
 
-## 10. Persistence 📐 (plan: [PHASE_C.md](PHASE_C.md))
+## 10. Persistence ✅ (details: [PHASE_C.md](PHASE_C.md))
 
-- **Autosave** every 10 s when something changed, and on quit / focus loss: tempo, key, scale, bars, click, master volume, active track, and each track's instrument, settings, grid, swing, volume, mute, effects and events. Not saved: undo history, record latch, playhead.
+- **Autosave** after you touched something (≥ 10 s apart, at a moment with no buttons held, or after 30 s regardless), and on quit / focus loss: tempo, key, scale, bars, click, master volume, active track, and each track's instrument, settings, grid, swing, volume, mute, effects and events. Not saved: undo history, record latch, playhead.
+- Files live in the port folder (`conf/love/pocketgroove/`, via `XDG_DATA_HOME` in `PocketGroove.sh`).
 - Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-style table text (`format = 1`, events v2), read back by a parser that never runs it as code; unreadable or newer files are ignored and the game still boots.
 - **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
 - Later: named **patterns** (A–H) and a simple chain = "song" (the format leaves room). ❓ Exact definition.

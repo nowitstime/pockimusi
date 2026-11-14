@@ -328,4 +328,32 @@ function Drums:noteOn(ev, state, track, isPlayback)
     state.padOrn[act] = ev.orn or (n and "ratchet") or nil
 end
 
+-- ---------------------------------------------------------------------------
+-- Save / load (Phase C): pad sounds are saved by sound id, not catalogue
+-- position, so adding sounds later doesn't reshuffle a saved kit
+-- ---------------------------------------------------------------------------
+function Drums:saveState(state)
+    local pads = {}
+    for _, pad in ipairs(self.PADS) do pads[pad] = self:getPadSound(state, pad).id end
+    return { kit = state.kitIndex, kitEdited = state.kitEdited, lastPad = state.lastPad, pads = pads }
+end
+
+function Drums:loadState(state, data)
+    if type(data) ~= "table" then return end
+    local kit = tonumber(data.kit)
+    if kit and self.KITS[kit] then self:applyKit(state, kit) end
+    if type(data.pads) == "table" then
+        for _, pad in ipairs(self.PADS) do
+            local id = data.pads[pad]
+            for i, item in ipairs(Synth.drumCatalog) do
+                if item.id == id then state.padCatalogIndex[pad] = i break end
+            end
+        end
+    end
+    state.kitEdited = (data.kitEdited == true)
+    for _, pad in ipairs(self.PADS) do
+        if data.lastPad == pad then state.lastPad = pad end
+    end
+end
+
 return Drums

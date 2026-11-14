@@ -77,23 +77,20 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] B5 Bends: D-pad and shoulders while holding (and in the release tail) glide, record, replay
 - [x] B6 Stage view (pitch trace, live scope, real face labels) + bend marks on the tape deck (device look pending)
 
-## Phase C · Autosave ← **next up** — working plan in [PHASE_C.md](PHASE_C.md)
+## Phase C · Autosave ✅ (device check pending) — details in [PHASE_C.md](PHASE_C.md)
 
 - [x] C1 Save text: write a table, read it back with a parser that never runs code (`src/save.lua`)
-- [ ] C2 Session snapshot and restore (per-instrument settings, events, effects)
-- [ ] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot
-- [ ] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; save folder check
+- [x] C2 Session snapshot and restore (per-instrument settings, events, effects; every value checked)
+- [x] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot (device check pending)
+- [x] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; saves in the port folder; log.txt fix (device check pending)
 
-## Phase D · Chord Harp + Harmony
+## Phase D · Chord Harp + chord-follow ← **next up** — working plan in [PHASE_D.md](PHASE_D.md)
 
-- [ ] `harmony.lua`: current chord at a tick (chord source track, tonic fallback)
-- [ ] Harp records `chord` events; chord name in the top bar and along its tape lane
-- [ ] Strum gesture ❓ (`B` down, `A` up, `Y` low, `X` high — playtest first)
-- [ ] `COLOUR` and `STRUM` rows; shoulders become voicing octave / wide
-- [ ] Bass `FOLLOW` switches on (default on)
-- [ ] ❓ Neutral D-pad: tonic or keep last chord
-- [ ] Stage view in template (keep the harp character)
-- [ ] Device check
+- [ ] D1 Chord map (`↑` = ♭VI, neutral = I) and full chord data on harp events
+- [ ] D2 Strums and strings: `B` strum down, `A` strum up, `Y` low root, `X` top string; `STRUM` row
+- [ ] D3 `harmony.lua`: current chord at any tick (chord-source track, live chord, tonic)
+- [ ] D4 Bass `FOLLOW` (default on): live and playback notes and bends follow the chord
+- [ ] D5 Chord in the top bar and on the harp lane, harp strum view, bass "follow" capsule; device check
 
 ## Phase E · Pad (replaces Grain)
 
@@ -148,4 +145,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C, autosave, is next: plan and decisions in [PHASE_C.md](PHASE_C.md).
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Next: Phase D, Chord Harp + chord-follow: plan and decisions in [PHASE_D.md](PHASE_D.md).

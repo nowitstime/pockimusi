@@ -42,6 +42,7 @@ Config.MODE_COLORS = {
     MIX       = Config.COLORS.SILVER,
     FX        = Config.COLORS.SILVER,
     ERASE     = Config.COLORS.RED,
+    NEW       = Config.COLORS.RED,
 }
 
 Config.TRACK_COLORS = {

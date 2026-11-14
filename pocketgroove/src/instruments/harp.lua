@@ -97,4 +97,16 @@ function Harp:noteOn(ev, state, track)
     end
 end
 
+-- Save / load (Phase C)
+function Harp:saveState(state)
+    return { colour = state.colour }
+end
+
+function Harp:loadState(state, data)
+    if type(data) ~= "table" then return end
+    for _, c in ipairs(Theory.COLOURS) do
+        if data.colour == c then state.colour = c end
+    end
+end
+
 return Harp

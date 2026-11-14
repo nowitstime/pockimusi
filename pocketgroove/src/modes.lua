@@ -16,7 +16,7 @@ local Instruments = require("src.instruments")
 local clamp = Config.clamp
 
 local Modes = {
-    -- NORMAL, REC_LATCH, REC_HOLD, ERASE, MIX, TRACK, TRANSPORT, FX
+    -- NORMAL, REC_LATCH, REC_HOLD, NEW, ERASE, MIX, TRACK, TRANSPORT, FX
     current  = "NORMAL",
     previous = "NORMAL",
 
@@ -30,6 +30,10 @@ local Modes = {
     TRACK_HOLD    = 0.18,                -- SELECT held this long opens the Track page
     TRANSPORT_HOLD = 0.22,               -- START held this long opens Transport
     DOUBLE_TAP    = 0.32,                -- two START taps within this = reset playhead
+    NEW_HOLD      = 1.0,                 -- L2 + R2 + SELECT held this long = fresh session
+
+    newHold = 0.0,                       -- seconds the fresh-session combo has been held
+    newFired = false,                    -- fired during this hold (once per hold)
 }
 
 local FACE = { "B", "A", "Y", "X" }
@@ -80,6 +84,7 @@ end
 -- ---------------------------------------------------------------------------
 function Modes:resolve()
     local d = Input.down
+    if d.L2 and d.R2 and d.SELECT then return "NEW" end
     if d.L2 and d.R2 then return "ERASE" end
     if d.SELECT and d.R2 then return "MIX" end
     if d.SELECT and Input.selectHoldTime >= self.TRACK_HOLD then return "TRACK" end
@@ -112,6 +117,22 @@ function handlers.ERASE(ctx)
     if Input.pressed.START then
         Looper:clearTrack(tIdx)
         Input.comboUsed.START = true
+    end
+    return true
+end
+
+-- L2 + R2 + SELECT held: a fresh session after NEW_HOLD seconds (once per
+-- hold). Clears every track's notes and mutes, keeps the setup; undoable.
+function handlers.NEW(ctx, dt)
+    Input.comboUsed.L2, Input.comboUsed.R2, Input.comboUsed.SELECT = true, true, true
+    if Modes.previous ~= "NEW" then
+        Modes.newHold, Modes.newFired = 0.0, false
+    end
+    Modes.newHold = Modes.newHold + (dt or 0)
+    if not Modes.newFired and Modes.newHold >= Modes.NEW_HOLD then
+        Modes.newFired = true
+        Instruments:releaseAll()
+        Looper:freshSession()
     end
     return true
 end
@@ -304,7 +325,7 @@ local function applyPendingSwap()
     end
 end
 
-function Modes:update()
+function Modes:update(dt)
     updateRecord()
     applyPendingSwap()
 
@@ -320,7 +341,7 @@ function Modes:update()
     local blocked = false
     if handler then
         blocked = true
-        if handler({ def = def, state = state }) then
+        if handler({ def = def, state = state }, dt) then
             Input:clearReleasedCombos()
             return true
         end
