@@ -86,6 +86,7 @@ function Session.snapshot()
         bpm = Looper.bpm,
         bars = Looper.bars,
         clickOn = Looper.clickOn,
+        countIn = Looper.countIn,
         activeTrack = Looper.activeTrack,
         rootIndex = Theory.rootIndex,
         scaleIndex = Theory.scaleIndex,
@@ -161,6 +162,7 @@ function Session.restore(data)
     Looper.bpm = int(data.bpm, Config.MIN_BPM, Config.MAX_BPM, Config.DEFAULT_BPM)
     Looper.bars = (data.bars == 4) and 4 or 2
     Looper.clickOn = (data.clickOn == true)
+    Looper.countIn = (data.countIn == true)
     Theory.rootIndex = int(data.rootIndex, 1, #Theory.NOTE_NAMES, 1)
     Theory.scaleIndex = int(data.scaleIndex, 1, #Theory.SCALES, 1)
     Synth.masterVolume = num(data.masterVolume, 0.0, 1.0, Synth.masterVolume)

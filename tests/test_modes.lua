@@ -305,7 +305,7 @@ return {
         H.truthy(S.fxBeatRepeat, "R2 + UP stutter")
         H.release("UP"); H.hold("LEFT"); H.play(0.1)
         H.falsy(S.fxBeatRepeat, "stutter off when UP released")
-        H.truthy(S.fxLowPass, "R2 + LEFT duck")
+        H.truthy(S.fxLowPass, "R2 + LEFT filter")
         H.release("LEFT", "R2"); H.play(0.1)
         H.falsy(S.fxLowPass, "FX off when R2 released")
         H.eq(#L.tracks[1].events, 0, "R2 + face never plays the pads")

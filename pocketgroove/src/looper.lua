@@ -38,7 +38,10 @@ local Looper = {
     currentTakeId = 0,
     undoStack = {},    -- { kind = "take", takeId, trackSlot } or { kind = "swap", ... }
     tracks = {},
-    clickOn = false,   -- metronome click (Transport X)
+    -- Click (Transport X cycles off -> on -> count-in -> on + count-in)
+    clickOn = false,   -- metronome click on every beat
+    countIn = false,   -- a record tap counts in to the next bar line (SPEC §3.5)
+    counting = false,  -- a count-in is running (set by Modes): clicks even if clickOn is off
     toastText = "READY - TAP [SELECT] TO SWITCH TRACKS",
     toastTimer = 2.5,
 
@@ -71,7 +74,6 @@ function Looper:init(Instruments)
             swing = 0.50,      -- 0.50 = straight .. 0.75 = heavy (applied at playback)
             fx = { tone = 0.5, drive = 0.5, echo = 0.4, space = 0.5,
                    on = { tone = false, drive = false, echo = false, space = false } },
-            meterPeak = 0.0,
             muted = false,
             events = {},
             sounding = {},     -- events whose playback note-on has fired and note-off not yet
@@ -471,6 +473,19 @@ function Looper:toggleMute(trackIdx)
     end
 end
 
+Looper.CLICK_MODES = { "OFF", "ON", "COUNT-IN", "ON + COUNT-IN" }
+
+function Looper:getClickMode()
+    return self.CLICK_MODES[(self.clickOn and 1 or 0) + (self.countIn and 2 or 0) + 1]
+end
+
+function Looper:cycleClickMode()
+    local i = (self.clickOn and 1 or 0) + (self.countIn and 2 or 0)
+    i = (i + 1) % 4
+    self.clickOn, self.countIn = (i % 2 == 1), (i >= 2)
+    self:showToast("CLICK: " .. self:getClickMode())
+end
+
 function Looper:setPlaying(on)
     self.playing = on
     if not on then self:silenceAll() end
@@ -522,7 +537,7 @@ function Looper:update(dt, handler)
 
     local prevBeat = self.currentBeat
     self:syncPhase()
-    if self.clickOn and self.currentBeat ~= prevBeat then
+    if (self.clickOn or self.counting) and self.currentBeat ~= prevBeat then
         local downbeat = ((self.currentBeat - 1) % 4 == 0)
         Synth:trigger("perc_wood", downbeat and 5 or 0, downbeat and 0.55 or 0.32, 0.8)
     end
@@ -558,7 +573,6 @@ function Looper:update(dt, handler)
                         if ev.skipOnce then
                             ev.skipOnce = nil     -- the live press already played this pass
                         else
-                            track.meterPeak = math_max(track.meterPeak, ev.vel or 0.85)
                             if ev.len > 0 then track.sounding[ev] = true end
                             handler("on", ev, track)
                         end
@@ -571,7 +585,6 @@ function Looper:update(dt, handler)
                 end
             end
         end
-        track.meterPeak = math_max(0.0, track.meterPeak - dt * 3.5)
     end
 end
 
