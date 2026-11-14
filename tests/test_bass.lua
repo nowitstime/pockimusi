@@ -47,10 +47,12 @@ return {
         H.truthy(S.patches.bass_pluck.release > S.patches.bass_saw.release, "PLUCK rings longer")
     end },
 
-    { "Track page shows PATCH (sound) and GLIDE (setting) rows", function()
+    { "Track page shows PATCH (sound), GLIDE and FOLLOW (setting) rows", function()
         local M, _, track = boot()
         local rows = M.Instruments:getSoundRows(M.Instruments:getDefinition("bass"), track.state)
-        H.eq(#rows, 2, "two rows")
+        H.eq(#rows, 3, "three rows")
+        H.eq(rows[3].label .. "=" .. rows[3].value, "FOLLOW=ON", "follow row")
+        H.eq(rows[3].kind, "setting", "follow is a setting row")
         H.eq(rows[1].label .. "=" .. rows[1].value, "PATCH=SAW", "patch row")
         H.eq(rows[1].kind, nil, "patch is a sound row")
         H.eq(rows[2].label .. "=" .. rows[2].value, "GLIDE=MEDIUM", "glide row")

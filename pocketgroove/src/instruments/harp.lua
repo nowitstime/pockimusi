@@ -32,7 +32,7 @@ function Harp:newState()
     }
 end
 
-function Harp:updateVisuals(dt, state, controlsBlocked)
+function Harp:updateVisuals(dt, state, controlsBlocked, isActive)
     for i = 1, 4 do
         local s = state.strings[i]
         if s.energy > 0 then
@@ -41,8 +41,11 @@ function Harp:updateVisuals(dt, state, controlsBlocked)
         end
     end
 
-    local dirKey = controlsBlocked and "NEUTRAL" or Input:get8WayDirection()
-    state.currentChord = Theory:getChordForDirection(dirKey, Input.down.L1, Input.down.R1, state.colour)
+    -- The D-pad chooses this harp's chord only while its track is the active one
+    if isActive or not state.currentChord then
+        local dirKey = controlsBlocked and "NEUTRAL" or Input:get8WayDirection()
+        state.currentChord = Theory:getChordForDirection(dirKey, Input.down.L1, Input.down.R1, state.colour)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -75,20 +78,30 @@ function Harp:updateInput(dt, state, track, emitEvent)
 
     for _, btn in ipairs({ "B", "A", "Y", "X" }) do
         if Input.pressed[btn] then
-            -- One-shot; the chord it belongs to is stored for Harmony (Phase D)
+            -- One-shot. The chord is stored relative to the key, for Harmony
+            -- (chord-follow) and so a key change transposes the recording.
+            local data = self:chordData(chord)
+            state.liveChord = data             -- what followers use until chords are recorded
             emitEvent({
                 action = btn,
                 semis = chord.notes[self.BUTTON_TO_INDEX[btn]] or 0,
                 vel = 0.82,
                 decay = 1.0,
-                chord = { name = chord.name, roman = chord.roman, colour = chord.colour },
+                chord = data,
             })
         end
     end
 end
 
+function Harp:chordData(chord)
+    return { name = chord.name, roman = chord.roman, colour = chord.colour, suffix = chord.suffix,
+             root = chord.root, third = chord.third, fifth = chord.fifth, seventh = chord.seventh,
+             borrowed = chord.borrowed or nil, key = Theory:getRootSemis() }
+end
+
 function Harp:noteOn(ev, state, track)
-    local semis = ev.semis or 0
+    -- recorded in another key: play it in this one
+    local semis = (ev.semis or 0) + Theory:keyShift(ev.chord and ev.chord.key)
     Synth:trigger("harp", semis, ev.vel or 0.85, ev.decay or 1.0, nil, track.volume, track)
     local str = state.strings[self.BUTTON_TO_INDEX[ev.action] or 1]
     if str then

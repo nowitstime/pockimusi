@@ -75,6 +75,7 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
     local seventhInterval = 11
     local ninthInterval = 14
     local quality = ""
+    local borrowed = false       -- not built from the scale (followers use fixed intervals)
 
     local function buildFromScaleDegree(deg, romanStr)
         local r = scale[deg]
@@ -90,8 +91,16 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
         quality = (thirdInterval == 3) and "m" or ""
     end
 
-    if dirKey == "NEUTRAL" or dirKey == "UP" then
+    if dirKey == "NEUTRAL" then
         buildFromScaleDegree(1, "I")
+    elseif dirKey == "UP" then
+        -- bVI (Ab in C major): with bVII gives the bVI - bVII - I lift
+        chordRootOffset = 8
+        thirdInterval = 4
+        fifthInterval = 7
+        seventhInterval = 11
+        roman = "bVI"
+        borrowed = true
     elseif dirKey == "LEFT" then
         buildFromScaleDegree(4, "IV")
     elseif dirKey == "RIGHT" then
@@ -110,6 +119,7 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
         ninthInterval = 14
         roman = "bVII"
         quality = ""
+        borrowed = true
     elseif dirKey == "DOWN_RIGHT" then
         chordRootOffset = 5
         thirdInterval = 3
@@ -118,6 +128,7 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
         ninthInterval = 14
         roman = "IVm"
         quality = "m"
+        borrowed = true
     end
 
     local absRoot = rootBase + chordRootOffset
@@ -164,10 +175,68 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
         roman = roman,
         dirKey = dirKey,
         colour = colour,
+        suffix = suffix,
+        -- The chord itself, relative to the key (for Harmony and followers):
+        -- root = semitones above the key root; the rest above the chord root
+        root = chordRootOffset,
+        third = thirdInterval,
+        fifth = fifthInterval,
+        seventh = seventhInterval,
+        borrowed = borrowed,
         notes = voicings,
         octShift = octShift,
         isWide = isWide,
     }
+end
+
+-- Semitones to add to something recorded in key `recordedRoot` (0-11) so it
+-- sits in the current key: the nearest way round (-6 .. +5)
+function Theory:keyShift(recordedRoot)
+    if type(recordedRoot) ~= "number" then return 0 end
+    return ((self:getRootSemis() - recordedRoot + 6) % 12) - 6
+end
+
+-- A chord's display name in the current key, from its key-relative data
+function Theory:chordName(chord)
+    local abs = (self:getRootSemis() + (chord.root or 0)) % 12
+    return self.NOTE_NAMES[abs + 1] .. (chord.suffix or "")
+end
+
+-- Chord-follow (SPEC §5): the pitch of a D-pad degree played over `chord`
+-- (key-relative data as above), in semitones like getScaleDegreeSemis.
+--   1 = chord root, 3 = third, 5 = fifth, 7 = seventh, 8 = octave,
+--   -2 = the fifth below. 2, 4, 6 walk the key's scale from the chord root
+--   on chords built from the scale; on borrowed chords they are +2, +5 and
+--   +8 (minor chord) / +9 (major).
+-- Chord roots more than a tritone above the key root are played below it,
+-- so a root-note bass line moves by the shortest way (V = G below C).
+function Theory:getChordDegreeSemis(chord, degree)
+    local rootOffset = chord.root or 0
+    if rootOffset > 6 then rootOffset = rootOffset - 12 end
+    local base = self:getRootSemis() + rootOffset
+    local third, fifth, seventh = chord.third or 4, chord.fifth or 7, chord.seventh or 10
+
+    if degree == 1 then return base end
+    if degree == 3 then return base + third end
+    if degree == 5 then return base + fifth end
+    if degree == 7 then return base + seventh end
+    if degree == 8 then return base + 12 end
+    if degree == -2 then return base + fifth - 12 end
+
+    -- 2, 4, 6 (and anything else): through the scale if the chord lives in it
+    local scale = self.SCALES[self.scaleIndex].intervals
+    local scaleDeg
+    if not chord.borrowed then
+        for i = 1, 7 do
+            if scale[i] == (chord.root or 0) % 12 then scaleDeg = i break end
+        end
+    end
+    if scaleDeg then
+        local at = self:getScaleDegreeSemis(scaleDeg + degree - 1) - self:getScaleDegreeSemis(scaleDeg)
+        return base + at
+    end
+    local fixed = { [2] = 2, [4] = 5, [6] = (third == 3) and 8 or 9 }
+    return base + (fixed[degree] or 0)
 end
 
 return Theory
