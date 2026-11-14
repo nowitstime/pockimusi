@@ -60,7 +60,7 @@ return {
         H.truthy(seamRatio(sd) > 2.0, "a click at the seam: " .. seamRatio(sd))
     end },
 
-    { "the real bass and pad loops are all seamless and in tune", function()
+    { "the real bass, lead and pad loops are all seamless and in tune", function()
         H.captureSamples = true
         local M = H.fresh({ realSynth = true })
         M.Synth:init()
@@ -81,7 +81,7 @@ return {
             end
         end
         table.sort(names)
-        H.eq(table.concat(names, " "), "bass_pluck bass_saw bass_sub pad_bell pad_choir pad_drone pad_warm", "patches")
+        H.eq(table.concat(names, " "), "bass_pluck bass_saw bass_sub lead_pluck lead_saw lead_square pad_bell pad_choir pad_drone pad_warm", "patches")
         H.truthy(S.bootTimes and S.bootTimes.sustain >= 0, "boot time measured")
     end },
 

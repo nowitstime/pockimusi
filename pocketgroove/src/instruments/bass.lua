@@ -25,7 +25,8 @@ local Bass = {
     id = "bass",
     name = "RIBBON BASS",
     shortName = "BASS",
-    title = "RIBBON BASS & LEAD",
+    title = "RIBBON BASS",
+    eventClass = "mono",     -- Bass and Lead play each other's notes (kept on a swap)
     defaultGridIndex = 3, -- 1/16
 
     -- Track page PATCH row: synth patches (src/synth/synths_bank.lua)
@@ -292,7 +293,7 @@ function Bass:noteOn(ev, state, track, isPlayback)
         -- start (so chords recorded or changed later re-harmonise the line)
         local chord, glideFrom
         if state.follow and ev.degree then
-            chord = Harmony:chordAt(ev.tick)
+            chord = Harmony:chordAt(ev.tick, self.CHORD_LOOKAHEAD)   -- nil = the default 1/16
             semis = self:pitchFor(state, ev.degree, ev.octave, chord)
             if ev.glideFromDegree then
                 glideFrom = self:pitchFor(state, ev.glideFromDegree, ev.glideFromOctave, chord)

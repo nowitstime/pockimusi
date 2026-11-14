@@ -23,7 +23,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Topic | Decision |
 | :-- | :-- |
 | Tracks | **Four**, fixed. Instruments are swappable per slot |
-| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp** (new). Sample chop parked |
+| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp** (swap it in on the Track page). Sample chop parked |
 | Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
 | Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `L1/R1` change the value. A new option costs a row, not a button |
 | Instrument swap | Preview with `LEFT/RIGHT`, apply on `SELECT` release, **undoable** |
@@ -101,16 +101,16 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] E5 Stage view in the template
 - [ ] Device check: the four patches and their levels, sweep speed, chord changes while holding, frame rate
 
-## Phase F · Lead / Arp
+## Phase F · Lead / Arp ✅ (device listen pending) — details in [PHASE_F.md](PHASE_F.md)
 
-- [ ] ❓ Strum instrument: strums the current chord (down / up / stab / slow), either as a mode of Lead/Arp or its own instrument. The harp stays one note per button
-- [ ] D-pad degree; `B` note, `A` arp up, `Y` arp down, `X` up-down
-- [ ] Arp locked to the clock and swing; rate 1/8, 1/16, 1/8T; `L1 + R1` = rate ×2
-- [ ] Rows: `PATCH`, `FOLLOW`, `ARP RATE`, `ARP PATTERN`
-- [ ] Bass ↔ Lead swaps keep events
-- [ ] Instrument colour distinct from page colours
-- [ ] ❓ Arp latch
-- [ ] Device check
+- [x] F1 Lead on top of Bass: D-pad degree, `B` held note with glides; patches `SQUARE`, `SAW`, `PLUCK`; rows `PATCH`, `FOLLOW`, `ARP RATE`, `ARP PATTERN`
+- [x] F2 Arp: `A` up, `Y` down, `X` up-down; locked to the clock and swing; rate 1/8, 1/16, 1/8T; `L1 + R1` = rate ×2; each step recorded as a note; follows the chords
+- [x] F3 Bass ↔ Lead swaps keep events
+- [x] F4 Stage view: arp ladder + pitch trace
+- [x] Instrument colour: tracks are coloured by slot, nothing to add
+- [ ] ❓ Arp latch (not built: hold only)
+- [ ] ❓ Strum instrument: stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)). The harp stays one note per button
+- [ ] Device check: arp feel against the drums at each rate, the three patches and their levels
 
 ## Phase G · Mix & FX finish
 
@@ -145,4 +145,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Next: Phase F, Lead / Arp.
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](PHASE_F.md)), also unheard. Next: Phase G, Mix & FX finish.

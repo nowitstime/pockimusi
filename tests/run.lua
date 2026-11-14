@@ -20,6 +20,7 @@ local FILES = {
     "test_bass",
     "test_harmony",
     "test_pad",
+    "test_lead",
     "test_session",
     "test_autosave",
     "test_smoke",
