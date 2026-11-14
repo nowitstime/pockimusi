@@ -87,12 +87,12 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 ## Phase D · Chord Harp + chord-follow ✅ (device check pending) — details in [PHASE_D.md](PHASE_D.md)
 
 - [x] D1 Chord map (`↑` = ♭VI, neutral = I) and key-relative chord data on harp events
-- [x] ~~D2 Strums~~ dropped: the harp keeps one note per button; strumming becomes its own instrument (see Phase G)
+- [x] ~~D2 Strums~~ dropped: the harp keeps one note per button; strumming becomes its own instrument (see Phase F)
 - [x] D3 `harmony.lua`: current chord at any tick (recorded chords, else live chord, else tonic)
 - [x] D4 Bass `FOLLOW` (default on): live and playback notes and bends follow the chord
 - [x] D5 Chord in the top bar and along the harp lane, bass follow capsule
 
-## Phase E · Pad (replaces Grain)
+## Phase E · Pad (replaces Grain) ← **next up** — working plan in [PHASE_E.md](PHASE_E.md)
 
 - [ ] Grain textures → Pad patches (warm pad, glass bell, choir, drone)
 - [ ] Holds the current chord; `B` full, `A` open, `Y` high, `X` swell
@@ -146,4 +146,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Next: Phase E, Drums pass 2.
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Next: Phase E, Pad: plan and decisions in [PHASE_E.md](PHASE_E.md).
