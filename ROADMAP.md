@@ -16,7 +16,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 - [x] Unified Track page = sound (rows, instrument, effects) and per-track effects audio (tone, drive, echo, space)
 - [x] Transport = timing: tempo, key, scale, bars, per-track grid and swing, metronome click
 - [x] One colour per page; constellation Track page and astrolabe Transport designs
-- [x] Chord Harp, Bass, Grain at their first versions
+- [x] Chord Harp, Bass at their first versions; Grain (now replaced by the Pad)
 
 ## Decisions so far
 
@@ -87,20 +87,19 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 ## Phase D · Chord Harp + chord-follow ✅ (device check pending) — details in [PHASE_D.md](PHASE_D.md)
 
 - [x] D1 Chord map (`↑` = ♭VI, neutral = I) and key-relative chord data on harp events
-- [x] ~~D2 Strums~~ dropped: the harp keeps one note per button; strumming becomes its own instrument (see Phase G)
+- [x] ~~D2 Strums~~ dropped: the harp keeps one note per button; strumming becomes its own instrument (see Phase F)
 - [x] D3 `harmony.lua`: current chord at any tick (recorded chords, else live chord, else tonic)
 - [x] D4 Bass `FOLLOW` (default on): live and playback notes and bends follow the chord
 - [x] D5 Chord in the top bar and along the harp lane, bass follow capsule
 
-## Phase E · Pad (replaces Grain)
+## Phase E · Pad (replaces Grain) ✅ (device listen pending) — details in [PHASE_E.md](PHASE_E.md)
 
-- [ ] Grain textures → Pad patches (warm pad, glass bell, choir, drone)
-- [ ] Holds the current chord; `B` full, `A` open, `Y` high, `X` swell
-- [ ] D-pad ↑/↓ brightness (layer crossfade), ←/→ movement
-- [ ] Rows: `PATCH`, `FOLLOW`, `ATTACK`, `RELEASE`
-- [ ] Remove `grain.lua`; default slot 4 = Pad
-- [ ] Stage view in template
-- [ ] Device check
+- [x] E1 Voice engine: bright layer, per-note attack and release, movement; patches `WARM`, `BELL`, `CHOIR`, `DRONE`
+- [x] E2 Pad instrument: `B` full, `A` open, `Y` high, `X` swell; rows `PATCH`, `FOLLOW`, `ATTACK`, `RELEASE`; `grain.lua` removed, slot 4 = Pad, old Grain saves load as a Pad
+- [x] E3 Follow: held and recorded chords move with the chord track; `FOLLOW OFF` keeps them as recorded
+- [x] E4 D-pad ↑/↓ brightness, ←/→ movement, recorded as keyframes and replayed
+- [x] E5 Stage view in the template
+- [ ] Device check: the four patches and their levels, sweep speed, chord changes while holding, frame rate
 
 ## Phase F · Lead / Arp
 
@@ -146,4 +145,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Next: Phase E, Drums pass 2.
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Next: Phase F, Lead / Arp.

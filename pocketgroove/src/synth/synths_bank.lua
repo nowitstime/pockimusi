@@ -1,5 +1,5 @@
 -- ============================================================================
--- src/synth/synths_bank.lua — Melodic & Granular Procedural Sound Generators
+-- src/synth/synths_bank.lua — Melodic Procedural Sound Generators (harp, bass, pad)
 -- ============================================================================
 
 local Config      = require("src.config")
@@ -8,10 +8,10 @@ local tanh_approx = Config.tanh_approx
 local TWO_PI      = Config.TWO_PI
 
 local math_sin = math.sin
-local math_cos = math.cos
 local math_exp = math.exp
 
-local SynthsBank = {}
+-- Loop sources per Pad patch and layer: two four-note chords and a tail
+local SynthsBank = { PAD_VOICES = 12 }
 
 function SynthsBank.build(Synth, whiteNoise)
     -- Harp / Plucked String Buffer (1.2s, Base Note C4 = 261.63 Hz)
@@ -46,56 +46,8 @@ function SynthsBank.build(Synth, whiteNoise)
         return tanh_approx((saw * 0.65 + subSq + resPeak) * env * 1.45) * 0.82
     end)
 
-    -- Granular Cloud Buffers (4 procedural textures, 0.42s Hann-windowed)
-    local grainDur = 0.42
-    local function hannWindow(t, dur)
-        return 0.5 * (1.0 - math_cos(TWO_PI * t / dur))
-    end
-
-    local grainPadSD = Synth:createBuffer(grainDur, function(t, dur)
-        local f = 261.63
-        local s = math_sin(TWO_PI * f * t) * 0.5
-                + math_sin(TWO_PI * (f * 1.004) * t) * 0.35
-                + math_sin(TWO_PI * (f * 1.498) * t) * 0.2
-                + math_sin(TWO_PI * (f * 0.5) * t) * 0.25
-        return s * hannWindow(t, dur) * 0.65
-    end)
-
-    local grainBellSD = Synth:createBuffer(grainDur, function(t, dur)
-        local f = 523.25
-        local mod = math_sin(TWO_PI * f * 3.5 * t) * 1.8 * math_exp(-t * 8.0)
-        local s = math_sin(TWO_PI * f * t + mod) * 0.6 + math_sin(TWO_PI * f * 2.0 * t) * 0.25
-        return s * hannWindow(t, dur) * 0.55
-    end)
-
-    local choirPrev = 0.0
-    local grainChoirSD = Synth:createBuffer(grainDur, function(t, dur)
-        local f = 261.63
-        local n = whiteNoise()
-        choirPrev = choirPrev * 0.82 + n * 0.18
-        local vocal = math_sin(TWO_PI * f * t) * 0.4
-                    + math_sin(TWO_PI * f * 2.0 * t) * 0.3
-                    + math_sin(TWO_PI * f * 3.0 * t) * 0.2
-                    + choirPrev * 0.35
-        return vocal * hannWindow(t, dur) * 0.60
-    end)
-
-    local grainDroneSD = Synth:createBuffer(grainDur, function(t, dur)
-        local f = 130.81
-        local s = tanh_approx(
-            math_sin(TWO_PI * f * t) * 0.8 +
-            math_sin(TWO_PI * f * 0.5 * t) * 0.6 +
-            math_sin(TWO_PI * f * 1.5 * t) * 0.25
-        )
-        return s * hannWindow(t, dur) * 0.68
-    end)
-
     Synth:createPool("harp",        harpSD,       14, 1.20)
     Synth:createPool("bass",        bassSD,       8,  0.60)
-    Synth:createPool("grain_pad",   grainPadSD,   10, grainDur)
-    Synth:createPool("grain_bell",  grainBellSD,  10, grainDur)
-    Synth:createPool("grain_choir", grainChoirSD, 10, grainDur)
-    Synth:createPool("grain_drone", grainDroneSD, 10, grainDur)
 end
 
 -- ---------------------------------------------------------------------------
@@ -103,7 +55,7 @@ end
 -- harmonic waveform, so it repeats without a click. Detune, noise and
 -- inharmonic partials from the one-shot versions are left out on purpose:
 -- they can't loop seamlessly in a short buffer (movement comes later from
--- the voice: vibrato, glide, Pad's own chorus).
+-- the voice: vibrato, glide, the Pad's drift and detuned bright layer).
 -- ---------------------------------------------------------------------------
 function SynthsBank.buildSustain(Synth)
     local function h(a, k) return math_sin(a * k) end
@@ -169,30 +121,70 @@ function SynthsBank.buildSustain(Synth)
     Synth:definePatch("bass_pluck", { label = "PLUCK", attack = "bass_pluck", loop = "bass_pluck_loop", tune = pluckTune,
                                       sustain = 0.25, xfade = 0.10, release = 0.45, overlap = true })
 
-    -- Grain textures as sustained patches (become Pad sounds in Phase E).
-    -- Fundamental C3 (130.81 Hz); the one-shots' "f" (C4) is harmonic 2.
-    local textures = {
-        pad = function(a)       -- warm: octave-down sub, fundamental, fifth, octave
-            return (h(a, 1) * 0.25 + h(a, 2) * 0.55 + h(a, 3) * 0.22 + h(a, 4) * 0.14 + h(a, 6) * 0.05) * 0.62
-        end,
-        bell = function(a)      -- glassy: upper harmonics of C5
-            return (h(a, 4) * 0.5 + h(a, 8) * 0.3 + h(a, 12) * 0.15 + h(a, 16) * 0.08) * 0.55
-        end,
-        choir = function(a)     -- "ah": fundamental with a formant bump around harmonics 6-10
-            local s = h(a, 2) * 0.40 + h(a, 4) * 0.30 + h(a, 6) * 0.22
-            for k = 7, 10 do s = s + h(a, k) * 0.07 end
-            return s * 0.58
-        end,
-        drone = function(a)     -- dark: sub-heavy, driven
-            return tanh_approx(h(a, 1) * 0.8 + h(a, 2) * 0.55 + h(a, 3) * 0.25) * 0.62
-        end,
+    -- -----------------------------------------------------------------------
+    -- Pad patches (Pad Track page PATCH row; the old Grain textures).
+    -- Two seamless layers each, on a C3 fundamental:
+    --   dark    the body of the sound, always playing
+    --   bright  upper harmonics, mixed in by the voice's brightness; a little
+    --           of the body's main harmonic too, so the detuned layer beats
+    --           slowly against the dark one (movement)
+    -- No attack one-shot (the voice's attack time shapes the start), except
+    -- BELL's strike, which the Pad plays on fast attacks only.
+    -- -----------------------------------------------------------------------
+    local pads = {
+        { id = "pad_warm", label = "WARM",      -- octave-down sub, the note, soft upper harmonics
+          dark = function(a)
+              return (h(a, 1) * 0.25 + h(a, 2) * 0.55 + h(a, 3) * 0.22 + h(a, 4) * 0.14 + h(a, 6) * 0.05) * 0.62
+          end,
+          bright = function(a)
+              local s = h(a, 2) * 0.12
+              for k = 3, 10 do s = s + h(a, 2 * k) * (0.5 / k) end
+              return s * 0.6
+          end },
+        { id = "pad_bell", label = "BELL", attack = "pad_bell",   -- glassy: harmonics of C5
+          dark = function(a)
+              return (h(a, 4) * 0.5 + h(a, 8) * 0.3 + h(a, 12) * 0.15 + h(a, 16) * 0.08) * 0.55
+          end,
+          bright = function(a)
+              return (h(a, 8) * 0.08 + h(a, 12) * 0.20 + h(a, 16) * 0.12 + h(a, 20) * 0.20) * 0.6
+          end },
+        { id = "pad_choir", label = "CHOIR",    -- "ooh"; brightness opens it towards "ah"
+          dark = function(a)
+              return (h(a, 2) * 0.40 + h(a, 4) * 0.30 + h(a, 6) * 0.18) * 0.62
+          end,
+          bright = function(a)
+              local s = h(a, 2) * 0.08
+              for k = 7, 14 do s = s + h(a, k) * (0.11 - (k - 7) * 0.008) end
+              return s * 0.6
+          end },
+        { id = "pad_drone", label = "DRONE",    -- dark, sub-heavy, driven; brightness adds a buzz
+          dark = function(a)
+              return tanh_approx(h(a, 1) * 0.8 + h(a, 2) * 0.55 + h(a, 3) * 0.25) * 0.62
+          end,
+          bright = function(a)
+              local s = h(a, 1) * 0.10
+              for k = 4, 10 do s = s + h(a, k) * (0.35 / (k - 2)) end
+              return s * 0.6
+          end },
     }
-    for name, wave in pairs(textures) do
-        local sd, _, tune = Synth:createLoop(130.81, 24, wave)
-        Synth:createLoopPool("grain_" .. name .. "_loop", sd, 6)
-        Synth:definePatch("grain_" .. name, { attack = "grain_" .. name, loop = "grain_" .. name .. "_loop",
-                                              tune = tune, sustain = 0.6, xfade = 0.12, release = 0.35 })
+    for _, pad in ipairs(pads) do
+        local dark, _, tune = Synth:createLoop(130.81, 24, pad.dark)
+        local bright = Synth:createLoop(130.81, 24, pad.bright)
+        Synth:createLoopPool(pad.id .. "_loop", dark, SynthsBank.PAD_VOICES)
+        Synth:createLoopPool(pad.id .. "_bright", bright, SynthsBank.PAD_VOICES)
+        Synth:definePatch(pad.id, { label = pad.label, attack = pad.attack, loop = pad.id .. "_loop",
+                                    bright = pad.id .. "_bright", tune = tune,
+                                    sustain = 0.6, xfade = 0.25, release = 0.9 })
     end
+
+    -- BELL strike: a short FM ping (C5 at 0 semitones, like the bell loop)
+    local bellSD = Synth:createBuffer(0.5, function(t)
+        local f = 523.25
+        local mod = math_sin(TWO_PI * f * 3.5 * t) * 1.8 * math_exp(-t * 12.0)
+        local s = math_sin(TWO_PI * f * t + mod) * 0.6 + math_sin(TWO_PI * f * 2.0 * t) * 0.25
+        return s * clamp(t / 0.002, 0.0, 1.0) * math_exp(-t * 9.0) * 0.5
+    end)
+    Synth:createPool("pad_bell", bellSD, SynthsBank.PAD_VOICES, 0.5)
 end
 
 return SynthsBank

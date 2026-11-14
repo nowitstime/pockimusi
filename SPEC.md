@@ -64,10 +64,10 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | **Drums** ✅ | dynamics × articulation (§3.2a) | 4 pads | 1/4 repeat | 1/8 repeat | 1/16 repeat (1/12T on triplet grid) |
 | **Chord Harp** ✅ | 9 chords (§3.3) | 4 strings of the chord | voicing −1 oct | voicing +1 oct | wide voicing |
 | **Bass** ✅ | root on neutral + 8 directions (2–8, `↓` = 5th below) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
-| **Pad** 📐 | tone / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — ❓ |
+| **Pad** ✅ | brightness / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — |
 | **Lead / Arp** 📐 | 8 degrees | note + arp modes (§7.5) | oct −1 | oct +1 | arp rate ×2 |
 
-Grain is retired as an instrument; its textures become **Pad sounds** (§6). Chord harp shoulders shift the voicing octave; chord colour is on the Track page (§3.3). ✅
+Grain is retired as an instrument; its textures are the **Pad's patches** (§7.4). ✅ Chord harp shoulders shift the voicing octave; chord colour is on the Track page (§3.3). ✅
 
 ### 3.2a Drums: the D-pad is two axes ✅
 
@@ -179,9 +179,9 @@ There is always a **current chord** at every point in the loop. A small `Harmony
 
 So nothing depends on recording chords first: with no chord track, followers simply play in the key.
 
-**Followers** (Bass now; Pad and Lead/Arp later) have a **FOLLOW** setting row (Track page, default **on**):
+**Followers** (Bass and Pad now; Lead/Arp later) have a **FOLLOW** setting row (Track page, default **on**):
 
-- **On:** a note's stored *degree* is played relative to the chord at the note's start. Recording or changing chords later re-harmonises lines already recorded. A held note keeps its pitch through a chord change.
+- **On:** a note's stored *degree* (for the Pad: its voicing shape) is played relative to the chord at the note's start. Recording or changing chords later re-harmonises lines already recorded. A held bass note keeps its pitch through a chord change; a held **Pad** chord moves to the new chord, on the chord's own tick (§7.4).
 - **Off:** the note's stored *absolute pitch* is played, exactly as recorded.
 
 Live playing uses the same rule, so what you hear while playing is what replays.
@@ -234,12 +234,15 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed. After letting go, the fading tail keeps following D-pad directions (not neutral), also recorded. Glide points show as ticks on the tape-deck ribbon.
 - ✅ Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`; `PLUCK` notes overlap and ring), `GLIDE` (fast / medium / slow), `FOLLOW` (on / off: degrees are played over the current chord, §5).
 
-### 7.4 Pad 📐 (replaces Grain)
+### 7.4 Pad ✅ (replaces Grain; details: [PHASE_E.md](PHASE_E.md))
 
-- Holds the current chord as a sustained voicing.
-- `B` full chord, `A` open (root + fifth), `Y` high voicing, `X` swell (slow attack). Notes sustain while held.
-- D-pad: `↑/↓` brightness (crossfade between a dark and a bright layer of the patch), `←/→` movement (detune / shimmer depth).
-- Rows: `PATCH`, `FOLLOW`, `ATTACK`, `RELEASE`.
+- ✅ Each face button holds the current chord as a sustained voicing: `B` full (four notes, taking the harp's colour: 7th, 9th, sus4, add9), `A` open (root, fifth, octave), `Y` high (fifth, octave, third above), `X` swell (the full chord, attack 3× the `ATTACK` row and at least 1.2 s). Buttons layer. One press = one event with a length.
+- ✅ `L1/R1` = octave, read at the press. With no harp chords the pad plays the key's I chord.
+- ✅ `FOLLOW ON`: a held or recorded chord glides to each new chord as it arrives. `FOLLOW OFF`: a held chord stays put and playback uses the notes as recorded (moved with the key).
+- ✅ D-pad = tone, and the values stay where they are left: `↑/↓` brightness (the level of the patch's bright layer), `←/→` movement (slow per-note pitch drift, the bright layer detuned and shimmering). Sweeps while holding are recorded as keyframes on the event and replayed.
+- ✅ Rows: `PATCH` (`WARM`, `BELL`, `CHOIR`, `DRONE`), `FOLLOW`, `ATTACK` (fast / medium / slow), `RELEASE` (short / medium / long).
+- ✅ Stage view: the chord, the shape and octave, one glowing line per sounding note, `BRIGHT` and `MOVE` bars.
+- ❓ After playing on the device: glide or re-attack on chord changes; values that spring back; `X` as a charge.
 
 ### 7.5 Lead / Arp 📐
 
@@ -312,9 +315,10 @@ Event = {
 ### 9.2 Sustained voices ✅ (engine; instruments start using it in Phase B)
 
 - Each sustaining patch is generated as an **attack layer** (one-shot) plus a **seamless loop layer** (whole number of cycles, so `setLooping(true)` is click-free).
-- A voice = attack + loop sources with an envelope (attack / release, and crossfade for Pad brightness) driven in `Synth:update` via `setVolume`; pitch and glide via `setPitch`. Voices route through the track's effects like one-shots do.
+- A voice = attack (optional) + loop sources with an envelope (attack / release, per note if asked) driven in `Synth:update` via `setVolume`; pitch and glide via `setPitch`. Voices route through the track's effects like one-shots do.
 - API: `Synth:noteOn(patch, semis, vel, opts) → voice`, `voice:setPitch(semis)`, `voice:noteOff()`. One-shots keep using `Synth:trigger`.
-- Patches so far: `bass_saw`, `bass_sub`, `bass_pluck`, `grain_pad`, `grain_bell`, `grain_choir`, `grain_drone`. Loops contain only whole harmonics; each patch has 6 loop sources and steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
+- Pad patches have a second **bright** loop layer (upper harmonics) paired with the main one: its level is the voice's brightness; the voice's movement drifts the pitch (±9 cents), detunes the bright layer (7 cents) and makes it shimmer.
+- Patches so far: `bass_saw`, `bass_sub`, `bass_pluck`, `pad_warm`, `pad_bell`, `pad_choir`, `pad_drone`. Loops contain only whole harmonics; bass patches have 6 to 8 loop sources, pad patches 12 per layer, and a patch steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
 
 ### 9.3 Effects & mix
 
@@ -355,7 +359,7 @@ Principles: show mode in the same place always; hints for the held modifier only
 | Mix / Live FX | moon silver `#DCE3F5` | — |
 | Erase | crimson with a tinted frame | — |
 
-The tape deck dims while a settings page is open. 📐 Pad and Lead/Arp need instrument colours that stay distinct from the page colours (Pad can inherit Grain's mint).
+The tape deck dims while a settings page is open. The Pad has Grain's mint. 📐 Lead/Arp needs an instrument colour that stays distinct from the page colours.
 
 ---
 
@@ -370,8 +374,8 @@ pockimusi/
  └── pocketgroove/
       ├── main.lua  conf.lua  controls.gptk
       └── src/
-           config.lua  theory.lua  input.lua  looper.lua  harmony.lua (📐)  modes.lua
-           instruments/{init,drums,harp,bass,pad,lead}.lua   (grain.lua retired)
+           config.lua  theory.lua  input.lua  looper.lua  harmony.lua  modes.lua
+           instruments/{init,drums,harp,bass,pad}.lua   (lead.lua 📐)
            synth/{init,voice (📐),drums_bank,synths_bank}.lua
            ui/chrome.lua
 ```

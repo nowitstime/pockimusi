@@ -239,4 +239,53 @@ function Theory:getChordDegreeSemis(chord, degree)
     return base + (fixed[degree] or 0)
 end
 
+-- Pad voicings (SPEC §7.4): the notes one Pad button plays over `chord`
+-- (key-relative data as above), lowest first, around middle C.
+--   FULL  root, 3rd, 5th, octave; the chord's colour changes the upper notes
+--         (7TH: 7th on top · 9TH: 7th and 9th · SUS4: 4th for the 3rd · ADD9: 9th on top)
+--   OPEN  root, 5th, octave
+--   HIGH  5th, octave, 3rd above it
+-- Key roots and chord roots more than a tritone up are played below, so
+-- chords stay close together; the whole voicing drops or rises an octave if
+-- it would leave the range the patches can play.
+Theory.PAD_RANGE = { low = -24, high = 31 }
+
+function Theory:getPadVoicing(chord, shape, octave)
+    local keyRoot = self:getRootSemis()
+    if keyRoot > 5 then keyRoot = keyRoot - 12 end
+    local rootOffset = chord.root or 0
+    if rootOffset > 6 then rootOffset = rootOffset - 12 end
+    local base = keyRoot + rootOffset + (octave or 0) * 12
+
+    local third, fifth, seventh = chord.third or 4, chord.fifth or 7, chord.seventh or 10
+    local colour = chord.colour or "TRIAD"
+    local second = (colour == "SUS4") and 5 or third
+
+    local notes
+    if shape == "OPEN" then
+        notes = { 0, fifth, 12 }
+    elseif shape == "HIGH" then
+        notes = { fifth, 12, 12 + second }
+    else
+        local mid, top = fifth, 12
+        if colour == "7TH" then top = seventh
+        elseif colour == "9TH" then mid, top = seventh, 14
+        elseif colour == "ADD9" then top = 14 end
+        notes = { 0, second, mid, top }
+    end
+
+    while base + notes[#notes] > self.PAD_RANGE.high do base = base - 12 end
+    while base + notes[1] < self.PAD_RANGE.low do base = base + 12 end
+    for i = 1, #notes do notes[i] = base + notes[i] end
+    return notes
+end
+
+-- The same chord? (two chord tables, compared by what they sound like)
+function Theory:sameChord(a, b)
+    if a == b then return true end
+    if not a or not b then return false end
+    return a.root == b.root and a.third == b.third and a.fifth == b.fifth
+       and a.seventh == b.seventh and (a.colour or "TRIAD") == (b.colour or "TRIAD")
+end
+
 return Theory

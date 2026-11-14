@@ -22,7 +22,9 @@ local clamp = Config.clamp
 
 local Session = {
     FORMAT = 1,
-    DEFAULT_INSTRUMENTS = { "drums", "harp", "bass", "grain" },
+    DEFAULT_INSTRUMENTS = { "drums", "harp", "bass", "pad" },
+    -- Instruments that no longer exist load as their replacement (notes kept)
+    REPLACED = { grain = "pad" },
 }
 
 -- Event fields that only matter while the game runs
@@ -122,16 +124,19 @@ local function restoreEvent(raw, loop)
     if raw.semis ~= nil then ev.semis = num(raw.semis, -48, 48, 0) end
     if raw.takeId ~= nil then ev.takeId = int(raw.takeId, 0, 1e9, 0) end
 
-    -- bend keyframes: keep the valid ones, in time order
+    -- keyframes (pitch bends, Pad tone sweeps): keep the valid ones, in time order
     if raw.bend ~= nil then
         local kfs = {}
         if type(raw.bend) == "table" then
             for _, kf in ipairs(raw.bend) do
                 if type(kf) == "table" and type(kf.dt) == "number" and kf.dt >= 0 and kf.dt < loop
-                   and type(kf.semis) == "number" then
-                    kfs[#kfs + 1] = { dt = math.floor(kf.dt), semis = num(kf.semis, -48, 48, 0),
+                   and (type(kf.semis) == "number" or type(kf.bright) == "number" or type(kf.move) == "number") then
+                    kfs[#kfs + 1] = { dt = math.floor(kf.dt),
+                                      semis = kf.semis ~= nil and num(kf.semis, -48, 48, 0) or nil,
                                       degree = type(kf.degree) == "number" and kf.degree or nil,
-                                      octave = type(kf.octave) == "number" and kf.octave or nil }
+                                      octave = type(kf.octave) == "number" and kf.octave or nil,
+                                      bright = kf.bright ~= nil and num(kf.bright, 0.0, 1.0, nil) or nil,
+                                      move = kf.move ~= nil and num(kf.move, 0.0, 1.0, nil) or nil }
                 end
             end
             table.sort(kfs, function(a, b) return a.dt < b.dt end)
@@ -167,6 +172,7 @@ function Session.restore(data)
     for slot = 1, 4 do
         local raw = type(tracks[slot]) == "table" and tracks[slot] or {}
         local instId = raw.instrumentId
+        instId = Session.REPLACED[instId] or instId
         if type(instId) ~= "string" or not Instruments.byId[instId] then
             instId = Session.DEFAULT_INSTRUMENTS[slot]
         end

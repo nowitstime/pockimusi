@@ -8,7 +8,7 @@ local Looper = require("src.looper")
 local Drums = require("src.instruments.drums")
 local Harp  = require("src.instruments.harp")
 local Bass  = require("src.instruments.bass")
-local Grain = require("src.instruments.grain")
+local Pad   = require("src.instruments.pad")
 
 local Instruments = {
     -- Ordered catalog of available instruments (add new instruments here!)
@@ -16,7 +16,7 @@ local Instruments = {
         Drums,
         Harp,
         Bass,
-        Grain,
+        Pad,
     },
     byId = {},
 }
@@ -128,9 +128,10 @@ end
 -- ---------------------------------------------------------------------------
 -- Held-note handles (returned by hold(ev))
 --   h:release()      end the note now (otherwise it ends on button-up)
---   h:bend(fields)   pitch change { degree, octave, semis }: the live voice
---                    follows (def:bendTo) and the recording gets a keyframe
---                    { dt, degree, octave, semis }. Works after release too,
+--   h:bend(fields)   a change while the note sounds: pitch { degree, octave,
+--                    semis } and / or Pad tone { bright, move }. The live
+--                    voice follows (def:bendTo) and the recording gets a
+--                    keyframe { dt, ...fields }. Works after release too,
 --                    for as long as the instrument keeps bending the fading
 --                    note; those keyframes land after len.
 --   h:isHeld()
@@ -174,7 +175,8 @@ function Handle:bend(fields)
     if e >= loop - 1 then return end           -- longer than a loop: stop recording bends
     local dt = math.floor(e + 0.5)
     rec.bend = rec.bend or {}
-    local kf = { dt = dt, degree = fields.degree, octave = fields.octave, semis = fields.semis }
+    local kf = { dt = dt, degree = fields.degree, octave = fields.octave, semis = fields.semis,
+                 bright = fields.bright, move = fields.move }
     local last = rec.bend[#rec.bend]
     if last and last.dt == dt then
         rec.bend[#rec.bend] = kf                 -- several changes in one tick: keep the latest
@@ -283,7 +285,7 @@ function Instruments:update(dt, controlsBlocked)
         end
     end
 
-    -- Continuous voices (grain spawners, later sustained notes) on all tracks
+    -- Sounding notes on all tracks (bass bends, pad chord changes and tone)
     for slot = 1, 4 do
         local trk = Looper.tracks[slot]
         local d = self:getDefinition(trk.instrumentId)
