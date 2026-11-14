@@ -250,7 +250,7 @@ function Instruments:update(dt, controlsBlocked)
         local track = Looper.tracks[slot]
         local def = self:getDefinition(track.instrumentId)
         if def.updateVisuals then
-            def:updateVisuals(dt, track.state, controlsBlocked)
+            def:updateVisuals(dt, track.state, controlsBlocked, slot == Looper.activeTrack)
         end
     end
 
