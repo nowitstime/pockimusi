@@ -10,6 +10,7 @@ local Synth       = require("src.synth")
 local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
+local Harmony     = require("src.harmony")
 
 local clamp      = Config.clamp
 local math_floor = math.floor
@@ -551,6 +552,18 @@ function Chrome:drawTopBar()
     self:setColor(C.CYAN)
     love.graphics.print(Theory:getKeyLabel(), 332, 12)
 
+    -- Current chord (what followers play over): lit when it comes from the
+    -- harp (recorded or played live), dim when it's just the key's tonic
+    local chord, chordFrom = Harmony:current()
+    self:setColor(C.GRID)
+    love.graphics.line(398, 13, 398, 37)
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(C.MUTED)
+    love.graphics.print("CHORD", 408, 11)
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(chordFrom == "tonic" and C.MUTED or C.CYAN)
+    love.graphics.print(Theory:chordName(chord), 408, 21)
+
     local totalBeats = Looper:getTotalBeats()
     local sp = (totalBeats == 8) and 16 or 8.5
     for b = 1, totalBeats do
@@ -790,7 +803,7 @@ function Chrome:getControlLabels(def, state, mode)
         faceLabels = { B = "", A = "", Y = "", X = "" }
         flashMap = state.padFlash
     elseif def.id == "harp" then
-        dpadLabels = { UP = "I", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
+        dpadLabels = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         local n = chord.notes
         faceLabels = {
@@ -831,7 +844,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         love.graphics.setFont(self.fontSmall)
         self:setColor(col)
         local octStr = chord.isWide and "WIDE OPEN" or (chord.octShift < 0 and "OCT -1" or (chord.octShift > 0 and "OCT +1" or "OCT 0"))
-        local sub = string.format("%s  -  %s", chord.roman, octStr)
+        local sub = string.format("%s  -  %s  -  %s", chord.roman, octStr, chord.colour or "TRIAD")
         local sw = self.fontSmall:getWidth(sub)
         love.graphics.print(sub, math_floor(320 - sw * 0.5), 158)
 
@@ -1447,6 +1460,8 @@ function Chrome:drawBassView(def, state, track, col)
     self:drawCapsuleRow(320, 166, 16, {
         { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
         { "GLIDE " .. (state.glide or "MEDIUM"), C.GRID, C.PANEL_HI, C.MUTED },
+        { state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+          C.GRID, C.PANEL_HI, state.follow and C.CYAN or C.DIM },
     })
 
     -- Oscilloscope: the live voice's real pitch and level
@@ -1580,6 +1595,21 @@ function Chrome:drawTapeDeck()
 
         self:drawDiamond(lx, cy, isSel and 2.8 or 1.8, isSel and tColor or C.DIM)
         self:drawDiamond(lx + lw, cy, isSel and 2.8 or 1.8, isSel and tColor or C.DIM)
+
+        -- Chord names along the chord-source lane, at each change (when there's room)
+        if Harmony:source() == track then
+            love.graphics.setFont(self.fontTiny)
+            local lastName, lastX
+            for _, ch in ipairs(Harmony:changes(track)) do
+                local nm = Theory:chordName(ch.chord)
+                local nx = lx + ch.tick / Looper:getLoopTicks() * (lw - 4)
+                if nm ~= lastName and (not lastX or nx - lastX >= 26) then
+                    self:setColor(track.muted and C.DIM or tColor, isSel and 1.0 or 0.75)
+                    love.graphics.print(nm, math_floor(nx + 4), ry - 1)
+                    lastName, lastX = nm, nx
+                end
+            end
+        end
 
         -- Recorded events: beads for hits, ribbons for held notes
         local col = track.muted and C.DIM or tColor

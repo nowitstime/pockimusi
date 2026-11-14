@@ -62,7 +62,7 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | Instrument | D-pad | `B A Y X` | `L1` | `R1` | `L1 + R1` |
 | :-- | :-- | :-- | :-- | :-- | :-- |
 | **Drums** ✅ | dynamics × articulation (§3.2a) | 4 pads | 1/4 repeat | 1/8 repeat | 1/16 repeat (1/12T on triplet grid) |
-| **Chord Harp** 🔧 | 8 chords (§3.3) | strum / strings ❓ (§7.2) | voicing −1 oct | voicing +1 oct | wide voicing |
+| **Chord Harp** ✅ | 9 chords (§3.3) | 4 strings of the chord | voicing −1 oct | voicing +1 oct | wide voicing |
 | **Bass** ✅ | root on neutral + 8 directions (2–8, `↓` = 5th below) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
 | **Pad** 📐 | tone / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — ❓ |
 | **Lead / Arp** 📐 | 8 degrees | note + arp modes (§7.5) | oct −1 | oct +1 | arp rate ×2 |
@@ -87,7 +87,7 @@ The D-pad modifies every hit while held. It is read as two independent axes so a
 
 ### 3.3 Chord map & colour
 
-D-pad picks one of 9 chords from the current key: neutral = **I**, `↑` = **♭VI** 📐 (was a second I), `↖` ii, `↗` iii, `←` IV, `→` V, `↓` vi, `↙` ♭VII, `↘` iv (borrowed). ✅ (plan: [PHASE_D.md](PHASE_D.md))
+D-pad picks one of 9 chords from the current key: neutral = **I**, `↑` = **♭VI** (was a second I), `↖` ii, `↗` iii, `←` IV, `→` V, `↓` vi, `↙` ♭VII, `↘` iv (borrowed). ✅ (plan: [PHASE_D.md](PHASE_D.md))
 
 - **Chord colour** (triad, 7th, 9th, sus4, add9) is a **Track page setting row** (§3.4), set once and left. ✅ Strings per colour: triad root-3rd-5th-8ve · 7th root-3rd-5th-7th · 9th root-3rd-7th-9th · sus4 root-4th-5th-8ve · add9 root-3rd-5th-9th. The 7th comes from the scale, so V7 is dominant (G7) and vi7 is minor (Am7).
 - ❓ Momentary colour gesture for live variation. Decide after playtesting.
@@ -169,11 +169,11 @@ Hybrid **latch / momentary** on `L2` ✅:
 
 ---
 
-## 5. Harmony: the chord track & chord-follow 📐 (plan: [PHASE_D.md](PHASE_D.md))
+## 5. Harmony: the chord track & chord-follow ✅ (details: [PHASE_D.md](PHASE_D.md))
 
 There is always a **current chord** at every point in the loop. A small `Harmony` module resolves it:
 
-1. If a track holds a **Chord Harp** with recorded chords, the current chord is the most recent chord at that loop position (wrapping: before the loop's first chord, the last one carries over). With several harp tracks, the lowest-numbered one is the **chord source**. Muting it doesn't change harmony.
+1. If a track holds a **Chord Harp** with recorded chords, the current chord is the most recent chord at that loop position (wrapping: before the loop's first chord, the last one carries over; a chord up to a 1/16 late still counts on the beat). With several harp tracks, the lowest-numbered one is the **chord source**. Muting it doesn't change harmony.
 2. If the harp has no recorded chords, the chord you last played live on it.
 3. Otherwise the **tonic** (I of the current key and scale).
 
@@ -186,7 +186,7 @@ So nothing depends on recording chords first: with no chord track, followers sim
 
 Live playing uses the same rule, so what you hear while playing is what replays.
 
-Mapping (follow on): degree 1 = chord root, 3 = chord third, 5 = chord fifth, 7 = chord seventh, 8 = octave, L5 = fifth below. On diatonic chords, 2, 4 and 6 walk the key's scale from the chord root; on borrowed chords (♭VI, ♭VII, iv) they are +2, +5 and +8/+9 above the root. ❓ Tune after playtesting.
+Mapping (follow on): chord roots more than a tritone above the key root are played below it (V = G below C). Degree 1 = chord root, 3 = chord third, 5 = chord fifth, 7 = chord seventh, 8 = octave, L5 = fifth below. On diatonic chords, 2, 4 and 6 walk the key's scale from the chord root; on borrowed chords (♭VI, ♭VII, iv) they are +2, +5 and +8/+9 above the root. ❓ Tune after playtesting.
 
 Erasing or swapping away the chord source makes followers fall back (live chord, then tonic); nothing breaks.
 
@@ -219,12 +219,12 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - 📐 **Chance hits:** events carry `chance` (0–1). ❓ Gesture — proposal: a *ghost* hit recorded while Variation ≠ Off gets `chance = 0.5`.
 - 📐 Per-pad tune and level ❓ (rows, or a pad sub-row).
 
-### 7.2 Chord Harp 🔧 (plan: [PHASE_D.md](PHASE_D.md))
+### 7.2 Chord Harp ✅ (details: [PHASE_D.md](PHASE_D.md))
 
-- ✅ Chords on the D-pad (§3.3).
-- 📐 Face buttons: `B` **strum down**, `A` **strum up** (all four strings, spaced by the `STRUM` row: fast / medium / slow), `Y` the chord's **low root**, `X` the **top string**. One event per press.
-- ✅ Shoulders = voicing octave; both = wide voicing. ✅ Colour on the `COLOUR` row. 📐 `STRUM` row.
-- 📐 Every harp event stores its chord relative to the key (root offset, 3rd, 5th, 7th, name, numeral, colour); the lowest-numbered harp track with chords is the **chord source** for Harmony (§5).
+- ✅ Chords on the D-pad (§3.3); each face button plucks one string of the chord (`B` root, `A`, `Y`, `X` top). One press, one note.
+- ✅ Shoulders = voicing octave; both = wide voicing. Colour on the `COLOUR` row.
+- ✅ Every harp event stores its chord relative to the key (root offset, 3rd, 5th, 7th, suffix, numeral, colour, recording key); a key change transposes recorded notes and chords. The lowest-numbered harp track with chords is the **chord source** for Harmony (§5).
+- 📐 Strumming is planned as a separate instrument, with Lead/Arp (§7.5).
 
 ### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
 
@@ -232,7 +232,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ **Held notes:** a note sounds while its button is held and releases on button-up (§9.2). `SAW`/`SUB` are mono (a new press ends the previous note, exactly at the new note's start); `PLUCK` notes overlap.
 - ✅ Face buttons = articulations only: `B` hold, `A` legato (glides from the held note without a new attack, or from the last note), `Y` staccato (one step of the track's grid), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
 - ✅ Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed. After letting go, the fading tail keeps following D-pad directions (not neutral), also recorded. Glide points show as ticks on the tape-deck ribbon.
-- ✅ Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`; `PLUCK` notes overlap and ring), `GLIDE` (fast / medium / slow). 📐 `FOLLOW` comes with chord-follow (§5, Phase D).
+- ✅ Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`; `PLUCK` notes overlap and ring), `GLIDE` (fast / medium / slow), `FOLLOW` (on / off: degrees are played over the current chord, §5).
 
 ### 7.4 Pad 📐 (replaces Grain)
 

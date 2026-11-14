@@ -84,13 +84,13 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot (device check pending)
 - [x] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; saves in the port folder; log.txt fix (device check pending)
 
-## Phase D · Chord Harp + chord-follow ← **next up** — working plan in [PHASE_D.md](PHASE_D.md)
+## Phase D · Chord Harp + chord-follow ✅ (device check pending) — details in [PHASE_D.md](PHASE_D.md)
 
-- [ ] D1 Chord map (`↑` = ♭VI, neutral = I) and full chord data on harp events
-- [ ] D2 Strums and strings: `B` strum down, `A` strum up, `Y` low root, `X` top string; `STRUM` row
-- [ ] D3 `harmony.lua`: current chord at any tick (chord-source track, live chord, tonic)
-- [ ] D4 Bass `FOLLOW` (default on): live and playback notes and bends follow the chord
-- [ ] D5 Chord in the top bar and on the harp lane, harp strum view, bass "follow" capsule; device check
+- [x] D1 Chord map (`↑` = ♭VI, neutral = I) and key-relative chord data on harp events
+- [x] ~~D2 Strums~~ dropped: the harp keeps one note per button; strumming becomes its own instrument (see Phase G)
+- [x] D3 `harmony.lua`: current chord at any tick (recorded chords, else live chord, else tonic)
+- [x] D4 Bass `FOLLOW` (default on): live and playback notes and bends follow the chord
+- [x] D5 Chord in the top bar and along the harp lane, bass follow capsule
 
 ## Phase E · Drums pass 2
 
@@ -112,6 +112,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Phase G · Lead / Arp
 
+- [ ] ❓ Strum instrument: strums the current chord (down / up / stab / slow), either as a mode of Lead/Arp or its own instrument. The harp stays one note per button
 - [ ] D-pad degree; `B` note, `A` arp up, `Y` arp down, `X` up-down
 - [ ] Arp locked to the clock and swing; rate 1/8, 1/16, 1/8T; `L1 + R1` = rate ×2
 - [ ] Rows: `PATCH`, `FOLLOW`, `ARP RATE`, `ARP PATTERN`
@@ -145,4 +146,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Next: Phase D, Chord Harp + chord-follow: plan and decisions in [PHASE_D.md](PHASE_D.md).
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Next: Phase E, Drums pass 2.

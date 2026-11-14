@@ -6,6 +6,7 @@ local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
 local Looper = require("src.looper")
+local Harmony = require("src.harmony")
 
 local math_max   = math.max
 
@@ -33,6 +34,8 @@ local Bass = {
     -- (fraction of the remaining distance covered per second)
     GLIDES = { "FAST", "MEDIUM", "SLOW" },
     GLIDE_RATES = { FAST = 40.0, MEDIUM = 18.0, SLOW = 8.0 },
+    -- Track page FOLLOW row: play degrees over the current chord (SPEC §5)
+    FOLLOWS = { "ON", "OFF" },
     COMPASS_DEGREE_MAP = {
         DOWN       = -2,      -- the 5th below the root (shown as "L5")
         DOWN_LEFT  = 2,
@@ -56,6 +59,7 @@ function Bass:newState()
         lastArticulation = "HOLD",
         patch = "bass_saw",        -- Track page PATCH row
         glide = "MEDIUM",          -- Track page GLIDE row
+        follow = true,             -- Track page FOLLOW row
 
         -- Live playing
         voices = {},               -- [live ev] = voice
@@ -99,6 +103,8 @@ function Bass:getSoundRows(state)
           hint = string.format("%d/%d", indexOf(self.PATCHES, state.patch), #self.PATCHES) },
         { key = "GLIDE", label = "GLIDE", value = state.glide, kind = "setting",
           hint = string.format("%d/%d", indexOf(self.GLIDES, state.glide), #self.GLIDES) },
+        { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
+          hint = "CHORDS" },
     }
 end
 
@@ -113,7 +119,20 @@ function Bass:cycleRowSound(state, rowIdx, delta)
     end
 end
 
+-- The pitch of a D-pad degree: over `chord` when following, else in the key
+function Bass:pitchFor(state, degree, octave, chord)
+    if state.follow and chord then
+        return Theory:getChordDegreeSemis(chord, degree) + (octave or 0) * 12
+    end
+    return Theory:getScaleDegreeSemis(degree) + (octave or 0) * 12
+end
+
 function Bass:cycleSetting(state, key, delta)
+    if key == "FOLLOW" then
+        state.follow = not state.follow
+        Looper:showToast("BASS FOLLOWS CHORDS: " .. (state.follow and "ON" or "OFF"))
+        return
+    end
     if key ~= "GLIDE" then return end
     local n = #self.GLIDES
     state.glide = self.GLIDES[((indexOf(self.GLIDES, state.glide) - 1 + delta) % n) + 1]
@@ -154,7 +173,9 @@ function Bass:updateInput(dt, state, track, play, hold)
     local deg = self.COMPASS_DEGREE_MAP[Input:get8WayDirection()] or 1
     state.activeDegree = deg
     local octave = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
-    local semis = Theory:getScaleDegreeSemis(deg) + octave * 12
+    -- The chord a note pressed now would follow (read once, at the note's start)
+    local chordNow = state.follow and Harmony:chordAt(Looper.tick) or nil
+    local semis = self:pitchFor(state, deg, octave, chordNow)
 
     -- Forget handles whose notes are over (keep the newest: its tail may still bend)
     for i = #state.handles - 1, 1, -1 do
@@ -198,6 +219,7 @@ function Bass:updateInput(dt, state, track, play, hold)
             state.lastArticulation = ARTICULATION[btn]
             local h = hold(ev, opts)
             h.bentSemis, h.bentOctave = semis, octave
+            h.chord = chordNow                       -- its bends stay over the same chord
             table.insert(state.handles, h)
             state.takeover = nil
 
@@ -221,7 +243,7 @@ function Bass:updateInput(dt, state, track, play, hold)
             if not (Input.down.L1 or Input.down.R1) then tOct = h.bentOctave end
         end
         if tDeg then
-            local tSemis = Theory:getScaleDegreeSemis(tDeg) + tOct * 12
+            local tSemis = self:pitchFor(state, tDeg, tOct, h.chord)
             if tSemis ~= h.bentSemis then
                 h.bentSemis, h.bentOctave = tSemis, tOct
                 h:bend({ degree = tDeg, octave = tOct, semis = tSemis })
@@ -234,14 +256,16 @@ end
 -- ---------------------------------------------------------------------------
 -- Sound
 -- ---------------------------------------------------------------------------
-function Bass:startVoice(ev, state, track)
+function Bass:startVoice(ev, state, track, semis, glideFrom)
     local patch = self:getPatch(state)
-    return Synth:noteOn(state.patch, ev.semis or 0, ev.vel or 0.85, {
+    semis = semis or ev.semis or 0
+    if glideFrom == nil then glideFrom = ev.glideFrom end
+    return Synth:noteOn(state.patch, semis, ev.vel or 0.85, {
         track = track,
-        glideFrom = ev.glideFrom,
+        glideFrom = glideFrom,
         glideRate = self:getGlideRate(state),
         vibrato = (ev.action == "X"),
-    }) or (patch and Synth:trigger(patch.attack, ev.semis or 0, ev.vel or 0.85, 1.0, nil, track.volume, track))
+    }) or (patch and Synth:trigger(patch.attack, semis, ev.vel or 0.85, 1.0, nil, track.volume, track))
 end
 
 function Bass:showNote(state, semis)
@@ -264,6 +288,16 @@ function Bass:noteOn(ev, state, track, isPlayback)
         state.voices[ev] = voice
         state.lastDegree, state.lastOctave = ev.degree, ev.octave
     else
+        -- Following: the stored degree is played over the chord at the note's
+        -- start (so chords recorded or changed later re-harmonise the line)
+        local chord, glideFrom
+        if state.follow and ev.degree then
+            chord = Harmony:chordAt(ev.tick)
+            semis = self:pitchFor(state, ev.degree, ev.octave, chord)
+            if ev.glideFromDegree then
+                glideFrom = self:pitchFor(state, ev.glideFromDegree, ev.glideFromOctave, chord)
+            end
+        end
         -- Legato on playback: a note recorded as legato takes over the
         -- previous note's voice if it is still sounding or released only just
         -- now (the old note ends on this note's tick)
@@ -281,8 +315,8 @@ function Bass:noteOn(ev, state, track, isPlayback)
                 end
             end
         end
-        voice = voice or self:startVoice(ev, state, track)
-        local entry = { voice = voice, elapsed = 0.0, lastTick = Looper.tick, semis = semis }
+        voice = voice or self:startVoice(ev, state, track, semis, glideFrom)
+        local entry = { voice = voice, elapsed = 0.0, lastTick = Looper.tick, semis = semis, base = semis, chord = chord }
         state.playing[ev] = entry
         state.lastPlay = entry
     end
@@ -365,7 +399,15 @@ function Bass:updateVoices(dt, state, track)
             if d < loop * 0.5 then p.elapsed = p.elapsed + d end
             p.lastTick = Looper.tick
             local kf = Instruments_bendAt(ev, p.elapsed)
-            local target = kf and kf.semis or ev.semis
+            -- no bend yet: the note's own pitch; bends follow the same chord
+            local target = p.base or ev.semis
+            if kf then
+                if p.chord and kf.degree then
+                    target = self:pitchFor(state, kf.degree, kf.octave, p.chord)
+                else
+                    target = kf.semis
+                end
+            end
             if target and target ~= p.semis then
                 p.semis = target
                 v.glideRate = self:getGlideRate(state)
@@ -378,7 +420,7 @@ end
 
 -- Save / load (Phase C)
 function Bass:saveState(state)
-    return { patch = state.patch, glide = state.glide }
+    return { patch = state.patch, glide = state.glide, follow = state.follow }
 end
 
 function Bass:loadState(state, data)
@@ -389,6 +431,7 @@ function Bass:loadState(state, data)
     for _, g in ipairs(self.GLIDES) do
         if data.glide == g then state.glide = g end
     end
+    if type(data.follow) == "boolean" then state.follow = data.follow end
 end
 
 return Bass
