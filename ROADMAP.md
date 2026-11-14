@@ -101,7 +101,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] E5 Stage view in the template
 - [ ] Device check: the four patches and their levels, sweep speed, chord changes while holding, frame rate
 
-## Phase F · Lead / Arp
+## Phase F · Lead / Arp ← **next up** — working plan in [PHASE_F.md](PHASE_F.md)
 
 - [ ] ❓ Strum instrument: strums the current chord (down / up / stab / slow), either as a mode of Lead/Arp or its own instrument. The harp stays one note per button
 - [ ] D-pad degree; `B` note, `A` arp up, `Y` arp down, `X` up-down
