@@ -46,7 +46,7 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §3.5, §3.6, §4, 
 
 ## Exit checklist
 
-- [ ] `python3 tests/run.py` green
+- [x] `python3 tests/run.py` green (275 tests; `tests/test_mix.lua` is new)
 - [ ] The filter sweep is audible and cheap on the device (EFX present?) 📱
 - [ ] Meters look right against what is heard; the red master mark matches real distortion 📱
 - [ ] Count-in feels natural at slow and fast tempos 📱

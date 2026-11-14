@@ -594,6 +594,11 @@ function Chrome:drawTopBar()
         FX        = { label = "LIVE FX",     icon = "GLINT",   stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
+    -- Count-in: recording is armed and the beats left are counted down
+    local countBeats = Modes:countInBeats()
+    if countBeats and mode == "NORMAL" then
+        mc = { label = "COUNT-IN  " .. countBeats, icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }
+    end
     local bx, by, bw, bh = 488, 11, 138, 28
     self:setColor(mc.fill, (mode == "NORMAL") and 1.0 or 0.92)
     love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
@@ -792,8 +797,9 @@ function Chrome:getControlLabels(def, state, mode)
         local swingHeld = Input.down.Y
         dpadLabels = swingHeld and { UP = "SWING +", DOWN = "SWING -", LEFT = "KEY <", RIGHT = "KEY >" }
             or { UP = "BPM+", DOWN = "BPM-", LEFT = "KEY <", RIGHT = "KEY >" }
-        faceLabels = { B = Looper.bars .. " BAR", A = "GRID", Y = "SWING", X = "CLICK" }
-        activeMap.X = Looper.clickOn
+        local clickLabels = { ["OFF"] = "CLICK", ["ON"] = "CLICK", ["COUNT-IN"] = "COUNT IN", ["ON + COUNT-IN"] = "CLICK +COUNT" }
+        faceLabels = { B = Looper.bars .. " BAR", A = "GRID", Y = "SWING", X = clickLabels[Looper:getClickMode()] }
+        activeMap.X = Looper.clickOn or Looper.countIn
     elseif mode == "ERASE" then
         dpadLabels = { LEFT = "UNDO" }
         faceLabels = { B = "CLR B", A = "CLR A", Y = "CLR Y", X = "CLR X" }
@@ -933,7 +939,25 @@ function Chrome:drawMixerView(t)
             local y = 252 - k * 11
             local on = (k <= lit)
             self:setColor(isMuted and C.GRID or (on and col or C.PANEL_HI))
-            love.graphics.rectangle("fill", x + 4, y + 2, 28, 7, 2, 2)
+            love.graphics.rectangle("fill", x + 3, y + 2, 22, 7, 2, 2)
+        end
+
+        -- Live meter beside the fader: what is sounding now, with a peak mark.
+        -- The master's turns red when the sum is likely to clip.
+        local meter = isMaster and Synth.meters.master or Synth.meters[i]
+        local my, mh = 144, 106
+        local hot = isMaster and meter.peak > Synth.METER_HOT
+        self:setColor(C.PANEL_HI)
+        love.graphics.rectangle("fill", x + 28, my, 5, mh, 2, 2)
+        local lh = math_floor(mh * math_min(1.0, meter.level))
+        if lh > 0 then
+            self:setColor(hot and C.RED or C.TEXT, 0.9)
+            love.graphics.rectangle("fill", x + 28, my + mh - lh, 5, lh, 2, 2)
+        end
+        local ph = math_floor(mh * math_min(1.0, meter.peak))
+        if ph > 1 then
+            self:setColor(hot and C.RED or col)
+            love.graphics.rectangle("fill", x + 27, my + mh - ph - 1, 7, 2)
         end
 
         self:drawTag(x + 2, 260, 32, 18, isMuted and "M" or "ON", isMuted and C.RED or C.GRID, isMuted and C.RED or C.PANEL_HI, isMuted and C.BG or C.MUTED, self.fontTiny)
@@ -1351,7 +1375,7 @@ function Chrome:drawFooterStrip(def)
         hintText = "MIXER | < > Track | UP/DN Volume | B/A/Y/X Mute | L1/R1 Master"
         hintCol = C.SILVER
     elseif mode == "TRANSPORT" then
-        hintText = "TRANSPORT | UP/DN BPM | < > Key | L1/R1 Scale | A Grid | Y+UP/DN Swing | X Click"
+        hintText = "TRANSPORT | UP/DN BPM | < > Key | L1/R1 Scale | A Grid | Y+UP/DN Swing | X Click/Count"
         hintCol = C.AMBER
     elseif mode == "ERASE" then
         hintText = "ERASE | B/A/Y/X Clear pad | LEFT Undo | START Clear track | +SELECT Fresh"
@@ -1359,7 +1383,7 @@ function Chrome:drawFooterStrip(def)
         hintText = "FRESH SESSION | Hold 1 s: clear all notes | Undo: L2 + R2 + LEFT"
         hintCol = C.RED
     elseif mode == "FX" then
-        hintText = "LIVE FX | UP Stutter | DN Slow | LEFT Duck | RIGHT Bitcrush | B/A/Y/X Mute"
+        hintText = "LIVE FX | UP Stutter | DN Slow | LEFT Filter | RIGHT Bitcrush | B/A/Y/X Mute"
         hintCol = C.SILVER
     elseif Looper.toastTimer > 0 then
         hintText = "> " .. Looper.toastText
@@ -1814,7 +1838,8 @@ function Chrome:drawTapeDeck()
         end
 
         -- Level meter on far right
-        local peak = track.muted and 0.0 or track.meterPeak
+        local meter = Synth.meters[tIdx]
+        local peak = math_min(1.0, meter.level)
         self:setColor(C.GRID)
         love.graphics.setLineWidth(2)
         love.graphics.line(616, ry + 3, 616, ry + 19)

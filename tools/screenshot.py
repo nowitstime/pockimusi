@@ -69,6 +69,10 @@ SCENES = {
                 ' H.play(1.7); H.hold("UP"); H.play(0.62)',
     "track-lead": 'require("src.instruments"):swapTrackInstrument(3, "lead"); H.tap("SELECT"); H.tap("SELECT");'
                   ' H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("DOWN"); H.tap("DOWN")',
+    "mix-meters": 'H.tap("L2"); H.tap("B"); H.play(0.2); H.tap("Y"); H.tap("L2"); for _ = 1, 3 do H.tap("SELECT") end;'
+                  ' H.hold("B"); H.play(0.6); H.hold("SELECT", "R2"); H.tap("X"); H.play(0.25)',
+    "count-in": 'require("src.looper").countIn = true; H.play(0.3); H.tap("L2"); H.play(0.6)',
+    "transport-count": 'H.hold("START"); H.play(0.3); H.tap("X"); H.tap("X")',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'
                   ' H.play(0.6); H.hold("Y"); H.play(0.4); H.release("Y"); H.play(1.6); H.hold("X"); H.play(1.2);'
                   ' H.release("X"); H.tap("L2"); H.play(1.1)',

@@ -134,14 +134,16 @@ Keep each instrument at ≤ 6 rows so the constellation fits without scrolling. 
 | `X` | Metronome click on / off |
 | `START` tap | Play / pause; double tap = reset playhead to 1.1 |
 
-BPM, key, scale and bars are global. Grid and swing belong to the active track and are drawn in its colour. ❓ Count-in: `X` hold, or a click mode (off / on / count-in)?
+BPM, key, scale and bars are global. Grid and swing belong to the active track and are drawn in its colour. 
+
+✅ **Click and count-in:** `X` cycles click **off → on → count-in → on + count-in**. With count-in, a record *tap* arms recording instead of starting it: the beats are clicked and counted down in the top bar, and recording latches at the next bar line (the one after, if that is under two beats away), opening a 1/16 early so a note played a touch ahead still lands on beat 1. Tap again, or pause, to cancel. From a paused clock the count starts the clock one bar before the loop's start. Holding `L2` still punches in at once.
 
 ### 3.6 Other global combos ✅
 
 | Combo | Action |
 | :-- | :-- |
 | `R2` + `B/A/Y/X` | Mute tracks 1/2/3/4 |
-| `R2` + D-pad (hold) | Master punch-in FX: ↑ stutter, ↓ half-speed, ← duck (❓ → low-pass), → bitcrush |
+| `R2` + D-pad (hold) | Master punch-in FX: ↑ stutter, ↓ half-speed, ← low-pass sweep (a volume duck without EFX), → bitcrush |
 | `SELECT + R2` | Mix page: `LEFT/RIGHT` track/master, `UP/DOWN` level, `B/A/Y/X` mutes, `L1/R1` master trim |
 | `L2 + R2` + `B/A/Y/X` | Erase that pad/action on the active track |
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
@@ -161,11 +163,12 @@ Hybrid **latch / momentary** on `L2` ✅:
 - Combos with `L2` never toggle the latch.
 - The top bar always shows `REC (LATCHED)` / `REC (HOLD)` / `JAM SAFE`.
 
-📐 Changes:
+Changes:
 
-- **Takes split per loop pass** while latched, so undo removes one pass, not the whole session.
+- ✅ **Takes split per loop pass**: while recording, a new take starts every time a full loop has gone by since recording began, so undo removes one pass, not the whole session. A note held across that boundary stays one note.
+- ✅ **Count-in** (§3.5).
 - **Held notes** record their length and bends (§8); a note still held at the loop seam is handled cleanly.
-- ❓ Replace vs overdub toggle. ❓ Auto-stop after one pass.
+- ❓ Replace vs overdub toggle. ❓ Auto-stop after one pass. Not built: both need a control and the Transport page has no free button.
 
 ---
 
@@ -315,7 +318,7 @@ Event = {
 ### 9.1 Current ✅
 
 - 44.1 kHz, 16-bit mono `SoundData` generated at boot; pools of cloned `Source`s for polyphony; voice stealing.
-- Live FX: beat repeat, half-speed, duck, bitcrush-style pitch quantize.
+- Live FX: beat repeat, half-speed, low-pass sweep (§9.3), bitcrush-style pitch quantize.
 
 ### 9.2 Sustained voices ✅ (engine; instruments start using it in Phase B)
 
@@ -330,7 +333,8 @@ Event = {
 - ✅ Per-track and master volume.
 - ✅ **Per-track FX** (set-and-forget, Track page): tone = low-pass filter on each voice; drive (distortion), echo and space (reverb) = per-track OpenAL EFX sends. Without EFX, drive falls back to a gain push. ❓ Check EFX support and CPU cost on the RG35XX.
 - ✅ Swing per track (§8.1). 📐 Humanize = Drums Variation (§7.1).
-- 📐 Real low-pass for the master `R2 + ←` FX, using the same filter as tone.
+- ✅ **Master low-pass** on `R2 + ←`: closes in about 0.2 s while held and opens on release, applied to every sounding source with the same filter as tone (the two multiply). Without EFX it falls back to the old volume duck.
+- ✅ **Meters** are estimated from the sounding voices (each voice's gain and envelope, added per track as power), since LÖVE can't read the output. They fall at 2.5 per second with a peak mark held 0.8 s. Shown at the right of each tape-deck lane and beside each Mix page fader; the master's turns red above 0.9, where the sum is likely to clip.
 
 ---
 
@@ -398,7 +402,7 @@ Global modes and combos live in `modes.lua` (`Modes.current` is read by the UI);
 5. Gesture for recording drum chance hits. (§7.1)
 6. Per-pad tune and level for drums: where on the Track page? (§7.1)
 7. Arp latch? (§7.5)
-8. Count-in control on the Transport page. (§3.5)
+8. Count-in: to the next bar line (built) or a fixed four beats? (§3.5)
 9. Replace vs overdub; auto-stop after one pass. (§4)
 10. EFX support and CPU cost on the RG35XX. (§9.3)
 11. What exactly is a "song"? (§10)

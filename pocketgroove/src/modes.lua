@@ -32,6 +32,14 @@ local Modes = {
     DOUBLE_TAP    = 0.32,                -- two START taps within this = reset playhead
     NEW_HOLD      = 1.0,                 -- L2 + R2 + SELECT held this long = fresh session
 
+    -- Count-in (SPEC §3.5): a record tap arms recording; it latches at `target`
+    arm = nil,                           -- { target = tick, dist = ticks still to go }
+    COUNT_MIN_BEATS = 2,                 -- a bar line nearer than this: use the one after
+    COUNT_EARLY = 120,                   -- recording opens this many ticks before the bar line
+
+    -- Recording passes: a new take every full loop, so undo removes one pass
+    recPass = nil,                       -- { elapsed = ticks, lastTick }
+
     newHold = 0.0,                       -- seconds the fresh-session combo has been held
     newFired = false,                    -- fired during this hold (once per hold)
 }
@@ -62,7 +70,80 @@ end
 -- ---------------------------------------------------------------------------
 -- Record: tap L2 = latch on/off, hold L2 = record while held (SPEC §4)
 -- ---------------------------------------------------------------------------
+local function cancelCountIn(toast)
+    if not Modes.arm then return end
+    Modes.arm = nil
+    Looper.counting = false
+    if toast then Looper:showToast(toast) end
+end
+
+-- Arm recording: it starts at the next bar line (the one after, if that is
+-- very close). From a paused clock, start one bar before the loop's start.
+local function startCountIn()
+    local loop, bar = Looper:getLoopTicks(), Looper.PPQN * 4
+    local target
+    if not Looper.playing then
+        Looper:seek((loop - bar) / loop)
+        Looper:setPlaying(true)
+        Synth:trigger("perc_wood", 5, 0.55, 0.8)        -- the first count
+        target = 0
+    else
+        local nextBar = (math.floor(Looper.tick / bar) + 1) * bar
+        if nextBar - Looper.tick < Modes.COUNT_MIN_BEATS * Looper.PPQN then nextBar = nextBar + bar end
+        target = nextBar % loop
+    end
+    Modes.arm = { target = target, dist = (target - Looper.tick) % loop }
+    Looper.counting = true
+    Looper:showToast("COUNT-IN: RECORD STARTS ON THE BAR (TAP L2 TO CANCEL)")
+end
+
+-- Beats left in the count-in (for the top bar), or nil
+function Modes:countInBeats()
+    if not self.arm then return nil end
+    return math.max(1, math.ceil(self.arm.dist / Looper.PPQN))
+end
+
+local function updateCountIn()
+    local arm = Modes.arm
+    if not arm then return end
+    if not Looper.playing then return cancelCountIn("COUNT-IN CANCELLED") end
+    local loop = Looper:getLoopTicks()
+    local dist = (arm.target - Looper.tick) % loop
+    -- nearly there, or already past it (the distance jumped back up)
+    if dist <= Modes.COUNT_EARLY or dist > arm.dist + loop * 0.5 then
+        cancelCountIn()
+        Input.recLatched = true
+        Looper:beginRecordingTake()
+        Looper:showToast("[REC] RECORD LATCHED (TAP L2 TO STOP)")
+    else
+        arm.dist = dist
+    end
+end
+
+-- While recording, every full loop since it began starts a new take
+local function updateRecPass()
+    if not Input:isRecording() then
+        Modes.recPass = nil
+        return
+    end
+    local pass = Modes.recPass
+    if not pass then
+        Modes.recPass = { elapsed = 0.0, lastTick = Looper.tick }
+        return
+    end
+    local loop = Looper:getLoopTicks()
+    local d = (Looper.tick - pass.lastTick) % loop
+    if d < loop * 0.5 then pass.elapsed = pass.elapsed + d end     -- stutter jumps back don't count
+    pass.lastTick = Looper.tick
+    if pass.elapsed >= loop then
+        pass.elapsed = pass.elapsed - loop
+        Looper:beginRecordingTake()
+    end
+end
+
 local function updateRecord()
+    updateCountIn()
+    updateRecPass()
     if Input.pressed.L2 then
         Looper:beginRecordingTake()
     end
@@ -70,8 +151,14 @@ local function updateRecord()
 
     local used = Input.comboUsed.L2
     if not used and Input.l2HoldTime < Modes.TAP_MAX then
-        Input.recLatched = not Input.recLatched
-        Looper:showToast(Input.recLatched and "[REC] RECORD LATCHED (TAP L2 TO STOP)" or "RECORD STOPPED")
+        if Modes.arm then
+            cancelCountIn("COUNT-IN CANCELLED")
+        elseif not Input.recLatched and Looper.countIn then
+            startCountIn()
+        else
+            Input.recLatched = not Input.recLatched
+            Looper:showToast(Input.recLatched and "[REC] RECORD LATCHED (TAP L2 TO STOP)" or "RECORD STOPPED")
+        end
     elseif Input.recLatched and Input.l2HoldTime >= Modes.TAP_MAX then
         -- Releasing a held punch-in also clears the latch
         Input.recLatched = false
@@ -258,10 +345,7 @@ function handlers.TRANSPORT()
 
     if Input.pressed.B then Looper:toggleBars() end
     if Input.pressed.A then Looper:cycleGridMode(tIdx) end
-    if Input.pressed.X then
-        Looper.clickOn = not Looper.clickOn
-        Looper:showToast(Looper.clickOn and "CLICK: ON" or "CLICK: OFF")
-    end
+    if Input.pressed.X then Looper:cycleClickMode() end
     return true
 end
 
