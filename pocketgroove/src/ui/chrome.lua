@@ -463,7 +463,7 @@ function Chrome:drawZoneMotifs(instId, col, t)
         -- Extra harmonic orbital halo
         self:setColor(col, 0.16)
         love.graphics.circle("line", rx, ry, 90)
-    elseif instId == "bass" then
+    elseif instId == "bass" or instId == "lead" then
         local ptsL = { lx, ly - 82, lx + 82, ly, lx, ly + 82, lx - 82, ly }
         local ptsR = { rx, ry - 86, rx + 86, ry, rx, ry + 86, rx - 86, ry }
         self:setColor(col, 0.22)
@@ -690,6 +690,8 @@ function Chrome:drawCenterStage()
         l1Label, r1Label = "L1: 1/4", "R1: 1/8"
     elseif def.id == "harp" then
         l1Label, r1Label = "L1: OCT -", "R1: OCT +"
+    elseif def.id == "lead" and lOn and rOn then
+        l1Label, r1Label = "L1+R1: RATE x2", "L1+R1: RATE x2"
     else
         l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
     end
@@ -734,7 +736,7 @@ function Chrome:drawCenterStage()
         TRACK = "D-PAD: ROW - INSTRUMENT", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
         ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
     }
-    local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE" }
+    local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
     local faceSub = { TRACK = "FACE: EFFECTS", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
     local dpadSubtitle = dpadSub[mode] or instSub[def.id] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
@@ -819,6 +821,10 @@ function Chrome:getControlLabels(def, state, mode)
     elseif def.id == "bass" then
         dpadLabels = { NEUTRAL = "1", DOWN = "L5", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
         faceLabels = { B = "HOLD", A = "LEGATO", Y = "STAC", X = "ACCENT" }
+    elseif def.id == "lead" then
+        dpadLabels = { NEUTRAL = "1", DOWN = "L5", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
+        faceLabels = { B = "NOTE", A = "ARP UP", Y = "ARP DOWN", X = "UP DOWN" }
+        if state.arpBtn then activeMap[state.arpBtn] = true end
     elseif def.id == "pad" then
         dpadLabels = { UP = "BRIGHT +", DOWN = "BRIGHT -", LEFT = "MOVE -", RIGHT = "MOVE +" }
         faceLabels = { B = "FULL", A = "OPEN", Y = "HIGH", X = "SWELL" }
@@ -885,6 +891,9 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
 
     elseif def.id == "bass" then
         self:drawBassView(def, state, track, col)
+
+    elseif def.id == "lead" then
+        self:drawLeadView(def, state, track, col)
 
     elseif def.id == "pad" then
         self:drawPadView(def, state, track, col, t)
@@ -1455,8 +1464,13 @@ function Chrome:drawBassView(def, state, track, col)
     love.graphics.line(pts)
     love.graphics.setLineWidth(1)
 
-    -- Pitch trace: last 1.2 s, newest on the right; brighter = louder
-    local tx, ty, tw, th = 212, 244, 216, 34
+    self:drawPitchTrace(def, state, col, 244, 34)
+end
+
+-- Pitch trace: last 1.2 s, newest on the right; brighter = louder
+function Chrome:drawPitchTrace(def, state, col, ty, th)
+    local C = Config.COLORS
+    local tx, tw = 212, 216
     self:setColor(C.BG)
     love.graphics.rectangle("fill", tx, ty, tw, th, 4, 4)
     self:setColor(C.GRID)
@@ -1497,6 +1511,71 @@ function Chrome:drawBassView(def, state, track, col)
         local hint = "PITCH TRACE"
         love.graphics.print(hint, math_floor(320 - self.fontTiny:getWidth(hint) * 0.5), ty + 12)
     end
+end
+
+-- ============================================================================
+-- LEAD VIEW: sounding note, the arp's ladder (one dot per step of a pass,
+-- the playing one lit), pitch trace of the last 1.2 s
+-- ============================================================================
+function Chrome:drawLeadView(def, state, track, col)
+    local C = Config.COLORS
+    local voice = def:getDisplayVoice(state)
+
+    local semis = voice and math_floor(voice.currentSemis + 0.5) or Theory:getScaleDegreeSemis(state.activeDegree or 1)
+    local noteName = Theory.NOTE_NAMES[(semis % 12) + 1]
+    self:setColor(voice and C.TEXT or col)
+    love.graphics.setFont(self.fontHuge)
+    love.graphics.print(noteName, math_floor(320 - self.fontHuge:getWidth(noteName) * 0.5), 112)
+
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(C.MUTED)
+    local both = Input.down.L1 and Input.down.R1
+    local oct = both and 0 or ((Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0))
+    local sub = string.format("DEG %s  -  OCT %s%d  -  %s", def:degreeLabel(state.activeDegree or 1), (oct > 0 and "+" or ""), oct,
+        (voice or state.arpBtn) and (state.lastArticulation or "NOTE") or "READY")
+    love.graphics.print(sub, math_floor(320 - self.fontSmall:getWidth(sub) * 0.5), 148)
+
+    local patch = def:getPatch(state)
+    local rate = state.rate .. (state.arpDouble and " x2" or "")
+    self:drawCapsuleRow(320, 166, 16, {
+        { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
+        { "ARP " .. rate, state.arpBtn and col or C.GRID, state.arpBtn and col or C.PANEL_HI, state.arpBtn and C.BG or C.MUTED },
+        { state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+          C.GRID, C.PANEL_HI, state.follow and C.CYAN or C.DIM },
+    })
+
+    -- Arp ladder: one pass of the sequence a press would play (or is playing)
+    local ox, oy, ow, oh = 212, 188, 216, 50
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", ox, oy, ow, oh, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", ox, oy, ow, oh, 4, 4)
+    local mode = def.ARP_MODES[state.arpBtn or "A"]
+    local seq = def:arpSequence(state, mode, state.activeDegree or 1)
+    local lo, hi = seq[1], seq[1]
+    for _, r in ipairs(seq) do lo, hi = math_min(lo, r), math_max(hi, r) end
+    local n = #seq
+    local px, py = {}, {}
+    for i, r in ipairs(seq) do
+        px[i] = ox + 12 + (i - 0.5) / n * (ow - 24)
+        py[i] = oy + oh - 9 - ((hi > lo) and ((r - lo) / (hi - lo)) or 0.5) * (oh - 18)
+    end
+    self:setColor(col, state.arpBtn and 0.45 or 0.2)
+    for i = 2, n do love.graphics.line(px[i - 1], py[i - 1], px[i], py[i]) end
+    for i = 1, n do
+        local lit = state.arpBtn and state.arpPos == i - 1
+        if lit then
+            self:drawStarGlint(px[i], py[i], 6.5, C.TEXT, 1.0)
+        else
+            self:setColor(col, state.arpBtn and 0.9 or 0.45)
+            love.graphics.circle("fill", px[i], py[i], 2.4)
+        end
+    end
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(C.DIM)
+    love.graphics.print(state.pattern, ox + 5, oy + 3)
+
+    self:drawPitchTrace(def, state, col, 244, 34)
 end
 
 -- ============================================================================

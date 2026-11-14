@@ -65,7 +65,7 @@ All hardware maps to a virtual button table (`down`, `pressed`, `released`). Gam
 | **Chord Harp** ✅ | 9 chords (§3.3) | 4 strings of the chord | voicing −1 oct | voicing +1 oct | wide voicing |
 | **Bass** ✅ | root on neutral + 8 directions (2–8, `↓` = 5th below) | articulations (§7.3) | oct −1 | oct +1 | — ❓ |
 | **Pad** ✅ | brightness / movement | voicings + swell (§7.4) | oct −1 | oct +1 | — |
-| **Lead / Arp** 📐 | 8 degrees | note + arp modes (§7.5) | oct −1 | oct +1 | arp rate ×2 |
+| **Lead / Arp** ✅ | as Bass; for arps, where the pattern starts | note + arp up / down / up-down (§7.5) | oct −1 | oct +1 | arp rate ×2 |
 
 Grain is retired as an instrument; its textures are the **Pad's patches** (§7.4). ✅ Chord harp shoulders shift the voicing octave; chord colour is on the Track page (§3.3). ✅
 
@@ -179,7 +179,7 @@ There is always a **current chord** at every point in the loop. A small `Harmony
 
 So nothing depends on recording chords first: with no chord track, followers simply play in the key.
 
-**Followers** (Bass and Pad now; Lead/Arp later) have a **FOLLOW** setting row (Track page, default **on**):
+**Followers** (Bass, Pad and Lead/Arp) have a **FOLLOW** setting row (Track page, default **on**):
 
 - **On:** a note's stored *degree* (for the Pad: its voicing shape) is played relative to the chord at the note's start. Recording or changing chords later re-harmonises lines already recorded. A held bass note keeps its pitch through a chord change; a held **Pad** chord moves to the new chord, on the chord's own tick (§7.4).
 - **Off:** the note's stored *absolute pitch* is played, exactly as recorded.
@@ -244,13 +244,18 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ Stage view: the chord, the shape and octave, one glowing line per sounding note, `BRIGHT` and `MOVE` bars.
 - ❓ After playing on the device: glide or re-attack on chord changes; values that spring back; `X` as a charge.
 
-### 7.5 Lead / Arp 📐
+### 7.5 Lead / Arp ✅ (details: [PHASE_F.md](PHASE_F.md))
 
-- D-pad = degree (relative to the current chord when following).
-- `B` single note (held). `A` arp up, `Y` arp down, `X` up-down (arp runs while held, at `ARP RATE`, locked to the clock and the track's swing). ❓ arp latch.
-- `L1/R1` octave; `L1 + R1` = arp rate ×2 while held.
-- Rows: `PATCH`, `FOLLOW`, `ARP RATE` (1/8, 1/16, 1/8T), `ARP PATTERN` / range.
-- Same class as Bass (mono-melodic), so swaps between them keep events.
+- ✅ Built on the Bass: the same D-pad degrees, event fields and follow rule, one octave higher. Not in the default slots: swap it in on the Track page.
+- ✅ `B` = a held note; moving the D-pad or shoulders while holding glides it (recorded bends).
+- ✅ `A` arp up, `Y` arp down, `X` up-down, running while held (the newest held button wins). The arp walks a ladder of notes over the current chord, set by `ARP PATTERN`; the D-pad degree is where the pattern starts (neutral = the root, `↑` = from the 5th), and can move while it runs. Every step reads the current chord.
+- ✅ Steps fall on the clock's grid at `ARP RATE` with the track's swing. A press within 45 ms of a step plays at once and counts as that step; a press between steps starts on the next one. With the clock paused the arp keeps its own time.
+- ✅ Each arp step is recorded as an ordinary note (degree, octave, pitch, 80 % of the step long) on the arp's own grid.
+- ✅ `L1/R1` octave; `L1 + R1` = arp rate ×2 while held. Notes too high for the voices drop an octave.
+- ✅ Rows: `PATCH` (`SQUARE`, `SAW`, `PLUCK`), `FOLLOW`, `ARP RATE` (1/8, 1/16, 1/8T), `ARP PATTERN` (`CHORD`, `CHORD 2 OCT`, `7TH`, `7TH 2 OCT`, `SCALE`).
+- ✅ Bass ↔ Lead swaps keep the track's notes and grid (undoable like any swap).
+- ✅ Follow lookahead is under half a 1/32 for the Lead (a 1/16 for the Bass), so the arp step before a chord change keeps the old chord.
+- ❓ Arp latch; note length as a row; vibrato on long notes. 📐 Strumming stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)).
 
 ### 7.6 Parked ideas
 
@@ -318,7 +323,7 @@ Event = {
 - A voice = attack (optional) + loop sources with an envelope (attack / release, per note if asked) driven in `Synth:update` via `setVolume`; pitch and glide via `setPitch`. Voices route through the track's effects like one-shots do.
 - API: `Synth:noteOn(patch, semis, vel, opts) → voice`, `voice:setPitch(semis)`, `voice:noteOff()`. One-shots keep using `Synth:trigger`.
 - Pad patches have a second **bright** loop layer (upper harmonics) paired with the main one: its level is the voice's brightness; the voice's movement drifts the pitch (±9 cents), detunes the bright layer (7 cents) and makes it shimmer.
-- Patches so far: `bass_saw`, `bass_sub`, `bass_pluck`, `pad_warm`, `pad_bell`, `pad_choir`, `pad_drone`. Loops contain only whole harmonics; bass patches have 6 to 8 loop sources, pad patches 12 per layer, and a patch steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
+- Patches so far: `bass_saw`, `bass_sub`, `bass_pluck`, `lead_square`, `lead_saw`, `lead_pluck`, `pad_warm`, `pad_bell`, `pad_choir`, `pad_drone`. Loops contain only whole harmonics; bass patches have 6 to 8 loop sources, pad patches 12 per layer, and a patch steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
 
 ### 9.3 Effects & mix
 
@@ -359,7 +364,7 @@ Principles: show mode in the same place always; hints for the held modifier only
 | Mix / Live FX | moon silver `#DCE3F5` | — |
 | Erase | crimson with a tinted frame | — |
 
-The tape deck dims while a settings page is open. The Pad has Grain's mint. 📐 Lead/Arp needs an instrument colour that stays distinct from the page colours.
+The tape deck dims while a settings page is open. The Pad has Grain's mint. Tracks are coloured by slot, so a Lead takes the colour of the slot it is put in.
 
 ---
 
@@ -375,7 +380,7 @@ pockimusi/
       ├── main.lua  conf.lua  controls.gptk
       └── src/
            config.lua  theory.lua  input.lua  looper.lua  harmony.lua  modes.lua
-           instruments/{init,drums,harp,bass,pad}.lua   (lead.lua 📐)
+           instruments/{init,drums,harp,bass,pad,lead}.lua
            synth/{init,voice (📐),drums_bank,synths_bank}.lua
            ui/chrome.lua
 ```

@@ -9,6 +9,7 @@ local Drums = require("src.instruments.drums")
 local Harp  = require("src.instruments.harp")
 local Bass  = require("src.instruments.bass")
 local Pad   = require("src.instruments.pad")
+local Lead  = require("src.instruments.lead")
 
 local Instruments = {
     -- Ordered catalog of available instruments (add new instruments here!)
@@ -17,6 +18,7 @@ local Instruments = {
         Harp,
         Bass,
         Pad,
+        Lead,
     },
     byId = {},
 }
@@ -70,12 +72,23 @@ function Instruments:stepInstrumentId(instrumentId, delta)
     return self.catalog[((curIdx - 1 + delta) % #self.catalog) + 1].id
 end
 
+local function copyEvent(ev)
+    local rec = {}
+    for k, v in pairs(ev) do rec[k] = v end
+    return rec
+end
+
 -- Put a different instrument in a slot. The old instrument, its state and
 -- its events go on the undo stack, so undo brings the track back.
+-- Instruments of the same event class (Bass and Lead: `eventClass`) play each
+-- other's notes, so the new one starts with a copy of the track's notes.
 function Instruments:swapTrackInstrument(trackSlot, instrumentId)
     local track = Looper.tracks[trackSlot]
     if not track or track.instrumentId == instrumentId then return end
     self:releaseAll(trackSlot)
+    local oldDef, newDef = self:getDefinition(track.instrumentId), self:getDefinition(instrumentId)
+    local keep = oldDef.eventClass ~= nil and oldDef.eventClass == newDef.eventClass
+    local oldEvents, oldGrid = track.events, track.gridIndex
     Looper:pushUndo({
         kind = "swap",
         trackSlot = trackSlot,
@@ -87,6 +100,14 @@ function Instruments:swapTrackInstrument(trackSlot, instrumentId)
         events = track.events,
     })
     Looper:setTrackInstrument(trackSlot, instrumentId, self)
+    if keep then
+        for i, ev in ipairs(oldEvents) do
+            if not ev.open then track.events[#track.events + 1] = copyEvent(ev) end
+        end
+        track.gridIndex = oldGrid
+        Looper:showToast(string.format("TRACK %d -> %s (%d NOTES KEPT)", trackSlot,
+            newDef.title or newDef.name, #track.events))
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -106,12 +127,6 @@ end
 -- ---------------------------------------------------------------------------
 
 Instruments.held = { {}, {}, {}, {} }      -- per track: live held notes
-
-local function copyEvent(ev)
-    local rec = {}
-    for k, v in pairs(ev) do rec[k] = v end
-    return rec
-end
 
 local function defOf(self, track)
     return self:getDefinition(track.instrumentId)
@@ -188,10 +203,13 @@ end
 -- Held note from a live press; returns its handle.
 -- opts.fixedLen = ticks: the note lasts exactly that long whatever the button
 -- does (staccato); it still ends early if a page takes the controls.
+-- opts.recLen = ticks: the length to record, if different (an arp note
+-- pressed a moment off its grid step still records the step's length).
 function Instruments:holdNote(track, ev, opts)
     defOf(self, track):noteOn(ev, track.state, track, false)
     local h = setmetatable({ ev = ev, track = track, held = true, elapsed = 0.0, lastTick = Looper.tick,
-                             ageSec = 0.0, fixedLen = opts and opts.fixedLen or nil }, Handle)
+                             ageSec = 0.0, fixedLen = opts and opts.fixedLen or nil,
+                             recLen = opts and opts.recLen or nil }, Handle)
     if Input:isRecording() then
         local rec = copyEvent(ev)
         rec.open = true                    -- not played back until released
@@ -206,7 +224,7 @@ function Instruments:releaseNote(track, h)
     if def.noteOff then def:noteOff(h.ev, track.state, track, false) end
     if h.rec then
         local loop = Looper:getLoopTicks()
-        local len = h.fixedLen or math.floor(h:advance() + 0.5)
+        local len = h.recLen or h.fixedLen or math.floor(h:advance() + 0.5)
         h.rec.len = math.max(1, math.min(loop - 1, len))
         h.rec.open = nil
     end

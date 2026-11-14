@@ -63,6 +63,12 @@ SCENES = {
                   ' H.hold("B"); H.play(2.6); H.hold("UP"); H.play(0.8); H.release("UP", "B"); H.play(0.05); H.tap("L2");'
                   ' H.play(2.2)',
     "track-pad": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("DOWN")',
+    "lead-idle": 'require("src.instruments"):swapTrackInstrument(3, "lead"); H.tap("SELECT"); H.tap("SELECT"); H.play(0.2)',
+    "lead-arp": 'require("src.instruments"):swapTrackInstrument(3, "lead"); local st = require("src.looper").tracks[3].state;'
+                ' st.pattern = "CHORD 2 OCT"; H.tap("SELECT"); H.tap("SELECT"); H.tap("L2"); H.play(0.3); H.hold("X");'
+                ' H.play(1.7); H.hold("UP"); H.play(0.62)',
+    "track-lead": 'require("src.instruments"):swapTrackInstrument(3, "lead"); H.tap("SELECT"); H.tap("SELECT");'
+                  ' H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("DOWN"); H.tap("DOWN")',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'
                   ' H.play(0.6); H.hold("Y"); H.play(0.4); H.release("Y"); H.play(1.6); H.hold("X"); H.play(1.2);'
                   ' H.release("X"); H.tap("L2"); H.play(1.1)',

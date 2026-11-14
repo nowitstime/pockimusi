@@ -122,6 +122,55 @@ function SynthsBank.buildSustain(Synth)
                                       sustain = 0.25, xfade = 0.10, release = 0.45, overlap = true })
 
     -- -----------------------------------------------------------------------
+    -- Lead patches (Lead Track page PATCH row). One octave above the bass:
+    -- C4 at 0 semitones. Loops sit on a C3 fundamental (the same loop length
+    -- as the bass, so they tune as well) and use its even harmonics only.
+    -- SQUARE and SAW have no attack one-shot: the loop fades in within a few
+    -- milliseconds.
+    -- -----------------------------------------------------------------------
+    local C4 = 261.63
+
+    -- SQUARE: hollow, the classic lead (odd harmonics of the note)
+    local sqLoop, _, sqTune = Synth:createLoop(130.81, 24, function(a)
+        local s = 0.0
+        for k = 1, 15, 2 do s = s + h(a, 2 * k) / k end
+        return s * 0.42
+    end)
+    Synth:createLoopPool("lead_square_loop", sqLoop, 6)
+    Synth:definePatch("lead_square", { label = "SQUARE", loop = "lead_square_loop", tune = sqTune,
+                                       sustain = 0.5, xfade = 0.012, release = 0.09 })
+
+    -- SAW: bright and a little driven
+    local lsawLoop, _, lsawTune = Synth:createLoop(130.81, 24, function(a)
+        local s = 0.0
+        for k = 1, 14 do s = s + h(a, 2 * k) * (1.0 / k) * math_exp(-(k - 1) * 0.12) end
+        return tanh_approx(s * 0.9) * 0.5
+    end)
+    Synth:createLoopPool("lead_saw_loop", lsawLoop, 6)
+    Synth:definePatch("lead_saw", { label = "SAW", loop = "lead_saw_loop", tune = lsawTune,
+                                    sustain = 0.5, xfade = 0.012, release = 0.10 })
+
+    -- PLUCK: a bright pick that closes fast over a soft ringing body. Notes overlap.
+    local lpluckSD = Synth:createBuffer(0.6, function(t)
+        local w = TWO_PI * C4 * t
+        local bright = math_exp(-t * 26.0)
+        local s = 0.0
+        for k = 1, 10 do
+            s = s + math_sin(w * k) * (1.0 / k) * math_exp(-(k - 1) * (0.10 + (1.0 - bright) * 0.9))
+        end
+        local attack = clamp(t / 0.0015, 0.0, 1.0)
+        local env = attack * (0.30 * math_exp(-t * 2.2) + 0.70 * math_exp(-t * 11.0))
+        return tanh_approx(s * env * 1.5) * 0.75
+    end)
+    Synth:createPool("lead_pluck", lpluckSD, 10, 0.60)
+    local lpluckLoop, _, lpluckTune = Synth:createLoop(130.81, 24, function(a)
+        return (h(a, 2) * 0.8 + h(a, 6) * (0.8 / 9) + h(a, 10) * (0.8 / 25) + h(a, 4) * 0.06) * 0.6
+    end)
+    Synth:createLoopPool("lead_pluck_loop", lpluckLoop, 8)
+    Synth:definePatch("lead_pluck", { label = "PLUCK", attack = "lead_pluck", loop = "lead_pluck_loop", tune = lpluckTune,
+                                      sustain = 0.22, xfade = 0.08, release = 0.40, overlap = true })
+
+    -- -----------------------------------------------------------------------
     -- Pad patches (Pad Track page PATCH row; the old Grain textures).
     -- Two seamless layers each, on a C3 fundamental:
     --   dark    the body of the sound, always playing
