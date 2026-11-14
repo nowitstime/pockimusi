@@ -76,12 +76,13 @@ function Harmony:changes(track)
 end
 
 -- The chord at a loop position, and where it came from:
--- "recorded", "live" or "tonic"
-function Harmony:chordAt(tick)
+-- "recorded", "live" or "tonic". `lookahead` (ticks, default LOOKAHEAD):
+-- pass 0 for the chord sounding exactly at `tick` (a held Pad changing chord).
+function Harmony:chordAt(tick, lookahead)
     local track = self:source()
     if track then
         local list = self:changes(track)
-        local pos = (tick + self.LOOKAHEAD) % Looper:getLoopTicks()
+        local pos = (tick + (lookahead or self.LOOKAHEAD)) % Looper:getLoopTicks()
         local found = list[#list]                 -- wrap: the loop's last chord carries over
         for i = 1, #list do
             if list[i].tick <= pos then found = list[i] else break end

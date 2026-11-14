@@ -19,6 +19,7 @@ local FILES = {
     "test_voices",
     "test_bass",
     "test_harmony",
+    "test_pad",
     "test_session",
     "test_autosave",
     "test_smoke",

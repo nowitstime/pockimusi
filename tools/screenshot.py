@@ -52,13 +52,20 @@ SCENES = {
                  ' H.play(0.4); H.hold("Y"); H.play(0.05); H.release("Y"); H.play(0.3); H.hold("X", "R1"); H.play(0.6);'
                  ' H.hold("UP", "A"); H.play(0.5); H.release("A", "X", "UP", "R1"); H.tap("L2"); H.play(0.9)',
     "track-bass": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.tap("R1"); H.tap("DOWN")',
-    "grain-hold": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("B", "RIGHT"); H.play(0.8)',
-    "grain-recording": 'for _ = 1, 3 do H.tap("SELECT") end; H.play(1.0); H.tap("L2"); H.hold("B"); H.play(1.0)',
+    "pad-idle": 'for _ = 1, 3 do H.tap("SELECT") end; H.play(0.2)',
+    "pad-hold": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("B"); H.play(0.5); H.hold("UP", "RIGHT"); H.play(0.6)',
+    "pad-layers": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("B"); H.play(0.3); H.hold("R1"); H.play(0.05);'
+                  ' H.hold("Y"); H.play(0.6)',
+    "pad-follow": 'H.tap("SELECT"); H.tap("L2");'
+                  ' for _, d in ipairs({ false, "DOWN", "LEFT", "RIGHT" }) do if d then H.hold(d) end; H.tap("B"); H.play(0.15); H.tap("A");'
+                  ' if d then H.release(d) end; H.play(0.72) end;'
+                  ' H.tap("L2"); H.tap("SELECT"); H.tap("SELECT"); H.tap("L2"); H.play(0.2);'
+                  ' H.hold("B"); H.play(2.6); H.hold("UP"); H.play(0.8); H.release("UP", "B"); H.play(0.05); H.tap("L2");'
+                  ' H.play(2.2)',
+    "track-pad": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("DOWN")',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'
                   ' H.play(0.6); H.hold("Y"); H.play(0.4); H.release("Y"); H.play(1.6); H.hold("X"); H.play(1.2);'
                   ' H.release("X"); H.tap("L2"); H.play(1.1)',
-    "grain-playback": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.hold("A"); H.play(1.2); H.release("A");'
-                      ' H.play(0.05); H.tap("L2"); H.play(3.4)',
 }
 
 _fonts = {}

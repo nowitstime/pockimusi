@@ -60,9 +60,9 @@ function love.draw()
     Chrome:draw()
 end
 
--- Desktop-only test keys for sustained voices: hold H (bass) or G (warm pad)
+-- Desktop-only test keys for sustained voices: hold H (bass) or G (warm pad, bright)
 local testVoices = {}
-local TEST_KEYS = { h = { patch = "bass_saw", track = 3, semis = 0 }, g = { patch = "grain_pad", track = 4, semis = 0 } }
+local TEST_KEYS = { h = { patch = "bass_saw", track = 3, semis = 0 }, g = { patch = "pad_warm", track = 4, semis = 0, bright = 0.6, move = 0.5 } }
 
 function love.keypressed(key)
     if key == "escape" then
@@ -70,7 +70,7 @@ function love.keypressed(key)
     end
     local t = TEST_KEYS[key]
     if t and not testVoices[key] then
-        testVoices[key] = Synth:noteOn(t.patch, t.semis, 0.9, { track = Looper.tracks[t.track] })
+        testVoices[key] = Synth:noteOn(t.patch, t.semis, 0.9, { track = Looper.tracks[t.track], bright = t.bright, move = t.move })
     end
 end
 

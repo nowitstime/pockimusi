@@ -475,7 +475,7 @@ function Chrome:drawZoneMotifs(instId, col, t)
         self:drawDiamond(rx + 86, ry, 2.8, col)
         self:drawDiamond(rx, ry + 86, 2.8, col)
         self:drawDiamond(rx - 86, ry, 2.8, col)
-    elseif instId == "grain" then
+    elseif instId == "pad" then
         self:setColor(col, 0.2)
         love.graphics.circle("line", lx, ly, 76)
         self:drawDashedCircle(rx, ry, 82, 4, 8)
@@ -734,7 +734,7 @@ function Chrome:drawCenterStage()
         TRACK = "D-PAD: ROW - INSTRUMENT", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
         ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
     }
-    local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", grain = "D-PAD: TEXTURE" }
+    local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE" }
     local faceSub = { TRACK = "FACE: EFFECTS", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
     local dpadSubtitle = dpadSub[mode] or instSub[def.id] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
@@ -819,16 +819,17 @@ function Chrome:getControlLabels(def, state, mode)
     elseif def.id == "bass" then
         dpadLabels = { NEUTRAL = "1", DOWN = "L5", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
         faceLabels = { B = "HOLD", A = "LEGATO", Y = "STAC", X = "ACCENT" }
-    elseif def.id == "grain" then
-        dpadLabels = { UP = "DENSE", DOWN = "SPARSE", LEFT = "SCAN <", RIGHT = "SCAN >" }
-        faceLabels = { B = "PAD", A = "BELL", Y = "CHOIR", X = "DRONE" }
+    elseif def.id == "pad" then
+        dpadLabels = { UP = "BRIGHT +", DOWN = "BRIGHT -", LEFT = "MOVE -", RIGHT = "MOVE +" }
+        faceLabels = { B = "FULL", A = "OPEN", Y = "HIGH", X = "SWELL" }
+        for ev in pairs(state.live) do activeMap[ev.action] = true end
     end
 
     return dpadLabels, faceLabels, flashMap, activeMap
 end
 
 -- ============================================================================
--- CENTER VISUALIZERS (DRUMS, HARP, BASS, GRAIN)
+-- CENTER VISUALIZERS (DRUMS, HARP, BASS, PAD)
 -- ============================================================================
 function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     local C = Config.COLORS
@@ -885,37 +886,8 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     elseif def.id == "bass" then
         self:drawBassView(def, state, track, col)
 
-    elseif def.id == "grain" then
-        self:setColor(C.BG)
-        love.graphics.rectangle("fill", 212, 126, 216, 134, 4, 4)
-        self:setColor(C.GRID)
-        love.graphics.rectangle("line", 212, 126, 216, 134, 4, 4)
-
-        self:setColor(C.DIM, 0.5)
-        for i = 0, 35 do
-            local frac = i / 35.0
-            local x = 220 + frac * 200
-            local bh = (math_sin(frac * 19.0) * 0.5 + math_cos(frac * 37.0) * 0.5) * 42.0
-            love.graphics.line(x, 193 - math_abs(bh), x, 193 + math_abs(bh))
-        end
-
-        for _, p in ipairs(state.particles) do
-            self:setColor(col, p.life * 0.8)
-            love.graphics.circle("line", p.x, p.y, p.radius)
-        end
-
-        local scanX = 220 + state.scanPos * 200
-        self:setColor(col)
-        love.graphics.setLineWidth(1.5)
-        love.graphics.line(scanX, 130, scanX, 256)
-        love.graphics.setLineWidth(1)
-        self:drawStarGlint(scanX, 130, 5, col)
-
-        love.graphics.setFont(self.fontSmall)
-        self:setColor(C.MUTED)
-        local scanStr = string.format("SCAN %d%%  -  DENS %d%%", math_floor(state.scanPos * 100), math_floor(state.density * 100))
-        local sw = self.fontSmall:getWidth(scanStr)
-        love.graphics.print(scanStr, math_floor(320 - sw * 0.5), 276)
+    elseif def.id == "pad" then
+        self:drawPadView(def, state, track, col, t)
     end
 end
 
@@ -1527,6 +1499,105 @@ function Chrome:drawBassView(def, state, track, col)
     end
 end
 
+-- ============================================================================
+-- PAD VIEW: the chord being held, one glowing line per sounding note
+-- (height = pitch, strength = level, wobble = movement, glow = brightness),
+-- and the two D-pad values
+-- ============================================================================
+function Chrome:drawPadView(def, state, track, col, t)
+    local C = Config.COLORS
+    local live = def:getLiveNote(state)
+    local sounding = def:getSounding(state)
+
+    -- Chord: the one being held, else the one a press would play
+    local chord = live and live.chord or (Harmony:current())
+    local name = Theory:chordName(chord)
+    self:setColor(live and C.TEXT or col)
+    love.graphics.setFont(self.fontHuge)
+    love.graphics.print(name, math_floor(320 - self.fontHuge:getWidth(name) * 0.5), 106)
+
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(C.MUTED)
+    local oct = live and (live.ev.octave or 0) or ((Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0))
+    local shape = live and def:getActionLabel(state, live.ev.action) or (#sounding > 0 and "PLAYING" or "READY")
+    local sub = string.format("%s  -  OCT %s%d", shape, (oct > 0 and "+" or ""), oct)
+    love.graphics.print(sub, math_floor(320 - self.fontSmall:getWidth(sub) * 0.5), 142)
+
+    local patch = def:getPatch(state)
+    self:drawCapsuleRow(320, 160, 16, {
+        { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
+        { state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+          C.GRID, C.PANEL_HI, state.follow and C.CYAN or C.DIM },
+    })
+
+    -- Note field
+    local fx, fy, fw, fh = 212, 182, 216, 74
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", fx, fy, fw, fh, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", fx, fy, fw, fh, 4, 4)
+
+    -- Two octaves tall at least, centred on what is sounding (or would be)
+    local idle = Theory:getPadVoicing(chord, "FULL", oct)
+    local lo, hi
+    for _, s in ipairs(#sounding > 0 and sounding or idle) do
+        local semis = type(s) == "table" and s.semis or s
+        lo = lo and math_min(lo, semis) or semis
+        hi = hi and math_max(hi, semis) or semis
+    end
+    local mid, span = (lo + hi) * 0.5, math_max(24, hi - lo + 6)
+    lo, hi = mid - span * 0.5, mid + span * 0.5
+    local function py(semis)
+        return fy + fh - 6 - clamp((semis - lo) / (hi - lo), 0.0, 1.0) * (fh - 12)
+    end
+    local function wave(semis, idx, amp, speed)
+        local pts = {}
+        local y = py(semis)
+        for x = 0, fw - 12, 6 do
+            local edge = math_sin(math_pi * x / (fw - 12))          -- pinned at both ends
+            pts[#pts + 1] = fx + 6 + x
+            pts[#pts + 1] = y + math_sin(x * 0.07 + t * speed + idx * 1.9) * amp * edge
+        end
+        return pts
+    end
+
+    if #sounding == 0 then
+        -- Idle: the full chord a press would play, faintly
+        for i, semis in ipairs(idle) do
+            self:setColor(col, 0.22)
+            love.graphics.line(wave(semis, i, 0.0, 0.0))
+        end
+    else
+        for i, s in ipairs(sounding) do
+            local pts = wave(s.semis, i, 0.4 + s.move * 2.2, 1.2 + s.move * 3.0)
+            self:setColor(col, s.level * (0.10 + 0.30 * s.bright))
+            love.graphics.setLineWidth(3 + s.bright * 5)
+            love.graphics.line(pts)
+            self:setColor(s.held and col or C.MUTED, 0.25 + 0.75 * s.level)
+            love.graphics.setLineWidth(1.6)
+            love.graphics.line(pts)
+        end
+        love.graphics.setLineWidth(1)
+    end
+
+    -- The D-pad's two values
+    local function meter(x, label, value, on)
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(on and col or C.MUTED)
+        love.graphics.print(label, x, 263)
+        local bx, bw = x + 44, 56
+        self:setColor(C.PANEL_HI)
+        love.graphics.rectangle("fill", bx, 265, bw, 6, 3, 3)
+        self:setColor(on and C.TEXT or col)
+        love.graphics.rectangle("fill", bx, 265, math_max(3, bw * value), 6, 3, 3)
+        self:setColor(C.GRID)
+        love.graphics.rectangle("line", bx, 265, bw, 6, 3, 3)
+    end
+    local active = (Modes.current or "NORMAL") ~= "FX"
+    meter(214, "BRIGHT", state.bright, active and (Input.down.UP or Input.down.DOWN))
+    meter(326, "MOVE", state.move, active and (Input.down.LEFT or Input.down.RIGHT))
+end
+
 function Chrome:drawTapeDeck()
     local C = Config.COLORS
     local activeCol = Config.TRACK_COLORS[Looper.activeTrack]
@@ -1631,6 +1702,7 @@ function Chrome:drawTapeDeck()
                 if ev.bend then
                     local prevSemis = ev.semis or 0
                     for _, kf in ipairs(ev.bend) do
+                      if kf.semis then                 -- (Pad tone keyframes have no pitch)
                         local bx = x + kf.dt / loopTicks * laneW
                         if bx > lx + laneW then bx = bx - laneW end
                         local up = (kf.semis or prevSemis) >= prevSemis
@@ -1643,6 +1715,7 @@ function Chrome:drawTapeDeck()
                             love.graphics.line(bx, ry2 + 1, bx, ry2 + 5)
                         end
                         love.graphics.setLineWidth(1)
+                      end
                     end
                 end
             else

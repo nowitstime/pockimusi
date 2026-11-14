@@ -55,7 +55,7 @@ local Looper = {
 -- Each of the 4 tracks has an assigned instrumentId and its own per-track state,
 -- so tracks can later switch instruments or share instrument types independently!
 function Looper:init(Instruments)
-    local defaultInstruments = { "drums", "harp", "bass", "grain" }
+    local defaultInstruments = { "drums", "harp", "bass", "pad" }
     self.tracks = {}
     for slot = 1, 4 do
         local instId = defaultInstruments[slot]
@@ -424,7 +424,8 @@ function Looper:toggleBars()
                     local kfs = {}
                     for k = 1, #copy.bend do
                         local kf = copy.bend[k]
-                        kfs[k] = { dt = kf.dt, degree = kf.degree, octave = kf.octave, semis = kf.semis }
+                        kfs[k] = { dt = kf.dt, degree = kf.degree, octave = kf.octave, semis = kf.semis,
+                                   bright = kf.bright, move = kf.move }
                     end
                     copy.bend = kfs
                 end

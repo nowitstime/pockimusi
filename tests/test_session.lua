@@ -24,9 +24,10 @@ local function buildSession(M, L)
     L.tracks[3].state.patch = "bass_sub"
     L.tracks[3].state.glide = "SLOW"
     H.tap("L2"); H.hold("B"); H.play(0.3); H.hold("UP"); H.play(0.3); H.release("UP", "B"); H.play(0.05); H.tap("L2")
-    -- Track 4: swapped to a second bass, then swapped back to grain with settings
+    -- Track 4 pad: tone and rows set, a held chord
     H.tap("SELECT")
-    L.tracks[4].state.scanPos, L.tracks[4].state.density = 0.8, 0.3
+    L.tracks[4].state.bright, L.tracks[4].state.move = 0.8, 0.3
+    L.tracks[4].state.patch, L.tracks[4].state.attack, L.tracks[4].state.follow = "pad_choir", "SLOW", false
     H.tap("L2"); H.hold("A"); H.play(0.4); H.release("A"); H.play(0.05); H.tap("L2")
     -- Mix, effects, timing, key
     L.tracks[1].swing = 0.62
@@ -64,13 +65,17 @@ return {
         H.eq(L2.tracks[1].state.kitIndex, 3, "kit")
         H.truthy(L2.tracks[1].state.kitEdited, "kit edited")
         H.truthy(L2.tracks[3].events[1].bend, "bass bend")
-        H.truthy(L2.tracks[4].events[1].len > 0, "grain held note")
+        H.truthy(L2.tracks[4].events[1].len > 0, "pad held chord")
         H.truthy(L2.tracks[2].fx.on.echo, "effect on")
         H.eq(L2.activeTrack, 3, "active track")
         -- every setting, checked against what was set (not through saveState)
         H.eq(L2.tracks[3].state.glide, "SLOW", "bass glide")
-        H.near(L2.tracks[4].state.scanPos, 0.8, "grain scan", 1e-9)
-        H.near(L2.tracks[4].state.density, 0.3, "grain density", 1e-9)
+        H.near(L2.tracks[4].state.bright, 0.8, "pad brightness", 1e-9)
+        H.near(L2.tracks[4].state.move, 0.3, "pad movement", 1e-9)
+        H.eq(L2.tracks[4].state.patch, "pad_choir", "pad patch")
+        H.eq(L2.tracks[4].state.attack, "SLOW", "pad attack")
+        H.falsy(L2.tracks[4].state.follow, "pad follow")
+        H.eq(#L2.tracks[4].events[1].notes, 3, "pad notes (open)")
         H.near(L2.tracks[1].swing, 0.62, "swing", 1e-9)
         H.near(L2.tracks[2].volume, 0.55, "volume", 1e-9)
         H.truthy(L2.tracks[3].muted, "mute")
@@ -108,7 +113,7 @@ return {
 
     { "runtime flags are never saved; a note still held is saved with its length so far", function()
         local M, L = boot()
-        for _ = 1, 3 do H.tap("SELECT") end                 -- grain
+        for _ = 1, 3 do H.tap("SELECT") end                 -- pad
         H.tap("L2"); H.hold("B"); H.play(0.5)
         local snap = M.Session.snapshot()
         local ev = snap.tracks[4].events[1]
@@ -173,7 +178,7 @@ return {
         H.eq(#t1.events[2].bend, 1, "bad keyframe dropped")
         H.eq(L.tracks[2].state.colour, "TRIAD", "unknown colour ignored")
         H.eq(L.tracks[3].state.patch, "bass_saw", "unknown patch ignored")
-        H.eq(L.tracks[4].instrumentId, "grain", "garbage track -> default")
+        H.eq(L.tracks[4].instrumentId, "pad", "garbage track -> default")
     end },
 
     { "an unknown format is refused and the session is left alone", function()
@@ -190,12 +195,12 @@ return {
     { "restoring stops what's playing, clears undo and the record latch", function()
         local M, L = boot()
         for _ = 1, 3 do H.tap("SELECT") end
-        H.tap("L2"); H.hold("B"); H.play(0.3)                 -- grain held, recording
+        H.tap("L2"); H.hold("B"); H.play(0.3)                 -- pad held, recording
         local st = L.tracks[4].state
-        H.eq(count(st.spawners), 1, "playing")
+        H.eq(count(st.live), 1, "playing")
         local data = M.Session.snapshot()
         M.Session.restore(data)
-        H.eq(count(L.tracks[4].state.spawners), 0, "silenced")
+        H.eq(count(L.tracks[4].state.live), 0, "silenced")
         H.eq(#L.undoStack, 0, "undo cleared")
         H.falsy(M.Input.recLatched, "jam safe")
         H.release("B"); H.play(0.1)

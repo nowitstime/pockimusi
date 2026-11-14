@@ -60,7 +60,7 @@ return {
         H.truthy(seamRatio(sd) > 2.0, "a click at the seam: " .. seamRatio(sd))
     end },
 
-    { "the real bass and texture loops are all seamless and in tune", function()
+    { "the real bass and pad loops are all seamless and in tune", function()
         H.captureSamples = true
         local M = H.fresh({ realSynth = true })
         M.Synth:init()
@@ -72,10 +72,16 @@ return {
             local src = S.loopPools[patch.loop].sources[1]
             H.truthy(seamRatio(src.soundData) <= SMOOTH, id .. " seam " .. seamRatio(src.soundData))
             H.truthy(math.abs(patch.tune) < 0.05, id .. " tune " .. patch.tune)
-            H.truthy(S.pools[patch.attack] ~= nil, id .. " has its attack pool")
+            if patch.attack then H.truthy(S.pools[patch.attack] ~= nil, id .. " has its attack pool") end
+            if patch.bright then
+                local b = S.loopPools[patch.bright]
+                H.truthy(seamRatio(b.sources[1].soundData) <= SMOOTH, id .. " bright seam")
+                H.eq(#b.sources, #S.loopPools[patch.loop].sources, id .. " layers paired")
+                H.eq(b.sources[1].soundData.n, src.soundData.n, id .. " layers the same length")
+            end
         end
         table.sort(names)
-        H.eq(table.concat(names, " "), "bass_pluck bass_saw bass_sub grain_bell grain_choir grain_drone grain_pad", "patches")
+        H.eq(table.concat(names, " "), "bass_pluck bass_saw bass_sub pad_bell pad_choir pad_drone pad_warm", "patches")
         H.truthy(S.bootTimes and S.bootTimes.sustain >= 0, "boot time measured")
     end },
 
@@ -172,7 +178,7 @@ return {
         H.play(1.0)
         H.eq(#S.sustainVoices, 2, "bass and pad sustaining")
         love.keyreleased("h"); love.keyreleased("g")
-        H.play(0.5)
+        H.play(1.2)
         H.eq(#S.sustainVoices, 0, "both released")
     end },
 }

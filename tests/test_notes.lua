@@ -30,7 +30,7 @@ end
 
 local function count(t) local n = 0; for _ in pairs(t) do n = n + 1 end; return n end
 
--- Track 4 (grain, a holding instrument), recording latched, playhead still
+-- Track 4 (pad, a holding instrument), recording latched, playhead still
 local function holdSetup()
     local M = H.fresh()
     M.Input.recLatched = true
@@ -43,16 +43,6 @@ local function boot()
     M.Theory = require("src.theory")
     H.play(0.1)
     return M, M.Looper
-end
-
-local function countGrains(Synth)
-    local n = { value = 0 }
-    local orig = Synth.trigger
-    Synth.trigger = function(self, name, ...)
-        if name:sub(1, 6) == "grain_" then n.value = n.value + 1 end
-        return orig(self, name, ...)
-    end
-    return n
 end
 
 return {
@@ -250,11 +240,11 @@ return {
         local M, L, track = holdSetup()
         M.Input.recLatched = false
         local seen = {}
-        local Grain = M.Instruments:getDefinition("grain")
-        Grain.bendTo = function(_, ev, fields) table.insert(seen, fields.semis) end
+        local Pad = M.Instruments:getDefinition("pad")
+        Pad.bendTo = function(_, ev, fields) table.insert(seen, fields.semis) end
         local h = M.Instruments:holdNote(track, { action = "B", semis = 0 })
         h:bend({ degree = 5, octave = 0, semis = 7 })
-        Grain.bendTo = nil
+        Pad.bendTo = nil
         H.eq(h.rec, nil, "nothing recorded")
         H.eq(seen[1], 7, "bendTo got the new pitch")
     end },
@@ -328,16 +318,15 @@ return {
     end },
 
     -- ------------------------------------------------------------------
-    -- Instruments: Grain as held notes
+    -- Instruments: Pad chords as held notes
     -- ------------------------------------------------------------------
-    { "a held Grain press records one event with the held length", function()
+    { "a held Pad press records one event with the held length", function()
         local M, L = boot()
-        for _ = 1, 3 do H.tap("SELECT") end            -- track 4 = grain
-        local grains = countGrains(M.Synth)
+        for _ = 1, 3 do H.tap("SELECT") end            -- track 4 = pad
         H.tap("L2")
         H.hold("B"); H.play(1.0)
         local st = L.tracks[4].state
-        H.eq(count(st.spawners), 1, "one live spawner while held")
+        H.eq(count(st.live), 1, "one live chord while held")
         H.release("B"); H.play(0.05)
         H.tap("L2")
         local ev = L.tracks[4].events
@@ -345,51 +334,49 @@ return {
         local secs = ev[1].len / L:getTicksPerSecond()
         H.near(secs, 1.0, "len = time held", 0.04)
         H.eq(ev[1].action, "B", "action")
-        H.truthy(ev[1].semis and ev[1].scanPos and ev[1].density, "grain settings stored")
+        H.eq(#ev[1].notes, 4, "the chord's notes stored")
+        H.truthy(ev[1].bright and ev[1].move and ev[1].octave, "tone and octave stored")
         H.eq(ev[1].open, nil, "closed")
-        H.truthy(grains.value >= 8, "grains spawned while held (" .. grains.value .. ")")
-        H.eq(count(st.spawners), 0, "spawner gone after release")
+        H.eq(count(st.live), 0, "gone after release")
     end },
 
-    { "a recorded Grain note plays back as grains for its length, then stops", function()
+    { "a recorded Pad chord plays back for its length, then stops", function()
         local M, L = boot()
         for _ = 1, 3 do H.tap("SELECT") end
         H.tap("L2"); H.hold("B"); H.play(0.6); H.release("B"); H.play(0.05); H.tap("L2")
         local st = L.tracks[4].state
-        local grains = countGrains(M.Synth)
-        local maxSpawners = 0
+        local maxPlaying = 0
         for _ = 1, math.floor(L:getLoopDuration() * 60) do
             H.play(1 / 60)
-            maxSpawners = math.max(maxSpawners, count(st.spawners))
+            maxPlaying = math.max(maxPlaying, count(st.playing))
         end
-        H.eq(maxSpawners, 1, "one spawner during the note")
-        H.truthy(grains.value >= 4, "grains on playback (" .. grains.value .. ")")
-        H.eq(count(st.spawners), 0, "stopped after its length")
+        H.eq(maxPlaying, 1, "one chord during the note")
+        H.eq(count(st.playing), 0, "stopped after its length")
     end },
 
-    { "opening a page while holding a Grain note releases it", function()
+    { "opening a page while holding a Pad chord releases it", function()
         local _, L = boot()
         for _ = 1, 3 do H.tap("SELECT") end
         H.tap("L2")
         H.hold("B"); H.play(0.4)
         H.hold("SELECT"); H.play(0.3)                  -- Track page takes the controls
         local st = L.tracks[4].state
-        H.eq(count(st.spawners), 0, "released")
+        H.eq(count(st.live), 0, "released")
         H.truthy(L.tracks[4].events[1].len > 0, "recorded note closed with a length")
         H.release("SELECT", "B"); H.play(0.1)
     end },
 
-    { "muting a track stops its playing Grain note", function()
+    { "muting a track stops its playing Pad chord", function()
         local _, L = boot()
         for _ = 1, 3 do H.tap("SELECT") end
         H.tap("L2"); H.hold("B"); H.play(1.5); H.release("B"); H.play(0.05); H.tap("L2")
         local st = L.tracks[4].state
         -- wait for playback to start the note
         local t = 0
-        while count(st.spawners) == 0 and t < L:getLoopDuration() * 1.2 do H.play(1 / 60); t = t + 1 / 60 end
-        H.eq(count(st.spawners), 1, "playing")
+        while count(st.playing) == 0 and t < L:getLoopDuration() * 1.2 do H.play(1 / 60); t = t + 1 / 60 end
+        H.eq(count(st.playing), 1, "playing")
         H.hold("R2"); H.play(0.05); H.tap("X"); H.release("R2"); H.play(0.05)
         H.truthy(L.tracks[4].muted, "muted")
-        H.eq(count(st.spawners), 0, "stopped")
+        H.eq(count(st.playing), 0, "stopped")
     end },
 }

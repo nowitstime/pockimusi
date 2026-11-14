@@ -88,11 +88,15 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §3.2, §5, §7.4, 
 
 ## Exit checklist
 
-- [ ] `python3 tests/run.py` green
-- [ ] A held pad follows a recorded harp loop, live and on playback
+- [x] `python3 tests/run.py` green (244 tests; `tests/test_pad.lua` is new)
+- [x] A held pad follows a recorded harp loop, live and on playback (tests; 📱 by ear)
 - [ ] The four patches sound right on the device, at sensible levels 📱
 - [ ] Brightness and movement sweeps are audible, recorded and replayed 📱
 - [ ] No frame drops with two chords and a tail sounding 📱
+
+## Status
+
+Built: E1 to E5. Nothing here has been listened to yet: the sound design (patch harmonics, levels, movement depth) was written without hearing it and needs the device.
 
 ## Open (settle by playing)
 

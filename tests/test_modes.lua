@@ -206,9 +206,9 @@ return {
 
     { "Track page: L1/R1 on a PATCH-only row just shows a toast", function()
         local _, L = boot()
-        for _ = 1, 3 do H.tap("SELECT") end              -- track 4 = grain (one patch)
+        H.tap("SELECT")                                  -- track 2 = harp (one patch)
         H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.release("SELECT"); H.play(0.1)
-        H.eq(L.toastText, "GRANULAR PAD: ONE PATCH FOR NOW", "toast")
+        H.eq(L.toastText, "CHORD HARP: ONE PATCH FOR NOW", "toast")
     end },
 
     { "Track page blocks playing: face buttons don't trigger the instrument", function()
@@ -428,10 +428,10 @@ return {
         H.tap("L2"); H.hold("B"); H.play(1.5); H.release("B"); H.play(0.05); H.tap("L2")
         local st = L.tracks[4].state
         local t = 0
-        while next(st.spawners) == nil and t < L:getLoopDuration() * 1.2 do H.play(1 / 60); t = t + 1 / 60 end
-        H.truthy(next(st.spawners) ~= nil, "grain playing")
+        while next(st.playing) == nil and t < L:getLoopDuration() * 1.2 do H.play(1 / 60); t = t + 1 / 60 end
+        H.truthy(next(st.playing) ~= nil, "pad playing")
         H.hold("L2", "R2", "SELECT"); H.play(1.2)
-        H.eq(next(st.spawners), nil, "silenced")
+        H.eq(next(st.playing), nil, "silenced")
         H.release("L2", "R2", "SELECT"); H.play(0.1)
     end },
 
