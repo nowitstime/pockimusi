@@ -112,7 +112,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] ❓ Strum instrument: stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)). The harp stays one note per button
 - [ ] Device check: arp feel against the drums at each rate, the three patches and their levels
 
-## Phase G · Mix & FX finish
+## Phase G · Mix & FX finish ← **next up** — working plan in [PHASE_G.md](PHASE_G.md)
 
 - [ ] Real low-pass for master `R2 + ←` (reuse the tone filter)
 - [ ] Level meters in the Mix page and tape deck
