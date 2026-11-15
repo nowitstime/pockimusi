@@ -26,8 +26,21 @@ local FILES = {
     "test_drums",
     "test_session",
     "test_autosave",
+    "test_lab",
     "test_smoke",
 }
+
+-- Lab instruments (lab/README.md): test_<id>.lua runs when the file exists,
+-- so an instrument adds its tests by adding the file. The ids are those in
+-- Instruments.LAB_IDS (src/instruments/init.lua).
+local LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" }
+for _, id in ipairs(LAB_IDS) do
+    local f = io.open("tests/test_" .. id .. ".lua", "r")
+    if f then
+        f:close()
+        table.insert(FILES, #FILES, "test_" .. id)      -- before the smoke test
+    end
+end
 
 local filter = (arg and arg[1]) or TEST_FILTER
 

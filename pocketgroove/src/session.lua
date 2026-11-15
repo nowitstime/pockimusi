@@ -29,7 +29,9 @@ local Session = {
 
 -- Event fields that only matter while the game runs
 local RUNTIME_FIELDS = { open = true, skipOnce = true }
-local ACTIONS = { B = true, A = true, Y = true, X = true }
+-- What can start a note: a face button, or a shoulder (lab instruments that
+-- pluck or blow with L1 / R1)
+local ACTIONS = { B = true, A = true, Y = true, X = true, L1 = true, R1 = true }
 
 -- ---------------------------------------------------------------------------
 -- Snapshot
@@ -176,13 +178,17 @@ function Session.restore(data)
         local raw = type(tracks[slot]) == "table" and tracks[slot] or {}
         local instId = raw.instrumentId
         instId = Session.REPLACED[instId] or instId
-        if type(instId) ~= "string" or not Instruments.byId[instId] then
+        -- An instrument that isn't there (a lab experiment since deleted, or
+        -- the lab switched off): the slot's default, and none of its notes.
+        -- They were played on another instrument and would mean nothing here.
+        local missing = type(instId) == "string" and not Instruments.byId[instId]
+        if type(instId) ~= "string" or missing then
             instId = Session.DEFAULT_INSTRUMENTS[slot]
         end
         Looper:setTrackInstrument(slot, instId, Instruments)   -- fresh state, no events
         local track = Looper.tracks[slot]
         local def = Instruments:getDefinition(instId)
-        if def.loadState then def:loadState(track.state, raw.settings) end
+        if def.loadState and not missing then def:loadState(track.state, raw.settings) end
 
         track.gridIndex = int(raw.gridIndex, 1, #Looper.GRID_MODES, track.gridIndex)
         track.swing = num(raw.swing, 0.50, 0.75, 0.50)
@@ -198,7 +204,7 @@ function Session.restore(data)
         Synth:configureTrackFx(track)
 
         track.events = {}
-        if type(raw.events) == "table" then
+        if type(raw.events) == "table" and not missing then
             for _, rawEv in ipairs(raw.events) do
                 local ev = restoreEvent(rawEv, loop)
                 if ev then
