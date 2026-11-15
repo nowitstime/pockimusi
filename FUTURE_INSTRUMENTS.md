@@ -38,9 +38,10 @@ These limits shaped every design below.
 **What one thumb can reach on the face diamond:**
 
 - one button, or **two neighbouring buttons** (`B+A`, `A+X`, `X+Y`, `Y+B`) by laying the thumb across both;
-- not opposite pairs (`B+X`, `A+Y`), and not three or four at once.
+- **all four** with the thumb laid flat: a little harder than two, but fine (found by playing);
+- three at once only with difficulty, and opposite pairs (`B+X`, `A+Y`) are a challenge, so nothing should need either.
 
-So the diamond has **8 reachable fingerings**, not the 15 that four buttons give on paper. (An earlier "Valves" idea assumed 15; §4.2 is the version that fits a thumb.)
+So the diamond has **9 comfortable fingerings**, not the 15 that four buttons give on paper. (An earlier "Valves" idea assumed 15; §4.2 is one version that fits a thumb, and [lab/VALVES.md](lab/VALVES.md) is a Valves that needs only seven.)
 
 **Timing:** input is read once per frame (about 16 ms). Two buttons meant to land together often arrive one frame apart, so anything that reads button combinations needs a short **settle window** (about 35 ms) before it commits.
 
@@ -281,7 +282,7 @@ Small pieces that several ideas need. None is required by the roadmap, so each i
 
 ## 8. Recommended order
 
-**First wave** (no dependency on later phases; can be tried between roadmap phases):
+**First wave** (no dependency on later phases; can be tried between roadmap phases). Planned in [lab/README.md](lab/README.md), one plan per instrument (Pick is called **Strum** there, and **Valves** has joined):
 
 1. **Hand Drums, `MIRROR` only.** The cheapest test, with no format change.
 2. **Dial button test**, then **Dial** if the pairs are reliable on the device.
