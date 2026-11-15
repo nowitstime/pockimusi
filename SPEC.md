@@ -111,13 +111,13 @@ The same layout on every instrument:
 
 | Instrument | Sound rows | Setting rows |
 | :-- | :-- | :-- |
-| Drums | `KIT, X, Y, A, B` | `VARIATION` (§7.1); ❓ per-pad tune / level |
+| Drums | `KIT, X, Y, A, B` | `TUNE`, `LEVEL` (for the selected pad), `VARIATION` (§7.1) |
 | Chord Harp | `PATCH` | `COLOUR`, `STRUM` speed |
 | Bass | `PATCH` | `FOLLOW`, `GLIDE` time |
 | Pad | `PATCH` | `FOLLOW`, `ATTACK`, `RELEASE` |
 | Lead / Arp | `PATCH` | `FOLLOW`, `ARP RATE`, `ARP PATTERN` |
 
-Keep each instrument at ≤ 6 rows so the constellation fits without scrolling. Timing settings (grid, swing) stay on the Transport page.
+The list shows five rows at a time and scrolls with the cursor (marks show when there is more above or below); the drums, with eight rows, are the only instrument that scrolls. ✅ Prefer ≤ 5 rows for new instruments. Timing settings (grid, swing) stay on the Transport page.
 
 ✅ **Safe instrument swap:** `LEFT/RIGHT` only previews the next instrument; it is applied when `SELECT` is released. Applying stashes the old instrument, state and events on the undo stack, so **undo restores them** (one stack for takes and swaps, `L2 + R2 + LEFT`). Stepping back to the current instrument cancels. 📐 Same-class swaps (Bass ↔ Lead, both mono-melodic) keep events, because v2 events store degrees (§8).
 
@@ -218,9 +218,10 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 ### 7.1 Drums ✅ / 📐
 
 - ✅ 4 pads; D-pad dynamics × articulation (§3.2a); grid-locked repeat; hat choke; kits; swing; four-lane view.
-- 📐 **Variation** row (Off / Light / Wild): on playback, small velocity jitter; at Wild, occasional timing nudge and fill hits on empty steps. Applied at playback time, so the recorded pattern is never altered.
-- 📐 **Chance hits:** events carry `chance` (0–1). ❓ Gesture — proposal: a *ghost* hit recorded while Variation ≠ Off gets `chance = 0.5`.
-- 📐 Per-pad tune and level ❓ (rows, or a pad sub-row).
+- ✅ **`VARIATION`** row (`OFF` / `LIGHT` / `WILD`, details: [PHASE_H.md](PHASE_H.md)), applied on playback only, so the recorded pattern is never altered and `OFF` plays it exactly. `LIGHT`: each hit's level moves by up to ±12 %. `WILD`: ±22 %, about a third of the hits that aren't on a beat land up to 14 ms late, and **fills**: in the last beat of each bar an empty step has a 22 % chance of a ghost hit on a pad the pattern already uses (never a kick).
+- ✅ **Chance hits:** a *ghost* hit recorded while `VARIATION` is not `OFF` is stored with `chance = 0.5` and sounds on about half the passes (always, with `VARIATION OFF`). A flam's grace note and hit share one roll. Chance hits are drawn hollow in the lanes.
+- ✅ **Per-pad tune and level:** `TUNE` (±12 semitones) and `LEVEL` (10–120 %) rows act on the selected pad, which is the last pad hit or the last one whose sound was changed; the row labels name it. They apply when a hit sounds, so they also change hits already recorded.
+- ❓ After playing: fill rate; whether `LIGHT` and `WILD` want different chances.
 
 ### 7.2 Chord Harp ✅ (details: [PHASE_D.md](PHASE_D.md))
 
@@ -285,7 +286,7 @@ Event = {
   grid     = 120,          -- grid step it was snapped to (for swing), nil = FREE ✅
   action   = "B",          -- which button
   vel      = 0.85,
-  chance   = 1.0,          -- probability of playing (drums Variation)
+  chance   = 0.5,          -- drums: probability of playing when VARIATION is on (absent = always)
   takeId   = 3,
 
   -- pitched instruments only
@@ -332,7 +333,7 @@ Event = {
 
 - ✅ Per-track and master volume.
 - ✅ **Per-track FX** (set-and-forget, Track page): tone = low-pass filter on each voice; drive (distortion), echo and space (reverb) = per-track OpenAL EFX sends. Without EFX, drive falls back to a gain push. ❓ Check EFX support and CPU cost on the RG35XX.
-- ✅ Swing per track (§8.1). 📐 Humanize = Drums Variation (§7.1).
+- ✅ Swing per track (§8.1). ✅ Humanize = Drums `VARIATION` (§7.1).
 - ✅ **Master low-pass** on `R2 + ←`: closes in about 0.2 s while held and opens on release, applied to every sounding source with the same filter as tone (the two multiply). Without EFX it falls back to the old volume duck.
 - ✅ **Meters** are estimated from the sounding voices (each voice's gain and envelope, added per track as power), since LÖVE can't read the output. They fall at 2.5 per second with a peak mark held 0.8 s. Shown at the right of each tape-deck lane and beside each Mix page fader; the master's turns red above 0.9, where the sum is likely to clip.
 
@@ -399,8 +400,8 @@ Global modes and combos live in `modes.lua` (`Modes.current` is read by the UI);
 2. Neutral D-pad on the harp: tonic, or keep last chord? (§3.3)
 3. Bass face-button articulations — confirm after playtest. (§7.3)
 4. Chord-follow degree mapping details, especially on borrowed chords. (§5)
-5. Gesture for recording drum chance hits. (§7.1)
-6. Per-pad tune and level for drums: where on the Track page? (§7.1)
+5. Drum chance hits: ghost + variation is built; is that the right gesture? (§7.1)
+6. Per-pad tune and level: rows for the last pad hit are built; good enough mid-jam? (§7.1)
 7. Arp latch? (§7.5)
 8. Count-in: to the next bar line (built) or a fixed four beats? (§3.5)
 9. Replace vs overdub; auto-stop after one pass. (§4)

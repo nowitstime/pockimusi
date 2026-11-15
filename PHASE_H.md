@@ -20,7 +20,7 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §3.2a, §3.4, §7.
 | Chance hits | A **ghost** hit (`↓`) recorded while `VARIATION` is not `OFF` is stored with `chance = 0.5`: on playback it sounds on about half the passes. With `VARIATION OFF` every hit always plays | The SPEC's proposal: no new gesture, and ghost notes are the ones that should come and go |
 | Chance and flams | The grace note and the main hit share one roll | A flam never plays half of itself |
 | Seeing chance | Chance hits are drawn hollow in the drum lanes | Tell at a glance which hits are "maybe" |
-| Per-pad tune and level | Two setting rows, **`TUNE`** (−12 … +12 semitones) and **`LEVEL`** (10 … 120 %), that act on the **selected pad**: the last pad row the cursor was on, or the last pad hit. Their labels name it (`TUNE B`) | Rows are where per-track options live; 8 more rows would not fit |
+| Per-pad tune and level | Two setting rows, **`TUNE`** (−12 … +12 semitones) and **`LEVEL`** (10 … 120 %), that act on the **selected pad**: the last pad hit (the one the page opens on), or the last one whose sound was changed. Their labels name it (`TUNE B`) | Rows are where per-track options live; 8 more rows would not fit |
 | When they apply | At the moment a hit sounds, live and on playback | Balance a loop that is already recorded |
 | Track page list | The drums now have 8 rows (`KIT`, `X`, `Y`, `A`, `B`, `TUNE`, `LEVEL`, `VARIATION`). The list shows **5 at a time** and scrolls with the cursor, with marks when there is more above or below | This relaxes "≤ 6 rows, no scrolling" (SPEC §3.4) rather than adding a page |
 | Randomness | One source, `Drums.random`, so tests can fix it | Variation must be testable |
@@ -41,13 +41,17 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §3.2a, §3.4, §7.
 - H1: a live flam plays a quiet grace note then the hit; a recorded one plays grace then hit on playback; a ratchet plays three hits inside one step; a closed hat cuts an open hat.
 - H2: `OFF` plays every pass identically; `LIGHT` changes levels within ±12 % and never the timing or the events; `WILD` delays only off-beat hits and by at most 14 ms; fills land only on empty steps in the last beat, only on used non-kick pads, and are never recorded; a muted or empty track gets none.
 - H3: a ghost recorded with variation on has `chance = 0.5`, other hits have none; it plays on roughly half the passes, always with `OFF`; a chance flam is all or nothing; `chance` survives save and load, clamped.
-- H4: `TUNE` and `LEVEL` change the selected pad only, live and on playback, and clamp; moving the cursor to a pad row selects it; rows save and load; the list scrolls and every row is reachable.
+- H4: `TUNE` and `LEVEL` change the selected pad only, live and on playback, and clamp; hitting a pad or changing its sound selects it, moving the cursor over pad rows does not; rows save and load; the list scrolls and every row is reachable.
 
 ## Exit checklist
 
-- [ ] `python3 tests/run.py` green
+- [x] `python3 tests/run.py` green (292 tests; `tests/test_drums.lua` is new)
 - [ ] `LIGHT` is felt, not heard as random; `WILD` fills are welcome, not annoying 📱
 - [ ] Tuning and levelling a pad is quick enough to do mid-jam 📱
+
+## Status
+
+Built: H1 to H4. One change while building: the plan had the Track page cursor select the pad for `TUNE` / `LEVEL` as it moved over the pad rows, but walking down to `TUNE` passes pad B's row and always re-selected B. The selected pad is now the last one hit (or whose sound was changed), which is also the row the page opens on.
 
 ## Open (settle by playing)
 

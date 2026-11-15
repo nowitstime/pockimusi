@@ -4,6 +4,8 @@
 --   D-pad ↑ / ↓   = dynamics: ACCENT / GHOST
 --   D-pad ← / →   = articulation: FLAM / RATCHET (diagonals combine both axes)
 --   L1 / R1 / both = grid-locked note repeat at 1/4, 1/8, 1/16 (1/12T on triplet grid)
+-- Track page rows: KIT, the four pad sounds, TUNE and LEVEL for the selected
+-- pad, and VARIATION (playback-only randomness; plan: PHASE_H.md)
 -- ============================================================================
 
 local Config = require("src.config")
@@ -25,6 +27,20 @@ local Drums = {
     PADS = { "X", "Y", "A", "B" },   -- display order: matches the button diamond top -> bottom
     RATCHET_HITS = 3,
     REPEAT_SNAP_WINDOW = 0.045,      -- seconds: a press this close to a repeat tick counts as that tick
+
+    -- Track page VARIATION row: applied on playback only, never recorded
+    VARIATIONS = { "OFF", "LIGHT", "WILD" },
+    VEL_JITTER = { LIGHT = 0.12, WILD = 0.22 },   -- level moves by up to this fraction
+    LATE_CHANCE = 0.35,              -- WILD: share of off-beat hits that land late...
+    LATE_MAX = 0.014,                -- ...by up to this many seconds
+    FILL_CHANCE = 0.22,              -- WILD: per empty step in the last beat of a bar
+    FILL_VEL = { 0.28, 0.45 },       -- a fill hit's level range
+    GHOST_MAX_VEL = 0.5,             -- a hit this quiet is a ghost
+    GHOST_CHANCE = 0.5,              -- a ghost recorded with variation on plays this often
+
+    -- Track page TUNE and LEVEL rows (for the selected pad)
+    TUNE_RANGE = 12,                 -- semitones either way
+    LEVEL_MIN = 0.1, LEVEL_MAX = 1.2, LEVEL_STEP = 0.1,
 
     -- A kit is a preset of four one-shots, one per pad
     KITS = {
@@ -58,6 +74,11 @@ function Drums:newState()
         repeatLabel = "OFF",
         padFlash = { B = 0, Y = 0, A = 0, X = 0 },
         padOrn = { B = nil, Y = nil, A = nil, X = nil },
+        variation = "OFF",         -- Track page VARIATION row
+        padTune = { B = 0, Y = 0, A = 0, X = 0 },          -- Track page TUNE row, per pad (semitones)
+        padLevel = { B = 1.0, Y = 1.0, A = 1.0, X = 1.0 }, -- Track page LEVEL row, per pad
+        rolled = {},               -- [ev] = plays this pass? (a flam's grace note and hit share one roll)
+        fillStep = nil,            -- the last step considered for a fill
         skipTick = {},             -- per pad: repeat tick already played by an early press
         pendingTick = {},          -- per pad: repeat tick that should play even if the pad was released
     }
@@ -97,7 +118,48 @@ function Drums:getSoundRows(state)
     for _, pad in ipairs(self.PADS) do
         table.insert(rows, { key = pad, label = pad, value = self:getPadSound(state, pad).short, isPad = true })
     end
+    -- Tune and level of the selected pad: the last pad hit, or whose sound was changed
+    local pad = state.lastPad
+    local tune = state.padTune[pad] or 0
+    table.insert(rows, { key = "TUNE", label = "TUNE " .. pad, kind = "setting", hint = "SEMIS",
+                         value = (tune > 0 and "+" or "") .. tune })
+    table.insert(rows, { key = "LEVEL", label = "LEVEL " .. pad, kind = "setting", hint = "PAD",
+                         value = math_floor((state.padLevel[pad] or 1.0) * 100 + 0.5) .. "%" })
+    table.insert(rows, { key = "VARIATION", label = "VARIATION", kind = "setting", value = state.variation,
+                         hint = string.format("%d/%d", self:variationIndex(state), #self.VARIATIONS) })
     return rows
+end
+
+function Drums:variationIndex(state)
+    for i, v in ipairs(self.VARIATIONS) do
+        if v == state.variation then return i end
+    end
+    return 1
+end
+
+function Drums:cycleSetting(state, key, delta)
+    local pad = state.lastPad
+    if key == "TUNE" then
+        state.padTune[pad] = clamp((state.padTune[pad] or 0) + delta, -self.TUNE_RANGE, self.TUNE_RANGE)
+        self:preview(state, pad)
+        Looper:showToast(string.format("PAD %s TUNE: %+d", pad, state.padTune[pad]))
+    elseif key == "LEVEL" then
+        local steps = math_floor((state.padLevel[pad] or 1.0) / self.LEVEL_STEP + 0.5) + delta
+        state.padLevel[pad] = clamp(steps * self.LEVEL_STEP, self.LEVEL_MIN, self.LEVEL_MAX)
+        self:preview(state, pad)
+        Looper:showToast(string.format("PAD %s LEVEL: %d%%", pad, math_floor(state.padLevel[pad] * 100 + 0.5)))
+    elseif key == "VARIATION" then
+        local n = #self.VARIATIONS
+        state.variation = self.VARIATIONS[((self:variationIndex(state) - 1 + delta) % n) + 1]
+        Looper:showToast("DRUM VARIATION: " .. state.variation)
+    end
+end
+
+-- Play a pad as it will sound (its tune and level), on no track
+function Drums:preview(state, pad)
+    Synth:trigger(self:getPadSound(state, pad).id, state.padTune[pad] or 0,
+        clamp(0.85 * (state.padLevel[pad] or 1.0), 0.0, 1.0), 1.0)
+    state.padFlash[pad] = 1.0
 end
 
 function Drums:getDefaultSoundRow(state)
@@ -214,6 +276,8 @@ function Drums:buildHit(state, track, btn, gridSteps)
         orn = state.orn,
         ratchet = state.ratchet,
         overrideGridSteps = gridSteps,   -- note repeat snaps to its own rate
+        -- a ghost played with variation on comes and goes on playback
+        chance = (state.variation ~= "OFF" and state.velocity <= self.GHOST_MAX_VEL) and self.GHOST_CHANCE or nil,
     }
 end
 
@@ -291,13 +355,36 @@ function Drums:getRatchetSpan(track)
     return (60.0 / Looper.bpm) / perBeat
 end
 
-function Drums:hit(ev, track, vel, decay)
-    Synth:trigger(ev.soundId, ev.semis or 0, vel, decay, nil, track.volume, track)
+-- Every random choice goes through here (tests replace it)
+function Drums.random()
+    return love.math.random()
+end
+
+-- One hit, with its pad's tune and level
+function Drums:hit(ev, state, track, vel, decay)
+    local pad = ev.action
+    local tune = state.padTune[pad] or 0
+    local level = state.padLevel[pad] or 1.0
+    Synth:trigger(ev.soundId, (ev.semis or 0) + tune, clamp(vel * level, 0.0, 1.0), decay, nil, track.volume, track)
+end
+
+-- Does a recorded hit play on this pass? Chance hits are rolled once per
+-- pass (the flam's grace note asks first, the main hit reuses the answer).
+function Drums:plays(ev, state, consume)
+    if state.variation == "OFF" or not ev.chance then return true end
+    local r = state.rolled[ev]
+    if r == nil then
+        r = self.random() <= ev.chance
+        state.rolled[ev] = r
+    end
+    if consume then state.rolled[ev] = nil end
+    return r
 end
 
 -- Flam grace note on playback (the looper sends it 28 ms before the hit)
 function Drums:grace(ev, state, track)
-    self:hit(ev, track, (ev.vel or 0.85) * 0.45, (ev.decay or 1.0) * 0.6)
+    if not self:plays(ev, state, false) then return end
+    self:hit(ev, state, track, (ev.vel or 0.85) * 0.45, (ev.decay or 1.0) * 0.6)
 end
 
 function Drums:noteOn(ev, state, track, isPlayback)
@@ -306,13 +393,27 @@ function Drums:noteOn(ev, state, track, isPlayback)
     local act   = ev.action
 
     local mainDelay = 0.0
+    if isPlayback then
+        if not self:plays(ev, state, true) then return end
+        -- Variation: the level moves a little; WILD also drags some off-beat hits
+        local jitter = self.VEL_JITTER[state.variation]
+        if jitter then
+            vel = clamp(vel * (1.0 + (self.random() - 0.5) * 2.0 * jitter), 0.05, 1.0)
+            if state.variation == "WILD" and (ev.tick or 0) % Looper.PPQN ~= 0 and self.random() < self.LATE_CHANCE then
+                mainDelay = self.random() * self.LATE_MAX
+            end
+        end
+    end
+
     if ev.orn == "flam" and not isPlayback then
         -- Live flam: grace note now, main hit a moment later
-        self:hit(ev, track, vel * 0.45, decay * 0.6)
+        self:hit(ev, state, track, vel * 0.45, decay * 0.6)
         mainDelay = Looper.FLAM_TIME
-        Synth:schedule(mainDelay, function() self:hit(ev, track, vel, decay) end)
+        Synth:schedule(mainDelay, function() self:hit(ev, state, track, vel, decay) end)
+    elseif mainDelay > 0.0 then
+        Synth:schedule(mainDelay, function() self:hit(ev, state, track, vel, decay) end)
     else
-        self:hit(ev, track, vel, decay)
+        self:hit(ev, state, track, vel, decay)
     end
 
     local n = ev.ratchet
@@ -320,12 +421,46 @@ function Drums:noteOn(ev, state, track, isPlayback)
         local span = self:getRatchetSpan(track)
         for i = 1, n - 1 do
             local v = vel * (1.0 - 0.18 * i)
-            Synth:schedule(mainDelay + span * i / n, function() self:hit(ev, track, v, decay * 0.7) end)
+            Synth:schedule(mainDelay + span * i / n, function() self:hit(ev, state, track, v, decay * 0.7) end)
         end
     end
 
     state.padFlash[act] = clamp(vel, 0.35, 1.0)
     state.padOrn[act] = ev.orn or (n and "ratchet") or nil
+end
+
+-- WILD fills: in the last beat of each bar, an empty step may get a ghost
+-- hit on one of the pads the pattern uses (not a kick). Played, never recorded.
+function Drums:updateVoices(dt, state, track)
+    if state.variation ~= "WILD" or not Looper.playing or track.muted or #track.events == 0 then
+        state.fillStep = nil
+        return
+    end
+    local grid = Looper:getTrackGrid(track.slot)
+    local stepTicks = (grid.id == "1/12T") and 160 or 120
+    local step = math_floor(Looper.tick / stepTicks)
+    if step == state.fillStep then return end
+    state.fillStep = step
+
+    local perBar = (Looper.PPQN * 4) / stepTicks
+    if step % perBar < perBar - perBar / 4 then return end          -- only the bar's last beat
+    if self.random() >= self.FILL_CHANCE then return end
+
+    local used, pads = {}, {}
+    for _, ev in ipairs(track.events) do
+        if math_floor(ev.tick / stepTicks + 0.5) == step then return end   -- the step isn't empty
+        if not used[ev.action] and not self:getPadSound(state, ev.action).id:find("^kick") then
+            used[ev.action] = true
+            pads[#pads + 1] = ev.action
+        end
+    end
+    if #pads == 0 then return end
+    table.sort(pads)
+    local pad = pads[math.min(#pads, math_floor(self.random() * #pads) + 1)]
+    local vel = self.FILL_VEL[1] + self.random() * (self.FILL_VEL[2] - self.FILL_VEL[1])
+    self:hit({ action = pad, soundId = self:getPadSound(state, pad).id }, state, track, vel, 0.65)
+    state.padFlash[pad] = math_max(state.padFlash[pad] or 0, 0.5)
+    state.lastFill = { pad = pad, step = step }
 end
 
 -- ---------------------------------------------------------------------------
@@ -335,7 +470,12 @@ end
 function Drums:saveState(state)
     local pads = {}
     for _, pad in ipairs(self.PADS) do pads[pad] = self:getPadSound(state, pad).id end
-    return { kit = state.kitIndex, kitEdited = state.kitEdited, lastPad = state.lastPad, pads = pads }
+    local tune, level = {}, {}
+    for _, pad in ipairs(self.PADS) do
+        tune[pad], level[pad] = state.padTune[pad], state.padLevel[pad]
+    end
+    return { kit = state.kitIndex, kitEdited = state.kitEdited, lastPad = state.lastPad, pads = pads,
+             variation = state.variation, tune = tune, level = level }
 end
 
 function Drums:loadState(state, data)
@@ -353,6 +493,17 @@ function Drums:loadState(state, data)
     state.kitEdited = (data.kitEdited == true)
     for _, pad in ipairs(self.PADS) do
         if data.lastPad == pad then state.lastPad = pad end
+        local t = type(data.tune) == "table" and data.tune[pad]
+        if type(t) == "number" and t == t then
+            state.padTune[pad] = clamp(math_floor(t + 0.5), -self.TUNE_RANGE, self.TUNE_RANGE)
+        end
+        local l = type(data.level) == "table" and data.level[pad]
+        if type(l) == "number" and l == l then
+            state.padLevel[pad] = clamp(l, self.LEVEL_MIN, self.LEVEL_MAX)
+        end
+    end
+    for _, v in ipairs(self.VARIATIONS) do
+        if data.variation == v then state.variation = v end
     end
 end
 
