@@ -139,6 +139,18 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] `ODD` group: `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM`
 - [ ] Device listen: every new patch (written without hearing it), levels against the old ones, the hitch when a patch is first selected
 
+## Lab wave 1 — plan in [LAB_WAVE_1.md](LAB_WAVE_1.md)
+
+Experiments, not a phase: four instruments to try, and the Track page's instrument tabs as a centred carousel so they fit.
+
+- [ ] L0 `LAB` switch, shared lab view, erase map
+- [ ] L1 Instrument tabs: selected one centred, names slide
+- [ ] L2 Hand Drums (`MIRROR`)
+- [ ] L3 Strum
+- [ ] L4 Dial button test (go / no-go on the device)
+- [ ] L5 Slide
+- [ ] L6 Dial, if L4 passed
+
 ## Phase I · Tape deck v2 & visual polish
 
 - [ ] Beads for hits, ribbons for held notes, bend lines, chord lane labels

@@ -281,7 +281,7 @@ Small pieces that several ideas need. None is required by the roadmap, so each i
 
 ## 8. Recommended order
 
-**First wave** (no dependency on later phases; can be tried between roadmap phases):
+**First wave** (no dependency on later phases; can be tried between roadmap phases). Planned in [LAB_WAVE_1.md](LAB_WAVE_1.md), where Pick is called **Strum**:
 
 1. **Hand Drums, `MIRROR` only.** The cheapest test, with no format change.
 2. **Dial button test**, then **Dial** if the pairs are reliable on the device.
