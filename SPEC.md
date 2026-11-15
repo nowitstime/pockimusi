@@ -99,15 +99,14 @@ The same layout on every instrument:
 | Control | Job |
 | :-- | :-- |
 | `UP / DOWN` | Move the row cursor |
-| `L1 / R1` | Previous / next value for the selected row (sounds play a preview) |
-| `LEFT / RIGHT` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release ✅ |
-| Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space |
-| Face hold + `UP / DOWN` | Effect amount (10 % steps) |
+| `LEFT / RIGHT` | Previous / next value for the selected row; holding repeats. A press previews a sound at once; held scrolling previews once it settles ✅ |
+| `L1 / R1` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release. The instruments are tabs across the top of the page ✅ |
+| Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space. The cursor jumps to that effect's row ✅ |
 | `SELECT` tap (< 0.25 s, no combo) | Next track 1→4 |
 
-**Rows** are the place every per-track option lives, so a new option costs a row, not a button. ✅ today: drums have `KIT, X, Y, A, B` (the kit row swaps all four sounds; a pad row swaps one); other instruments have a single `PATCH` row. The cursor opens on the **last pad you hit**, so "hit the snare, hold SELECT, press R1" swaps the snare.
+**Rows** are the place every per-track option lives, so a new option costs a row, not a button. ✅ today: drums have `KIT, X, Y, A, B` (the kit row swaps all four sounds; a pad row swaps one); other instruments have a single `PATCH` row. The cursor opens on the **last pad you hit**, so "hit the snare, hold SELECT, press RIGHT" swaps the snare.
 
-**Setting rows** ✅ are added below the sound rows and drawn as hollow rings (sounds are stars); `L1/R1` change their value, with no sound preview. Built so far: Harp `COLOUR`. Planned:
+**Setting rows** ✅ are added below the sound rows and drawn as hollow rings (sounds are stars); `LEFT / RIGHT` change their value, with no sound preview. Built so far: Harp `COLOUR`. Planned:
 
 | Instrument | Sound rows | Setting rows |
 | :-- | :-- | :-- |
@@ -117,9 +116,20 @@ The same layout on every instrument:
 | Pad | `PATCH` | `FOLLOW`, `ATTACK`, `RELEASE` |
 | Lead / Arp | `PATCH` | `FOLLOW`, `ARP RATE`, `ARP PATTERN` |
 
-The list shows five rows at a time and scrolls with the cursor (marks show when there is more above or below); the drums, with eight rows, are the only instrument that scrolls. ✅ Prefer ≤ 5 rows for new instruments. Timing settings (grid, swing) stay on the Transport page.
+**Effect rows** ✅ follow every instrument's rows: `TONE`, `DRIVE`, `ECHO`, `SPACE`. `LEFT / RIGHT` changes the amount in 10 % steps; changing it switches the effect on, and 0 switches it off. The list wraps, so the effects are also a few presses `UP` from the top row.
 
-✅ **Safe instrument swap:** `LEFT/RIGHT` only previews the next instrument; it is applied when `SELECT` is released. Applying stashes the old instrument, state and events on the undo stack, so **undo restores them** (one stack for takes and swaps, `L2 + R2 + LEFT`). Stepping back to the current instrument cancels. 📐 Same-class swaps (Bass ↔ Lead, both mono-melodic) keep events, because v2 events store degrees (§8).
+**Row types** ✅ decide how a row is shown and changed:
+
+| Type | Row carries | Shown as |
+| :-- | :-- | :-- |
+| List (sounds, kits, patches, colour, follow, glide, ...) | `items` (label, optional `group` and `full` name) and `index` | The **picker**: a shelf over the tape deck while the row is being changed |
+| Number (`TUNE`, `LEVEL`, the four effects) | `amount` 0..1 | A bar in the row; no picker |
+
+The picker shows group tabs when the list has groups (the 24 drum sounds: kick, snare, hat, ...), the current group's items as chips (a list without groups shows up to five around the current item), and a bottom line with the full name, a map of the whole list and the position. It closes 1.2 s after the last change, or when the cursor moves.
+
+The list shows six rows at a time and scrolls with the cursor (marks show when there is more above or below). ✅ Timing settings (grid, swing) stay on the Transport page.
+
+✅ **Safe instrument swap:** `L1 / R1` only previews the next instrument; it is applied when `SELECT` is released. While a swap is previewed a card with the new instrument's name takes the place of the rows, and the rows and effects wait. Applying stashes the old instrument, state and events on the undo stack, so **undo restores them** (one stack for takes and swaps, `L2 + R2 + LEFT`). Stepping back to the current instrument cancels. 📐 Same-class swaps (Bass ↔ Lead, both mono-melodic) keep events, because v2 events store degrees (§8).
 
 ### 3.5 Transport = timing (hold `START`) ✅
 

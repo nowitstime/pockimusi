@@ -21,8 +21,10 @@ local Modes = {
     previous = "NORMAL",
 
     -- Page state (read by Chrome)
-    -- pending = instrument id previewed with LEFT/RIGHT, applied on SELECT release
-    trackPage = { row = 1, fxHeld = nil, fxAdjusted = false, pending = nil, pendingSlot = nil },
+    -- pending = instrument id previewed with L1/R1, applied on SELECT release
+    -- picker  = { key, timer }: the list picker is open for the row `key`
+    -- previewIn = seconds until the sound row `previewRow` is previewed
+    trackPage = { row = 1, pending = nil, pendingSlot = nil, picker = nil, previewIn = nil, previewRow = nil },
     mixTrack  = 1,                       -- 1..4 = track, 5 = master
 
     -- Timings (seconds)
@@ -31,6 +33,8 @@ local Modes = {
     TRANSPORT_HOLD = 0.22,               -- START held this long opens Transport
     DOUBLE_TAP    = 0.32,                -- two START taps within this = reset playhead
     NEW_HOLD      = 1.0,                 -- L2 + R2 + SELECT held this long = fresh session
+    PICKER_HOLD   = 1.2,                 -- the list picker stays this long after the last change
+    PREVIEW_SETTLE = 0.15,               -- held scrolling: preview the sound after this pause
 
     -- Count-in (SPEC §3.5): a record tap arms recording; it latches at `target`
     arm = nil,                           -- { target = tick, dist = ticks still to go }
@@ -254,24 +258,29 @@ function handlers.MIX()
     return true
 end
 
--- Hold SELECT: Track page = sound (rows, instrument, effects)
-function handlers.TRACK(ctx)
+-- Hold SELECT: Track page = sound.
+--   UP / DOWN     row cursor (the instrument's rows, then the four effects)
+--   LEFT / RIGHT  change the selected row; holding repeats
+--   L1 / R1       preview another instrument; the swap happens on SELECT release
+--   face tap      effect on / off, and the cursor jumps to that effect's row
+function handlers.TRACK(ctx, dt)
     Input.comboUsed.SELECT = true
     local page = Modes.trackPage
     local def, state = ctx.def, ctx.state
-    local rows = Instruments:getSoundRows(def, state)
+    local track = Looper.tracks[Looper.activeTrack]
+    local rows = Instruments:getSoundRows(def, state, track)
 
     if Modes.previous ~= "TRACK" then
         page.row = (def.getDefaultSoundRow and def:getDefaultSoundRow(state)) or 1
-        page.fxHeld, page.fxAdjusted = nil, false
+        page.picker, page.previewIn = nil, nil
     end
     page.row = clamp(page.row, 1, #rows)
 
-    -- Instrument: LEFT/RIGHT only preview; the swap happens on SELECT release
-    if Input.pressed.LEFT or Input.pressed.RIGHT then
-        local track = Looper.tracks[Looper.activeTrack]
+    -- Instrument: L1 / R1 only preview; the swap happens on SELECT release
+    if Input.pressed.L1 or Input.pressed.R1 then
         local from = page.pending or track.instrumentId
-        local nextId = Instruments:stepInstrumentId(from, Input.pressed.LEFT and -1 or 1)
+        local nextId = Instruments:stepInstrumentId(from, Input.pressed.L1 and -1 or 1)
+        page.picker, page.previewIn = nil, nil
         if nextId == track.instrumentId then
             page.pending, page.pendingSlot = nil, nil
             Looper:showToast("INSTRUMENT: NO CHANGE")
@@ -281,35 +290,53 @@ function handlers.TRACK(ctx)
             Looper:showToast("RELEASE SELECT TO SWAP TO " .. (nextDef.title or nextDef.name))
         end
     end
+    -- A previewed swap shows its card in place of the rows, so they wait
+    if page.pending then return true end
 
-    -- Effects on the face buttons: tap = on/off, hold + UP/DOWN = amount
+    -- Effects on the face buttons: on / off, and the cursor goes to its row
     for _, btn in ipairs({ "X", "Y", "A", "B" }) do
         if Input.pressed[btn] then
-            page.fxHeld, page.fxAdjusted = btn, false
+            local slot = Looper.FX_SLOTS[btn]
+            Looper:toggleTrackFx(Looper.activeTrack, slot)
+            for i, row in ipairs(rows) do
+                if row.slot == slot then page.row = i end
+            end
+            page.picker, page.previewIn = nil, nil
         end
-    end
-    local heldSlot = page.fxHeld and Looper.FX_SLOTS[page.fxHeld]
-    if heldSlot and Input.down[page.fxHeld] then
-        if Input.pressed.UP or Input.pressed.DOWN then
-            Looper:adjustTrackFx(Looper.activeTrack, heldSlot, Input.pressed.UP and 0.1 or -0.1)
-            page.fxAdjusted = true
-        end
-    elseif Input.pressed.UP then
-        page.row = ((page.row - 2) % #rows) + 1
-    elseif Input.pressed.DOWN then
-        page.row = (page.row % #rows) + 1
-    end
-    if page.fxHeld and Input.released[page.fxHeld] then
-        if not page.fxAdjusted then
-            Looper:toggleTrackFx(Looper.activeTrack, Looper.FX_SLOTS[page.fxHeld])
-        end
-        page.fxHeld = nil
     end
 
-    -- L1 / R1: change the selected row (sound, or setting value)
-    local delta = (Input.pressed.L1 and -1) or (Input.pressed.R1 and 1) or nil
+    if Input.repeated.UP or Input.repeated.DOWN then
+        page.row = Input.repeated.UP and ((page.row - 2) % #rows) + 1 or (page.row % #rows) + 1
+        page.picker, page.previewIn = nil, nil
+    end
+
+    -- LEFT / RIGHT: change the selected row. A press previews a sound at once;
+    -- held scrolling previews only once it settles.
+    local delta = (Input.repeated.LEFT and -1) or (Input.repeated.RIGHT and 1) or nil
     if delta then
-        Instruments:cycleRow(def, state, page.row, delta)
+        local row = rows[page.row]
+        local quiet = not (Input.pressed.LEFT or Input.pressed.RIGHT)
+        Instruments:cycleRow(def, state, page.row, delta, track, quiet)
+        if row.items then
+            page.picker = { key = row.key, timer = Modes.PICKER_HOLD }
+        end
+        if quiet and not row.kind then
+            page.previewIn, page.previewRow = Modes.PREVIEW_SETTLE, page.row
+        else
+            page.previewIn = nil
+        end
+    end
+
+    if page.picker then
+        page.picker.timer = page.picker.timer - (dt or 0)
+        if page.picker.timer <= 0 then page.picker = nil end
+    end
+    if page.previewIn then
+        page.previewIn = page.previewIn - (dt or 0)
+        if page.previewIn <= 0 then
+            page.previewIn = nil
+            if def.previewRowSound then def:previewRowSound(state, page.previewRow) end
+        end
     end
     return true
 end
@@ -405,6 +432,7 @@ local function applyPendingSwap()
     if page.pending and Input.released.SELECT then
         Instruments:swapTrackInstrument(page.pendingSlot, page.pending)
         page.pending, page.pendingSlot = nil, nil
+        page.picker, page.previewIn = nil, nil
         page.row = 1
     end
 end

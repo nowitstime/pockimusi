@@ -39,22 +39,45 @@ function Instruments:getTrackInstrument(trackSlot)
 end
 
 -- Rows for the Track page. Instruments with a single patch get one PATCH row.
-function Instruments:getSoundRows(def, state)
+-- Row fields: key, label, value (text), kind (nil = sound, "setting", "fx"),
+-- and either items + index (a list, shown in the picker) or amount (0..1, a
+-- number shown as a bar). With `track`, its four effect amounts follow the
+-- instrument's rows.
+local FX_LABELS = { tone = "TONE", drive = "DRIVE", echo = "ECHO", space = "SPACE" }
+
+function Instruments:getSoundRows(def, state, track)
+    local rows
     if def.getSoundRows then
-        return def:getSoundRows(state)
+        rows = def:getSoundRows(state)
+    else
+        local name = def.patchName or def.title or def.name
+        rows = { { key = "PATCH", label = "PATCH", value = name, items = { { label = name } }, index = 1 } }
     end
-    return { { key = "PATCH", label = "PATCH", value = def.patchName or def.title or def.name } }
+    if track then
+        for _, slot in ipairs(Looper.FX_ORDER) do
+            local on = track.fx.on[slot]
+            rows[#rows + 1] = {
+                key = "FX_" .. slot, label = FX_LABELS[slot], kind = "fx", slot = slot, on = on,
+                amount = track.fx[slot], button = Looper.FX_BUTTONS[slot],
+                value = on and (math.floor(track.fx[slot] * 100 + 0.5) .. "%") or "OFF",
+            }
+        end
+    end
+    return rows
 end
 
--- L1 / R1 on a Track page row: setting rows change their value, sound rows
--- change the sound (with a preview)
-function Instruments:cycleRow(def, state, rowIdx, delta)
-    local row = self:getSoundRows(def, state)[rowIdx]
+-- LEFT / RIGHT on a Track page row: setting rows change their value, sound
+-- rows change the sound (with a preview unless `quiet`), effect rows change
+-- the amount in 10 % steps
+function Instruments:cycleRow(def, state, rowIdx, delta, track, quiet)
+    local row = self:getSoundRows(def, state, track)[rowIdx]
     if not row then return end
-    if row.kind == "setting" then
+    if row.kind == "fx" then
+        Looper:adjustTrackFx(track.slot, row.slot, delta * 0.1)
+    elseif row.kind == "setting" then
         if def.cycleSetting then def:cycleSetting(state, row.key, delta) end
     elseif def.cycleRowSound then
-        def:cycleRowSound(state, rowIdx, delta)
+        def:cycleRowSound(state, rowIdx, delta, quiet)
     else
         Looper:showToast(def.name .. ": ONE PATCH FOR NOW")
     end

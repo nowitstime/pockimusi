@@ -36,8 +36,8 @@ return {
                 -- Track page: rows, sounds, effects (tap + hold-adjust)
                 H.play(0.25, { "SELECT" })
                 H.keys[H.KEY.SELECT] = true
-                for _, b in ipairs({ "DOWN", "R1", "UP", "L1", "X", "Y", "A", "B" }) do tap({ b }) end
-                H.play(0.2, { "X", "UP" })
+                for _, b in ipairs({ "DOWN", "RIGHT", "UP", "LEFT", "X", "RIGHT", "Y", "A", "B" }) do tap({ b }) end
+                H.play(0.6, { "LEFT" })                         -- held: auto-repeat
                 H.keys[H.KEY.SELECT] = false
                 H.play(0.05)
 
@@ -54,10 +54,10 @@ return {
                 H.play(0.1, { "L2", "R2", "B" })
                 H.play(0.1, { "L2", "R2", "LEFT" })
 
-                -- next instrument in this slot (Track page RIGHT)
+                -- next instrument in this slot (Track page R1)
                 H.keys[H.KEY.SELECT] = true
                 H.play(0.25)
-                tap({ "RIGHT" })
+                tap({ "R1" })
                 H.keys[H.KEY.SELECT] = false
                 H.play(0.05)
             end

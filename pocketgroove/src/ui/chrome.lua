@@ -682,7 +682,7 @@ function Chrome:drawCenterStage()
     local lOn, rOn = Input.down.L1, Input.down.R1
     local l1Label, r1Label = "L1: -", "R1: +"
     if mode == "TRACK" then
-        l1Label, r1Label = "L1: CHANGE <", "R1: CHANGE >"
+        l1Label, r1Label = "L1: < INSTRUMENT", "R1: INSTRUMENT >"
     elseif mode == "TRANSPORT" then
         l1Label, r1Label = "L1: SCALE <", "R1: SCALE >"
     elseif mode == "MIX" then
@@ -721,10 +721,15 @@ function Chrome:drawCenterStage()
     elseif mode == "FX" then titleStr = "LIVE PERFORMANCE FX"
     end
 
-    self:setColor(playMode and C.TEXT or accent)
-    love.graphics.setFont(self.fontMed)
-    local tw = self.fontMed:getWidth(titleStr)
-    love.graphics.print(titleStr, math_floor(320 - tw * 0.5), 62)
+    if mode == "TRACK" then
+        -- the instruments are tabs (L1 / R1), in place of a title
+        self:drawInstrumentTabs(track, accent)
+    else
+        self:setColor(playMode and C.TEXT or accent)
+        love.graphics.setFont(self.fontMed)
+        local tw = self.fontMed:getWidth(titleStr)
+        love.graphics.print(titleStr, math_floor(320 - tw * 0.5), 62)
+    end
 
     self:setColor(playMode and C.GRID or accent, playMode and 0.6 or 0.35)
     love.graphics.line(212, 82, 428, 82)
@@ -738,11 +743,11 @@ function Chrome:drawCenterStage()
     self:setColor(C.MUTED)
     love.graphics.setFont(self.fontTiny)
     local dpadSub = {
-        TRACK = "D-PAD: ROW - INSTRUMENT", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
+        TRACK = "D-PAD: ROW - VALUE", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
         ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
     }
     local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
-    local faceSub = { TRACK = "FACE: EFFECTS", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
+    local faceSub = { TRACK = "FACE: EFFECTS ON / OFF", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
     local dpadSubtitle = dpadSub[mode] or instSub[def.id] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
@@ -786,9 +791,7 @@ function Chrome:getControlLabels(def, state, mode)
         }
     elseif mode == "TRACK" then
         local fx = Looper.tracks[Looper.activeTrack].fx
-        local held = Modes.trackPage.fxHeld
-        dpadLabels = held and { UP = "AMT +", DOWN = "AMT -", LEFT = "INST <", RIGHT = "INST >" }
-            or { UP = "ROW UP", DOWN = "ROW DOWN", LEFT = "INST <", RIGHT = "INST >" }
+        dpadLabels = { UP = "ROW UP", DOWN = "ROW DOWN", LEFT = "VALUE <", RIGHT = "VALUE >" }
         faceLabels = { B = "SPACE", A = "ECHO", Y = "DRIVE", X = "TONE" }
         for btn, slot in pairs(Looper.FX_SLOTS) do
             activeMap[btn] = fx.on[slot]
@@ -1116,16 +1119,71 @@ function Chrome:drawMoonGauge(x, y, r, amount, on, col)
     love.graphics.setLineWidth(1)
 end
 
-Chrome.ROWS_SHOWN = 5
+Chrome.ROWS_SHOWN = 6
+
+-- The instruments as tabs across the top of the Track page: the track's own
+-- is outlined; one previewed with L1 / R1 is filled until SELECT is released
+function Chrome:drawInstrumentTabs(track, col)
+    local C = Config.COLORS
+    local font = self.fontTiny
+    local pending = Modes.trackPage.pending
+    local gap, pad = 4, 7
+    local total = -gap
+    for _, inst in ipairs(Instruments.catalog) do
+        total = total + font:getWidth(inst.shortName or inst.name) + pad * 2 + gap
+    end
+    local x = math_floor(320 - total * 0.5)
+    for _, inst in ipairs(Instruments.catalog) do
+        local label = inst.shortName or inst.name
+        local w = font:getWidth(label) + pad * 2
+        if inst.id == pending then
+            self:drawCapsule(x, 60, w, 18, label, col, col, C.BG, font)
+        elseif inst.id == track.instrumentId then
+            self:drawCapsule(x, 60, w, 18, label, col, col, pending and C.MUTED or C.TEXT, font, 0.12)
+        else
+            self:setColor(C.MUTED)
+            love.graphics.setFont(font)
+            love.graphics.print(label, x + pad, 60 + math_floor((18 - font:getHeight()) * 0.5))
+        end
+        x = x + w + gap
+    end
+end
+
+-- A previewed instrument swap takes the place of the rows
+function Chrome:drawSwapCard(track, col)
+    local C = Config.COLORS
+    local pDef = Instruments:getDefinition(Modes.trackPage.pending)
+    local function centred(text, y, font, c, alpha)
+        love.graphics.setFont(font)
+        self:setColor(c, alpha)
+        love.graphics.print(text, math_floor(320 - font:getWidth(text) * 0.5), y)
+    end
+    self:setColor(col, 0.14)
+    love.graphics.rectangle("fill", 210, 94, 220, 214, 8, 8)
+    self:setColor(col)
+    love.graphics.setLineWidth(1.5)
+    love.graphics.rectangle("line", 210, 94, 220, 214, 8, 8)
+    love.graphics.setLineWidth(1)
+    self:drawStarGlint(320, 128, 12, col, 1.0)
+    centred(string.format("TRACK %d BECOMES", track.slot), 152, self.fontTiny, C.MUTED)
+    centred(pDef.title or pDef.name, 170, self.fontLarge, C.TEXT)
+    self:drawCapsule(232, 206, 176, 20, "RELEASE SELECT TO SWAP", col, col, C.BG, self.fontTiny)
+    centred("L1 / R1: ANOTHER INSTRUMENT", 244, self.fontTiny, col)
+    centred("BACK TO " .. (track.shortName or track.name) .. " CANCELS", 258, self.fontTiny, C.MUTED)
+    centred("UNDO AFTERWARDS: L2 + R2 + LEFT", 284, self.fontTiny, C.MUTED)
+end
 
 function Chrome:drawTrackPageView(def, state, track, col)
     local C = Config.COLORS
-    local rows = Instruments:getSoundRows(def, state)
+    if Modes.trackPage.pending then
+        return self:drawSwapCard(track, col)
+    end
+    local rows = Instruments:getSoundRows(def, state, track)
     local sel = Modes.trackPage.row
     local n = #rows
-    local y0 = (n == 1) and 134 or 108
+    local y0, step = 102, 25
     local nx = 226
-    -- At most ROWS_SHOWN rows fit above the instrument line: a longer list
+    -- At most ROWS_SHOWN rows fit above the effect moons: a longer list
     -- scrolls with the cursor
     local shown = math_min(n, self.ROWS_SHOWN)
     local first = clamp(sel - 2, 1, n - shown + 1)
@@ -1138,45 +1196,44 @@ function Chrome:drawTrackPageView(def, state, track, col)
     end
     local valueX = math.max(282, 250 + labelW + 10)
 
-    if n > 1 then
-        self:setColor(col, 0.3)
-        for yy = y0, y0 + (shown - 1) * 26, 4 do
-            love.graphics.line(nx, yy, nx, yy + 1)
-        end
+    self:setColor(col, 0.3)
+    for yy = y0, y0 + (shown - 1) * step, 4 do
+        love.graphics.line(nx, yy, nx, yy + 1)
     end
     -- More rows above / below
     self:setColor(col, 0.9)
     if first > 1 then
-        love.graphics.polygon("fill", nx - 4, y0 - 13, nx + 4, y0 - 13, nx, y0 - 18)
+        love.graphics.polygon("fill", nx - 4, y0 - 12, nx + 4, y0 - 12, nx, y0 - 17)
     end
     if last < n then
-        local by = y0 + (shown - 1) * 26 + 13
+        local by = y0 + (shown - 1) * step + 12
         love.graphics.polygon("fill", nx - 4, by, nx + 4, by, nx, by + 5)
     end
 
     for i = first, last do
         local row = rows[i]
-        local y = y0 + (i - first) * 26
+        local y = y0 + (i - first) * step
         local isSel = (i == sel)
+        local isFx = (row.kind == "fx")
         local isSetting = (row.kind == "setting")
+        local off = isFx and not row.on
+        -- Marker: sounds are stars, settings hollow rings, effects small moons
         if isSel then
             self:setColor(col, 0.6)
             self:drawDashedCircle(nx, y, 11, 2, 3)
-            if isSetting then
-                self:setColor(col)
-                love.graphics.setLineWidth(1.5)
-                love.graphics.circle("line", nx, y, 5)
-                love.graphics.setLineWidth(1)
-            else
-                self:drawStarGlint(nx, y, 7, col, 1.0)
-            end
             self:drawCapsule(240, y - 10, 192, 20, "", col, col, col, self.fontSmall, 0.18)
+        end
+        local markCol = isSel and col or C.MUTED
+        if isFx then
+            self:setColor(markCol, 0.9)
+            love.graphics.circle(row.on and "fill" or "line", nx, y, isSel and 4.5 or 3)
         elseif isSetting then
-            -- Settings are hollow rings; sounds are stars
-            self:setColor(C.MUTED, 0.9)
-            love.graphics.circle("line", nx, y, 3.5)
+            self:setColor(markCol, 0.9)
+            love.graphics.setLineWidth(isSel and 1.5 or 1)
+            love.graphics.circle("line", nx, y, isSel and 5 or 3.5)
+            love.graphics.setLineWidth(1)
         else
-            self:drawStarGlint(nx, y, (i == 1) and 4.5 or 3.2, C.MUTED, 0.9)
+            self:drawStarGlint(nx, y, isSel and 7 or ((i == 1) and 4.5 or 3.2), markCol, isSel and 1.0 or 0.9)
         end
 
         love.graphics.setFont(self.fontTiny)
@@ -1185,46 +1242,184 @@ function Chrome:drawTrackPageView(def, state, track, col)
 
         local value = isSel and ("<  " .. row.value .. "  >") or row.value
         love.graphics.setFont(self.fontSmall)
-        self:setColor(isSel and C.TEXT or C.MUTED)
+        self:setColor((isSel and not off) and C.TEXT or C.MUTED)
         love.graphics.print(value, valueX, y - 7)
 
-        if isSel then
+        if row.amount then
+            -- Numbers get a bar: there is no list to pick from
+            local bx, bw = 376, 46
+            self:setColor(C.DIM)
+            love.graphics.rectangle("fill", bx, y - 2, bw, 4, 2, 2)
+            if not off then
+                self:setColor(isSel and col or C.MUTED)
+                love.graphics.rectangle("fill", bx, y - 2, math.max(2, bw * clamp(row.amount, 0, 1)), 4, 2, 2)
+            end
+        elseif isSel then
             love.graphics.setFont(self.fontTiny)
             self:setColor(col)
-            local hint = (isSetting and row.hint) or "L1/R1"
-            love.graphics.print(hint, math_floor(424 - self.fontTiny:getWidth(hint)), y - 6)
+            local hint = row.items and (#row.items > 1) and string.format("%d/%d", row.index or 1, #row.items) or (row.hint or "")
+            local hx = math_floor(424 - self.fontTiny:getWidth(hint))
+            -- only where a long value leaves room
+            if valueX + self.fontSmall:getWidth(value) + 6 <= hx then
+                love.graphics.print(hint, hx, y - 6)
+            end
         end
     end
 
-    -- Instrument: a previewed swap is highlighted until SELECT is released
-    love.graphics.setFont(self.fontTiny)
-    self:setColor(C.MUTED)
-    love.graphics.print("INSTRUMENT", 212, 232)
-    local pending = Modes.trackPage.pending
-    if pending then
-        local pDef = Instruments:getDefinition(pending)
-        self:drawCapsule(272, 228, 156, 18, "<  " .. (pDef.title or pDef.name) .. "  >", col, col, C.BG, self.fontTiny)
-        self:setColor(col)
-        local note = "RELEASE SELECT TO SWAP - UNDO: L2+R2+LEFT"
-        love.graphics.print(note, math_floor(320 - self.fontTiny:getWidth(note) * 0.5), 249)
-    else
-        self:drawCapsule(272, 228, 156, 18, "<  " .. (def.title or def.name) .. "  >", C.DIM, nil, C.MUTED, self.fontTiny)
-    end
-
-    -- Effects as moon phases (X tone, Y drive, A echo, B space)
-    local names = { tone = "TONE", drive = "DRIVE", echo = "ECHO", space = "SPACE" }
+    -- Effects as moon phases, with the face button that switches each one
     for i, slot in ipairs(Looper.FX_ORDER) do
         local x = 236 + (i - 1) * 56
         local on = track.fx.on[slot]
         local amt = track.fx[slot]
-        self:drawMoonGauge(x, 270, 10, amt, on, col)
+        self:drawMoonGauge(x, 276, 9, amt, on, col)
+        if rows[sel] and rows[sel].slot == slot then
+            self:setColor(col, 0.7)
+            self:drawDashedCircle(x, 276, 13, 2, 3)
+        end
         love.graphics.setFont(self.fontTiny)
-        local name = names[slot]
+        local name = Looper.FX_BUTTONS[slot] .. " " .. slot:upper()
         self:setColor(on and C.TEXT or C.MUTED)
-        love.graphics.print(name, math_floor(x - self.fontTiny:getWidth(name) * 0.5), 283)
+        love.graphics.print(name, math_floor(x - self.fontTiny:getWidth(name) * 0.5), 291)
         local pct = on and (math_floor(amt * 100 + 0.5) .. "%") or "OFF"
-        self:setColor(on and col or C.DIM)
-        love.graphics.print(pct, math_floor(x - self.fontTiny:getWidth(pct) * 0.5), 294)
+        self:setColor(on and col or C.MUTED)
+        love.graphics.print(pct, math_floor(x - self.fontTiny:getWidth(pct) * 0.5), 302)
+    end
+end
+
+-- ============================================================================
+-- LIST PICKER: a shelf over the tape deck while a list row is being changed.
+-- Group tabs (when the list has groups), the current group's items as chips,
+-- then the full name, a map of the whole list and the position.
+-- ============================================================================
+Chrome.SHELF_CHIPS = 5          -- chips shown for a list without groups
+
+function Chrome:drawPickerShelf()
+    local picker = Modes.trackPage.picker
+    if Modes.current ~= "TRACK" or not picker or Modes.trackPage.pending then
+        self.shelfAnim = nil
+        return
+    end
+    local track = Looper.tracks[Looper.activeTrack]
+    local def, state = Instruments:getTrackInstrument(Looper.activeTrack)
+    local row
+    for _, r in ipairs(Instruments:getSoundRows(def, state, track)) do
+        if r.key == picker.key then row = r break end
+    end
+    if not row or not row.items then return end
+
+    local C = Config.COLORS
+    local col = Config.MODE_COLORS.TRACK
+    local items, idx = row.items, clamp(row.index or 1, 1, #row.items)
+    local cur = items[idx]
+    local a = clamp(picker.timer / 0.25, 0.0, 1.0)             -- fades out at the end
+    local X, Y, W, H = 8, 362, 624, 112
+
+    -- cover the deck, with the playhead's star that pokes out above it
+    self:setColor(C.BG, a)
+    love.graphics.rectangle("fill", X - 1, Y - 5, W + 2, H + 7)
+    self:setColor(C.PANEL, a)
+    love.graphics.rectangle("fill", X, Y, W, H, 6, 6)
+    self:setColor(col, a)
+    love.graphics.setLineWidth(1.6)
+    love.graphics.rectangle("line", X, Y, W, H, 6, 6)
+    love.graphics.setLineWidth(1)
+
+    -- Groups, in list order
+    local groups = {}
+    if cur.group then
+        for _, it in ipairs(items) do
+            if it.group and groups[#groups] ~= it.group then groups[#groups + 1] = it.group end
+        end
+    end
+    local cy = Y + 12
+    if #groups > 0 then
+        local gw = (W - 24) / #groups
+        love.graphics.setFont(self.fontTiny)
+        for g, name in ipairs(groups) do
+            local gx = X + 12 + (g - 1) * gw
+            local tw = self.fontTiny:getWidth(name)
+            if name == cur.group then
+                self:setColor(col, a)
+                love.graphics.rectangle("fill", gx + 2, Y + 7, gw - 4, 15, 7, 7)
+                self:setColor(C.BG, a)
+            else
+                self:setColor(C.MUTED, a)
+            end
+            love.graphics.print(name, math_floor(gx + (gw - tw) * 0.5), Y + 9)
+        end
+        cy = Y + 28
+    end
+
+    -- Chips: the current group, or a window of the list around the current item
+    local from, to = 1, #items
+    if cur.group then
+        from, to = idx, idx
+        while from > 1 and items[from - 1].group == cur.group do from = from - 1 end
+        while to < #items and items[to + 1].group == cur.group do to = to + 1 end
+    elseif #items > self.SHELF_CHIPS then
+        from = clamp(idx - math_floor(self.SHELF_CHIPS / 2), 1, #items - self.SHELF_CHIPS + 1)
+        to = from + self.SHELF_CHIPS - 1
+    end
+    local count = to - from + 1
+    local gap, ch = 6, (#groups > 0) and 44 or 52
+    local cw = math_min(150, (W - 24 - (count - 1) * gap) / count)
+    local cx0 = X + (W - (count * cw + (count - 1) * gap)) * 0.5
+    local targetX = cx0 + (idx - from) * (cw + gap)
+
+    -- The highlight slides to the current chip (and jumps when the chips change)
+    local animKey = row.key .. ":" .. from .. ":" .. count
+    local anim = self.shelfAnim
+    if not anim or anim.key ~= animKey then
+        anim = { key = animKey, x = targetX }
+        self.shelfAnim = anim
+    end
+    anim.x = anim.x + (targetX - anim.x) * 0.4
+    if math.abs(targetX - anim.x) < 0.5 then anim.x = targetX end
+
+    self:setColor(col, 0.18 * a)
+    love.graphics.rectangle("fill", anim.x, cy, cw, ch, 8, 8)
+    for i = from, to do
+        local it = items[i]
+        local x = cx0 + (i - from) * (cw + gap)
+        local isCur = (i == idx)
+        self:setColor(isCur and col or C.DIM, a)
+        love.graphics.rectangle("line", x, cy, cw, ch, 8, 8)
+        local font = isCur and self.fontMed or self.fontSmall
+        love.graphics.setFont(font)
+        self:setColor(isCur and C.TEXT or C.MUTED, a)
+        love.graphics.print(it.label, math_floor(x + (cw - font:getWidth(it.label)) * 0.5), cy + ch * 0.5 - 13)
+        local num = string.format("%02d", i)
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(C.MUTED, a)
+        love.graphics.print(num, math_floor(x + (cw - self.fontTiny:getWidth(num)) * 0.5), cy + ch * 0.5 + 5)
+    end
+
+    -- Bottom line: which row, the full name, a map of the list, the position
+    local by = Y + H - 17
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(col, a)
+    love.graphics.print(row.label .. "   " .. (cur.full or cur.label), X + 14, by)
+    local pos = string.format("%d / %d", idx, #items)
+    self:setColor(C.MUTED, a)
+    love.graphics.print(pos, math_floor(X + W - 14 - self.fontTiny:getWidth(pos)), by)
+    if #items > 1 and #items <= 40 then
+        local tw, tg, gg = 5, 2, 6
+        local total = #items * tw + (#items - 1) * tg
+        for i = 2, #items do
+            if items[i].group ~= items[i - 1].group then total = total + gg - tg end
+        end
+        local tx = math_floor(X + (W - total) * 0.5)
+        for i, it in ipairs(items) do
+            if i > 1 then tx = tx + ((it.group ~= items[i - 1].group) and gg or tg) end
+            if i == idx then
+                self:setColor(col, a)
+                love.graphics.rectangle("fill", tx, by + 1, tw, 8, 1, 1)
+            else
+                self:setColor((cur.group and it.group == cur.group) and C.MUTED or C.DIM, a)
+                love.graphics.rectangle("fill", tx, by + 6, tw, 3, 1, 1)
+            end
+            tx = tx + tw
+        end
     end
 end
 
@@ -1403,7 +1598,7 @@ function Chrome:drawFooterStrip(def)
         hintText = "REC (HOLD) | Release L2 to stop punch-in | Quick tap latches"
         hintCol = C.RED
     elseif mode == "TRACK" then
-        hintText = "TRACK | UP/DN Row | L1/R1 Change | < > Instrument (on release) | Face FX, hold + UP/DN"
+        hintText = "TRACK | UP/DN Row | < > Change | L1/R1 Instrument (on release) | Face: FX on/off"
         hintCol = C.PINK
     elseif mode == "MIX" then
         hintText = "MIXER | < > Track | UP/DN Volume | B/A/Y/X Mute | L1/R1 Master"
@@ -1933,6 +2128,7 @@ function Chrome:draw()
     self:drawTopBar()
     self:drawCenterStage()
     self:drawTapeDeck()
+    self:drawPickerShelf()
 
     love.graphics.pop()
 end

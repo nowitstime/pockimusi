@@ -90,29 +90,44 @@ local function step(list, value, delta)
     return list[((indexOf(list, value) - 1 + delta) % #list) + 1]
 end
 
+
+-- Picker items for a list row: plain labels, or patch ids shown by their label
+local function itemsOf(list, patches)
+    local items = {}
+    for i, v in ipairs(list) do
+        local patch = patches and Synth.patches[v]
+        items[i] = { label = patch and patch.label or v }
+    end
+    return items
+end
+local ON_OFF = { { label = "OFF" }, { label = "ON" } }
+
 function Lead:getSoundRows(state)
     local patch = self:getPatch(state)
     return {
         { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
-          hint = string.format("%d/%d", indexOf(self.PATCHES, state.patch), #self.PATCHES) },
+          items = itemsOf(self.PATCHES, true), index = indexOf(self.PATCHES, state.patch) },
         { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
-          hint = "CHORDS" },
+          items = ON_OFF, index = state.follow and 2 or 1 },
         { key = "RATE", label = "ARP RATE", value = state.rate, kind = "setting",
-          hint = string.format("%d/%d", indexOf(self.RATES, state.rate), #self.RATES) },
+          items = itemsOf(self.RATES), index = indexOf(self.RATES, state.rate) },
         { key = "PATTERN", label = "ARP PATTERN", value = state.pattern, kind = "setting",
-          hint = string.format("%d/%d", indexOf(self.PATTERNS, state.pattern), #self.PATTERNS) },
+          items = itemsOf(self.PATTERNS), index = indexOf(self.PATTERNS, state.pattern) },
     }
 end
 
-function Lead:cycleRowSound(state, rowIdx, delta)
+function Lead:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx ~= 1 then return end
     state.patch = step(self.PATCHES, state.patch, delta)
     local patch = self:getPatch(state)
-    if patch then
-        local v = Synth:noteOn(state.patch, Theory:getRootSemis(), 0.8, {})     -- preview
-        if v then Synth:schedule(0.25, function() v:noteOff() end) end
-        Looper:showToast("LEAD PATCH: " .. patch.label)
-    end
+    if patch then Looper:showToast("LEAD PATCH: " .. patch.label) end
+    if not quiet then self:previewRowSound(state, rowIdx) end
+end
+
+function Lead:previewRowSound(state, rowIdx)
+    if rowIdx ~= 1 or not self:getPatch(state) then return end
+    local v = Synth:noteOn(state.patch, Theory:getRootSemis(), 0.8, {})
+    if v then Synth:schedule(0.25, function() v:noteOff() end) end
 end
 
 function Lead:cycleSetting(state, key, delta)

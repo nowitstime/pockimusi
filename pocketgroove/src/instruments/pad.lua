@@ -84,6 +84,18 @@ local function step(list, value, delta)
     return list[((indexOf(list, value) - 1 + delta) % #list) + 1]
 end
 
+
+-- Picker items for a list row: plain labels, or patch ids shown by their label
+local function itemsOf(list, patches)
+    local items = {}
+    for i, v in ipairs(list) do
+        local patch = patches and Synth.patches[v]
+        items[i] = { label = patch and patch.label or v }
+    end
+    return items
+end
+local ON_OFF = { { label = "OFF" }, { label = "ON" } }
+
 function Pad:getPatch(state)
     return Synth.patches[state.patch] or Synth.patches[self.PATCHES[1]]
 end
@@ -102,27 +114,30 @@ function Pad:getSoundRows(state)
     local patch = self:getPatch(state)
     return {
         { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
-          hint = string.format("%d/%d", indexOf(self.PATCHES, state.patch), #self.PATCHES) },
+          items = itemsOf(self.PATCHES, true), index = indexOf(self.PATCHES, state.patch) },
         { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
-          hint = "CHORDS" },
+          items = ON_OFF, index = state.follow and 2 or 1 },
         { key = "ATTACK", label = "ATTACK", value = state.attack, kind = "setting",
-          hint = string.format("%d/%d", indexOf(self.ATTACKS, state.attack), #self.ATTACKS) },
+          items = itemsOf(self.ATTACKS), index = indexOf(self.ATTACKS, state.attack) },
         { key = "RELEASE", label = "RELEASE", value = state.release, kind = "setting",
-          hint = string.format("%d/%d", indexOf(self.RELEASES, state.release), #self.RELEASES) },
+          items = itemsOf(self.RELEASES), index = indexOf(self.RELEASES, state.release) },
     }
 end
 
-function Pad:cycleRowSound(state, rowIdx, delta)
+function Pad:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx ~= 1 then return end
     state.patch = step(self.PATCHES, state.patch, delta)
     local patch = self:getPatch(state)
-    if patch then
-        -- preview: a short note on the key's root
-        local root = Theory:getPadVoicing(Harmony:tonic(), "OPEN", 0)[1]
-        local v = Synth:noteOn(state.patch, root, 0.6, { attack = 0.03, release = 0.5, bright = state.bright, move = state.move })
-        if v then Synth:schedule(0.45, function() v:noteOff() end) end
-        Looper:showToast("PAD PATCH: " .. patch.label)
-    end
+    if patch then Looper:showToast("PAD PATCH: " .. patch.label) end
+    if not quiet then self:previewRowSound(state, rowIdx) end
+end
+
+-- A short note on the key's root
+function Pad:previewRowSound(state, rowIdx)
+    if rowIdx ~= 1 or not self:getPatch(state) then return end
+    local root = Theory:getPadVoicing(Harmony:tonic(), "OPEN", 0)[1]
+    local v = Synth:noteOn(state.patch, root, 0.6, { attack = 0.03, release = 0.5, bright = state.bright, move = state.move })
+    if v then Synth:schedule(0.45, function() v:noteOff() end) end
 end
 
 function Pad:cycleSetting(state, key, delta)
