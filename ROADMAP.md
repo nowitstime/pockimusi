@@ -25,7 +25,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Tracks | **Four**, fixed. Instruments are swappable per slot |
 | Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp** (swap it in on the Track page). Sample chop parked |
 | Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
-| Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `L1/R1` change the value. A new option costs a row, not a button |
+| Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `LEFT / RIGHT` change the value. A new option costs a row, not a button |
 | Instrument swap | Preview with `LEFT/RIGHT`, apply on `SELECT` release, **undoable** |
 | Harmony | **Chord-follow**: chord harp track drives the current chord, tonic fallback, per-track `FOLLOW` row |
 | Drums randomness | **Variation** row + **chance** hits, applied at playback |

@@ -52,10 +52,12 @@ end
 -- Track page rows: one sound row (PATCH) and the COLOUR setting
 -- ---------------------------------------------------------------------------
 function Harp:getSoundRows(state)
+    local colours = {}
+    for i, c in ipairs(Theory.COLOURS) do colours[i] = { label = c } end
     return {
-        { key = "PATCH", label = "PATCH", value = self.title },
+        { key = "PATCH", label = "PATCH", value = self.title, items = { { label = self.title } }, index = 1 },
         { key = "COLOUR", label = "COLOUR", value = state.colour, kind = "setting",
-          hint = string.format("%d/%d", self:colourIndex(state), #Theory.COLOURS) },
+          items = colours, index = self:colourIndex(state) },
     }
 end
 

@@ -255,8 +255,8 @@ return {
         local M, L, st = boot()
         H.tap("L2"); H.tap("B"); H.tap("L2")                    -- a recorded kick
         H.hold("SELECT"); H.play(0.3)                           -- opens on pad B
-        H.tap("DOWN"); H.tap("R1"); H.tap("R1")                 -- TUNE B +2
-        H.tap("DOWN"); H.tap("L1"); H.tap("L1"); H.tap("L1")    -- LEVEL B 70 %
+        H.tap("DOWN"); H.tap("RIGHT"); H.tap("RIGHT")                 -- TUNE B +2
+        H.tap("DOWN"); H.tap("LEFT"); H.tap("LEFT"); H.tap("LEFT")    -- LEVEL B 70 %
         H.release("SELECT"); H.play(0.1)
         H.eq(st.padTune.B, 2, "tune"); H.near(st.padLevel.B, 0.7, "level", 1e-9)
         H.eq(st.padTune.Y, 0, "other pads untouched"); H.eq(st.padLevel.Y, 1.0, "other pads untouched")
@@ -279,15 +279,15 @@ return {
         H.tap("DOWN")                                           -- TUNE
         local rows = M.Drums:getSoundRows(st)
         H.eq(rows[6].label, "TUNE A", "row names the pad")
-        for _ = 1, 20 do H.tap("L1") end
+        for _ = 1, 20 do H.tap("LEFT") end
         H.eq(st.padTune.A, -12, "tune clamps")
         H.eq(M.Drums:getSoundRows(st)[6].value, "-12", "shown")
         H.tap("DOWN")
-        for _ = 1, 5 do H.tap("R1") end
+        for _ = 1, 5 do H.tap("RIGHT") end
         H.near(st.padLevel.A, 1.2, "level clamps at 120 %", 1e-9)
-        for _ = 1, 20 do H.tap("L1") end
+        for _ = 1, 20 do H.tap("LEFT") end
         H.near(st.padLevel.A, 0.1, "and at 10 %", 1e-9)
-        H.tap("DOWN"); H.tap("R1"); H.tap("R1")
+        H.tap("DOWN"); H.tap("RIGHT"); H.tap("RIGHT")
         H.eq(st.variation, "WILD", "VARIATION row")
         H.release("SELECT"); H.play(0.1)
     end },
@@ -309,16 +309,16 @@ return {
         H.near(s3.padLevel.B, 0.1, "level clamped", 1e-9)
     end },
 
-    { "the Track page list scrolls: all eight drum rows can be reached and drawn", function()
+    { "the Track page list scrolls: all twelve drum rows (eight + four effects) can be reached and drawn", function()
         local M, L, st = boot()
         local page = function() return package.loaded["src.modes"].trackPage end
         H.hold("SELECT"); H.play(0.3)
         local seen = {}
-        for _ = 1, 8 do
+        for _ = 1, 12 do
             H.tap("DOWN")
             seen[page().row] = true
         end
-        for i = 1, 8 do H.truthy(seen[i], "row " .. i) end
+        for i = 1, 12 do H.truthy(seen[i], "row " .. i) end
         H.release("SELECT"); H.play(0.1)
     end },
 }

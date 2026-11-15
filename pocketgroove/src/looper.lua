@@ -129,6 +129,7 @@ end
 -- Track page effect slots on the face buttons
 Looper.FX_SLOTS = { X = "tone", Y = "drive", A = "echo", B = "space" }
 Looper.FX_ORDER = { "tone", "drive", "echo", "space" }
+Looper.FX_BUTTONS = { tone = "X", drive = "Y", echo = "A", space = "B" }
 
 function Looper:toggleTrackFx(trackIdx, slot)
     local track = self.tracks[trackIdx]
@@ -143,7 +144,8 @@ end
 function Looper:adjustTrackFx(trackIdx, slot, delta)
     local track = self.tracks[trackIdx]
     if not track or not slot then return end
-    track.fx[slot] = math_max(0.0, math.min(1.0, track.fx[slot] + delta))
+    -- whole percent, so ten 10 % steps down from 100 % land on exactly 0
+    track.fx[slot] = math_floor(math_max(0.0, math.min(1.0, track.fx[slot] + delta)) * 100 + 0.5) / 100
     track.fx.on[slot] = track.fx[slot] > 0.0
     Synth:configureTrackFx(track)
     self:showToast(string.format("TRACK %d %s: %d%%", trackIdx, slot:upper(), math_floor(track.fx[slot] * 100 + 0.5)))

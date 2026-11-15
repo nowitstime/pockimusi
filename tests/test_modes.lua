@@ -115,48 +115,101 @@ return {
         H.eq(L.activeTrack, 2, "hold keeps track 2")
     end },
 
-    { "Track page: opens on the last pad, rows move, L1/R1 change the sound", function()
+    { "Track page: opens on the last pad, rows move, LEFT/RIGHT change the sound", function()
         local _, L = boot()
         local st = L.tracks[1].state
         H.hold("SELECT"); H.play(0.3)
         H.eq(page().row, 5, "opens on pad B (row 5)")
         local before = st.padCatalogIndex.B
-        H.tap("R1")
-        H.truthy(st.padCatalogIndex.B ~= before, "R1 changed pad B's sound")
+        H.tap("RIGHT")
+        H.eq(st.padCatalogIndex.B, before + 1, "RIGHT: pad B's next sound")
+        H.tap("LEFT")
+        H.eq(st.padCatalogIndex.B, before, "LEFT: back")
+        H.tap("L1")
+        H.eq(st.padCatalogIndex.B, before, "L1 does not change the row any more")
+        H.tap("R1")                                       -- back to drums: no swap pending
+        H.eq(page().pending, nil, "no swap left pending")
         H.tap("DOWN")
         H.eq(page().row, 6, "DOWN: the TUNE row")
-        H.tap("DOWN"); H.tap("DOWN"); H.tap("DOWN")
-        H.eq(page().row, 1, "DOWN past the last row wraps to the KIT row")
-        H.tap("UP"); H.tap("UP"); H.tap("UP"); H.tap("UP")
-        H.eq(page().row, 5, "UP wraps back")
+        H.tap("UP"); H.tap("UP"); H.tap("UP"); H.tap("UP"); H.tap("UP")
+        H.eq(page().row, 1, "UP to the KIT row")
+        H.tap("UP")
+        H.eq(page().row, 12, "UP past the first row wraps to the last effect row")
+        H.tap("DOWN")
+        H.eq(page().row, 1, "DOWN wraps back")
         H.release("SELECT"); H.play(0.1)
         H.eq(L.activeTrack, 1, "closing the page does not change track")
     end },
 
-    { "Track page: face tap toggles an effect; hold + UP/DOWN sets its amount", function()
+    { "Track page: holding LEFT/RIGHT repeats; the sound previews once it settles", function()
+        local M, L = boot()
+        local st = L.tracks[1].state
+        local hits = {}
+        local real = M.Synth.trigger
+        M.Synth.trigger = function(self, name, ...) hits[#hits + 1] = name; return real(self, name, ...) end
+        H.hold("SELECT"); H.play(0.3)
+        local before = st.padCatalogIndex.B
+        H.hold("RIGHT"); H.play(0.8); H.release("RIGHT")
+        local moved = st.padCatalogIndex.B - before
+        H.truthy(moved >= 4, "several steps while held")
+        H.eq(#hits, 1, "only the first press previewed")
+        H.play(0.3)
+        H.eq(#hits, 2, "one more preview after it settles")
+        H.eq(hits[2], M.Synth.drumCatalog[st.padCatalogIndex.B].id, "of the sound it landed on")
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "Track page: the picker opens for a list row and closes by itself; numbers have none", function()
+        local _, L = boot()
+        H.hold("SELECT"); H.play(0.3)
+        H.eq(page().picker, nil, "closed until something changes")
+        H.tap("RIGHT")
+        H.eq(page().picker.key, "B", "open for the pad B row")
+        H.play(1.5)
+        H.eq(page().picker, nil, "closes after a pause")
+        H.tap("RIGHT")
+        H.tap("DOWN")
+        H.eq(page().picker, nil, "moving the cursor closes it")
+        H.tap("RIGHT")                                    -- TUNE: a number
+        H.eq(page().picker, nil, "no picker for a number row")
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "Track page: face tap toggles an effect and jumps to its row; LEFT/RIGHT set the amount", function()
         local _, L = boot()
         local fx = L.tracks[1].fx
         H.hold("SELECT"); H.play(0.3)
         H.tap("X")
         H.truthy(fx.on.tone, "X tap: tone on")
+        H.eq(page().row, 9, "cursor on the TONE row")
+        H.tap("RIGHT")
+        H.near(fx.tone, 0.6, "RIGHT: tone +10 %", 1e-9)
         H.tap("X")
         H.falsy(fx.on.tone, "X tap again: tone off")
-        H.hold("X"); H.play(0.05)
-        H.tap("UP")
-        H.release("X"); H.play(0.05)
-        H.near(fx.tone, 0.6, "tone amount +10 %", 1e-6)
-        H.truthy(fx.on.tone, "adjusting switches it on, release does not toggle")
+        H.near(fx.tone, 0.6, "the amount is kept", 1e-9)
+        H.tap("B")
+        H.eq(page().row, 12, "B: the SPACE row")
+        for _ = 1, 8 do H.tap("LEFT") end
+        H.eq(fx.space, 0, "LEFT down to exactly 0")
+        H.falsy(fx.on.space, "0 switches it off")
+        H.tap("RIGHT")
+        H.truthy(fx.on.space, "changing the amount switches it on")
+        H.near(fx.space, 0.1, "10 %", 1e-9)
         H.release("SELECT"); H.play(0.1)
     end },
 
-    { "Track page: LEFT/RIGHT preview an instrument; release SELECT applies it", function()
+    { "Track page: L1/R1 preview an instrument; release SELECT applies it", function()
         local _, L = boot()
         H.tap("L2"); H.tap("B"); H.tap("L2")
         H.hold("SELECT"); H.play(0.3)
-        H.tap("RIGHT")
+        H.tap("R1")
         H.eq(page().pending, "harp", "harp previewed")
         H.eq(L.tracks[1].instrumentId, "drums", "not swapped yet")
-        H.tap("RIGHT")
+        local kit = L.tracks[1].state.kitIndex
+        H.tap("RIGHT"); H.tap("X")
+        H.eq(L.tracks[1].state.kitIndex, kit, "rows wait while a swap is previewed")
+        H.falsy(L.tracks[1].fx.on.tone, "so do the effects")
+        H.tap("R1")
         H.eq(page().pending, "bass", "next preview")
         H.release("SELECT"); H.play(0.1)
         H.eq(L.tracks[1].instrumentId, "bass", "swapped on release")
@@ -168,7 +221,7 @@ return {
     { "Track page: stepping back to the current instrument cancels the swap", function()
         local _, L = boot()
         H.hold("SELECT"); H.play(0.3)
-        H.tap("RIGHT"); H.tap("LEFT")
+        H.tap("R1"); H.tap("L1")
         H.eq(page().pending, nil, "no preview")
         H.release("SELECT"); H.play(0.1)
         H.eq(L.tracks[1].instrumentId, "drums", "still drums")
@@ -179,7 +232,7 @@ return {
         local _, L = boot()
         H.tap("L2"); H.tap("B"); H.tap("L2")
         local kit = L.tracks[1].state.kitIndex
-        H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.release("SELECT"); H.play(0.1)
+        H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.release("SELECT"); H.play(0.1)
         H.eq(L.tracks[1].instrumentId, "harp", "swapped")
         H.hold("L2", "R2"); H.play(0.1); H.tap("LEFT"); H.release("L2", "R2"); H.play(0.1)
         H.eq(L.tracks[1].instrumentId, "drums", "drums back")
@@ -196,21 +249,46 @@ return {
         H.eq(page().row, 1, "opens on PATCH")
         H.tap("DOWN")
         H.eq(page().row, 2, "COLOUR row")
-        H.tap("R1")
-        H.eq(st.colour, "7TH", "R1 -> 7TH")
+        H.tap("RIGHT")
+        H.eq(st.colour, "7TH", "RIGHT -> 7TH")
         H.release("SELECT"); H.play(0.1)
         H.eq(st.currentChord.name, "Cmaj7", "chord is maj7")
         H.eq(st.currentChord.notes[4], 11, "string 4 = major 7th")
-        H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("L1"); H.tap("L1")
-        H.eq(st.colour, "ADD9", "L1 twice wraps back to ADD9")
+        H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("LEFT"); H.tap("LEFT")
+        H.eq(st.colour, "ADD9", "LEFT twice wraps back to ADD9")
         H.release("SELECT"); H.play(0.1)
     end },
 
-    { "Track page: L1/R1 on a PATCH-only row just shows a toast", function()
+    { "Track page: LEFT/RIGHT on a PATCH-only row just shows a toast", function()
         local _, L = boot()
         H.tap("SELECT")                                  -- track 2 = harp (one patch)
-        H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.release("SELECT"); H.play(0.1)
+        H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.release("SELECT"); H.play(0.1)
         H.eq(L.toastText, "CHORD HARP: ONE PATCH FOR NOW", "toast")
+    end },
+
+    { "every list row has items and an index inside them; number rows have an amount", function()
+        local M, L = boot()
+        for slot = 1, 4 do
+            local def, state, track = M.Instruments:getTrackInstrument(slot)
+            local rows = M.Instruments:getSoundRows(def, state, track)
+            H.eq(rows[#rows].key, "FX_space", "the four effects come last")
+            for _, row in ipairs(rows) do
+                local what = def.id .. " " .. row.key
+                if row.items then
+                    H.truthy(row.index >= 1 and row.index <= #row.items, what .. ": index")
+                    H.eq(row.amount, nil, what .. ": a list, not a number")
+                else
+                    H.truthy(row.amount >= 0 and row.amount <= 1, what .. ": amount")
+                end
+            end
+        end
+        local groups, seen = {}, {}
+        for _, it in ipairs(M.Instruments:getDefinition("drums"):soundItems()) do
+            if groups[#groups] ~= it.group then
+                H.falsy(seen[it.group], "drum group " .. it.group .. " is in one piece")
+                groups[#groups + 1], seen[it.group] = it.group, true
+            end
+        end
     end },
 
     { "Track page blocks playing: face buttons don't trigger the instrument", function()

@@ -31,46 +31,26 @@ Two things keep the later remake cheap:
 | A built-in speaker matters; headphones sound better on the RG35XX but are less fun | A constraint for any future device: a good speaker needs physical volume |
 | Other people play notes within a second, but had to ask how to record and do the rest | The gap is the step after the first note (§5) |
 | The early, simpler version was easier to read: one bright colour, a couple of options | Features were added faster than focus; pages need stripping back (§4) |
-| Track page navigation feels wrong; every instrument's page looks the same | Rework the Track page (§3) |
+| Track page navigation feels wrong; every instrument's page looks the same | Rework the Track page (§3) ✅ |
 | "Every instrument works the same" doesn't always suit the instrument | Loosen the grammar on the play surface (§6) |
 | The chord mechanic is a favourite, but the harp's sound isn't always wanted | A chord track that makes no sound (§6.3) |
 
 ---
 
-## 3. Track page rework 👍
+## 3. Track page rework ✅
 
-### 3.1 Swap the controls
+Built; the details are in SPEC §3.4.
 
-| Control | Today | Proposed |
-| :-- | :-- | :-- |
-| `UP / DOWN` | Move the row cursor | Move the row cursor |
-| `LEFT / RIGHT` | Preview previous / next instrument | **Change the selected row's value** |
-| `L1 / R1` | Change the selected row's value | **Previous / next instrument** (instruments become tabs) |
+- **Controls swapped:** `LEFT / RIGHT` change the selected row (holding repeats); `L1 / R1` step the instrument, shown as tabs across the top. The safe swap stays: preview, applied on `SELECT` release, undoable.
+- **Effect amounts are rows:** `TONE`, `DRIVE`, `ECHO`, `SPACE` follow the instrument's rows. The face buttons keep the on / off toggle, and a tap moves the cursor to that effect's row.
+- **Picker:** every list row opens a shelf over the tape deck (group tabs, the group's items, full name, a map of the list). It replaced the carousel idea after mockups: the tape deck is unused while the page is open, so the shelf costs nothing. Number rows show a bar instead.
+- **Swap card:** a previewed instrument replaces the rows with a card naming it.
 
-The D-pad then controls everything on the screen and the shoulders switch tabs, as in most game menus. The safe swap stays: preview, applied on `SELECT` release, undoable.
+Still open:
 
-### 3.2 Effects become rows 🧪
-
-Tone, drive, echo and space become ordinary rows, replacing "tap a face button to toggle, hold it with `UP / DOWN` for the amount". One fewer hidden gesture. To check: the row count (SPEC §3.4 says ≤ 6 per instrument), and what the face buttons do on the page afterwards.
-
-### 3.3 Carousel picker
-
-When a value changes, a carousel shows where you are in the list:
-
-- The current item is large in the centre, with two smaller, dimmer items on each side, sliding as you scroll.
-- Horizontal, so the motion matches `LEFT / RIGHT`.
-- It appears on the first press and fades about a second after the last.
-- Holding the direction keeps scrolling; the list wraps at the ends.
-- Long lists get group labels (the 24 drum sounds: kicks, snares, hats, ...).
-- One picker for every list: patches, kits, instruments, scale, key.
-
-### 3.4 Changing instrument should look like a different screen
-
-Today only the rows change. Ideas:
-
-- Fill the page with the new instrument's colour and show its name large.
-- Show that instrument's stage view behind the settings.
-- Play a short sound or phrase on preview.
+- 🧪 Play a short phrase on instrument preview; show that instrument's stage view behind the card.
+- 🧪 The same picker for key and scale on the Transport page.
+- Patch groups, once there are more patches.
 
 ---
 
@@ -222,11 +202,8 @@ Form factor: something Steam Deck-shaped has full-size controls, a bigger screen
 
 ## 12. Suggested order
 
-1. Track page: control swap (§3.1)
-2. Carousel picker (§3.3)
-3. Harp colour on the shoulders (§6.2)
-4. Clarity pass and first-run prompts (§4, §5)
-5. Song building, once designed (§8)
-6. Audio engine v2, then hardware (§9, §10)
-
-Drums pass 2 (Phase H) can sit before or after 1–4; the Track page changes come first if new rows are going to land on that page.
+1. ~~Track page: control swap, effect rows, picker (§3)~~ ✅
+2. Harp colour on the shoulders (§6.2)
+3. Clarity pass and first-run prompts (§4, §5)
+4. Song building, once designed (§8)
+5. Audio engine v2, then hardware (§9, §10)

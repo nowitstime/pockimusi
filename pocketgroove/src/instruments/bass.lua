@@ -89,6 +89,18 @@ local function indexOf(list, value)
     return 1
 end
 
+
+-- Picker items for a list row: plain labels, or patch ids shown by their label
+local function itemsOf(list, patches)
+    local items = {}
+    for i, v in ipairs(list) do
+        local patch = patches and Synth.patches[v]
+        items[i] = { label = patch and patch.label or v }
+    end
+    return items
+end
+local ON_OFF = { { label = "OFF" }, { label = "ON" } }
+
 function Bass:getPatch(state)
     return Synth.patches[state.patch] or Synth.patches[self.PATCHES[1]]
 end
@@ -101,22 +113,27 @@ function Bass:getSoundRows(state)
     local patch = self:getPatch(state)
     return {
         { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
-          hint = string.format("%d/%d", indexOf(self.PATCHES, state.patch), #self.PATCHES) },
+          items = itemsOf(self.PATCHES, true), index = indexOf(self.PATCHES, state.patch) },
         { key = "GLIDE", label = "GLIDE", value = state.glide, kind = "setting",
-          hint = string.format("%d/%d", indexOf(self.GLIDES, state.glide), #self.GLIDES) },
+          items = itemsOf(self.GLIDES), index = indexOf(self.GLIDES, state.glide) },
         { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
-          hint = "CHORDS" },
+          items = ON_OFF, index = state.follow and 2 or 1 },
     }
 end
 
-function Bass:cycleRowSound(state, rowIdx, delta)
+function Bass:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx ~= 1 then return end
     local n = #self.PATCHES
     state.patch = self.PATCHES[((indexOf(self.PATCHES, state.patch) - 1 + delta) % n) + 1]
     local patch = self:getPatch(state)
-    if patch then
-        Synth:trigger(patch.attack, Theory:getRootSemis(), 0.85, 0.7)   -- preview
-        Looper:showToast("BASS PATCH: " .. patch.label)
+    if patch then Looper:showToast("BASS PATCH: " .. patch.label) end
+    if not quiet then self:previewRowSound(state, rowIdx) end
+end
+
+function Bass:previewRowSound(state, rowIdx)
+    local patch = self:getPatch(state)
+    if rowIdx == 1 and patch then
+        Synth:trigger(patch.attack, Theory:getRootSemis(), 0.85, 0.7)
     end
 end
 

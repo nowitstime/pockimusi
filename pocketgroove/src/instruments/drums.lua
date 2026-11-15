@@ -111,22 +111,50 @@ function Drums:getActionLabel(state, btn)
     return btn .. " (" .. self:getPadSound(state, btn).short .. ")"
 end
 
--- Rows shown on the Track page (UP/DOWN moves the cursor, L1/R1 changes the row's sound)
+-- Picker items for the pad rows: every drum sound, grouped by its category
+function Drums:soundItems()
+    if not self._soundItems or #self._soundItems ~= #Synth.drumCatalog then
+        local items = {}
+        for i, s in ipairs(Synth.drumCatalog) do
+            items[i] = { label = s.short, group = s.cat, full = (s.full:gsub("^%d+%.%s*", "")) }
+        end
+        self._soundItems = items
+    end
+    return self._soundItems
+end
+
+function Drums:kitItems()
+    if not self._kitItems then
+        self._kitItems = {}
+        for i, kit in ipairs(self.KITS) do self._kitItems[i] = { label = kit.name } end
+    end
+    return self._kitItems
+end
+
+-- Rows shown on the Track page (UP/DOWN moves the cursor, LEFT/RIGHT changes
+-- the row). List rows carry `items` and `index` for the picker; number rows
+-- carry `amount` (0..1) for a bar.
 function Drums:getSoundRows(state)
     local rows = { { key = "KIT", label = "KIT", value = self:getKitLabel(state),
-                     hint = string.format("%d/%d", state.kitIndex, #self.KITS) } }
+                     items = self:kitItems(), index = state.kitIndex } }
     for _, pad in ipairs(self.PADS) do
-        table.insert(rows, { key = pad, label = pad, value = self:getPadSound(state, pad).short, isPad = true })
+        table.insert(rows, { key = pad, label = pad, value = self:getPadSound(state, pad).short, isPad = true,
+                             items = self:soundItems(), index = state.padCatalogIndex[pad] or 1 })
     end
     -- Tune and level of the selected pad: the last pad hit, or whose sound was changed
     local pad = state.lastPad
     local tune = state.padTune[pad] or 0
+    local level = state.padLevel[pad] or 1.0
     table.insert(rows, { key = "TUNE", label = "TUNE " .. pad, kind = "setting", hint = "SEMIS",
-                         value = (tune > 0 and "+" or "") .. tune })
+                         value = (tune > 0 and "+" or "") .. tune,
+                         amount = (tune + self.TUNE_RANGE) / (2 * self.TUNE_RANGE) })
     table.insert(rows, { key = "LEVEL", label = "LEVEL " .. pad, kind = "setting", hint = "PAD",
-                         value = math_floor((state.padLevel[pad] or 1.0) * 100 + 0.5) .. "%" })
+                         value = math_floor(level * 100 + 0.5) .. "%",
+                         amount = (level - self.LEVEL_MIN) / (self.LEVEL_MAX - self.LEVEL_MIN) })
+    local varItems = {}
+    for i, v in ipairs(self.VARIATIONS) do varItems[i] = { label = v } end
     table.insert(rows, { key = "VARIATION", label = "VARIATION", kind = "setting", value = state.variation,
-                         hint = string.format("%d/%d", self:variationIndex(state), #self.VARIATIONS) })
+                         items = varItems, index = self:variationIndex(state) })
     return rows
 end
 
@@ -169,25 +197,34 @@ function Drums:getDefaultSoundRow(state)
     return 1
 end
 
-function Drums:cycleRowSound(state, rowIdx, delta)
+-- `quiet` skips the preview (held-direction scrolling previews once it settles)
+function Drums:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx <= 1 then
         local n = #self.KITS
         self:applyKit(state, ((state.kitIndex - 1 + delta) % n) + 1)
-        Synth:trigger(self:getPadSound(state, "B").id, 0, 0.9, 1.0)
         Looper:showToast("KIT: " .. self.KITS[state.kitIndex].name)
+    else
+        local pad = self.PADS[rowIdx - 1]
+        if not pad then return end
+        local total = #Synth.drumCatalog
+        local cur = state.padCatalogIndex[pad] or 1
+        state.padCatalogIndex[pad] = ((cur - 1 + delta) % total) + 1
+        state.kitEdited = true
+        state.lastPad = pad
+        Looper:showToast("PAD " .. pad .. ": " .. Synth.drumCatalog[state.padCatalogIndex[pad]].full)
+    end
+    if not quiet then self:previewRowSound(state, rowIdx) end
+end
+
+function Drums:previewRowSound(state, rowIdx)
+    if rowIdx <= 1 then
+        Synth:trigger(self:getPadSound(state, "B").id, 0, 0.9, 1.0)
         return
     end
     local pad = self.PADS[rowIdx - 1]
     if not pad then return end
-    local total = #Synth.drumCatalog
-    local cur = state.padCatalogIndex[pad] or 1
-    state.padCatalogIndex[pad] = ((cur - 1 + delta) % total) + 1
-    state.kitEdited = true
-    state.lastPad = pad
-    local item = Synth.drumCatalog[state.padCatalogIndex[pad]]
-    Synth:trigger(item.id, 0, 0.9, 1.0)
+    Synth:trigger(self:getPadSound(state, pad).id, 0, 0.9, 1.0)
     state.padFlash[pad] = 1.0
-    Looper:showToast("PAD " .. pad .. ": " .. item.full)
 end
 
 -- ---------------------------------------------------------------------------

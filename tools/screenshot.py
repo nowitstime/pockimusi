@@ -28,10 +28,14 @@ SCENES = {
                      ' H.hold("Y", "UP"); H.play(0.05); H.release("Y", "UP"); H.play(1.0);'
                      ' H.hold("A", "L1", "R1"); H.play(1.0); H.release("A", "L1", "R1"); H.tap("L2"); H.play(0.3)',
     "track-drums": 'H.hold("SELECT"); H.play(0.3)',
-    "swap-preview": 'H.hold("SELECT"); H.play(0.3); H.tap("RIGHT")',
+    "swap-preview": 'H.hold("SELECT"); H.play(0.3); H.tap("R1")',
+    "picker-drums": 'H.tap("Y"); H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.tap("RIGHT")',
+    "picker-kit": 'H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("UP") end; H.tap("RIGHT")',
+    "picker-pad-patch": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("SELECT"); H.play(0.3); H.tap("RIGHT")',
+    "fx-rows": 'H.hold("SELECT"); H.play(0.3); H.tap("B"); H.tap("Y"); H.tap("RIGHT"); H.tap("RIGHT")',
     "harp-play": 'H.tap("SELECT"); H.play(0.2)',
-    "harp-colour": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("R1")',
-    "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("R1");'
+    "harp-colour": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT")',
+    "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT");'
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
     "follow": 'H.tap("SELECT"); H.tap("L2");'
@@ -51,7 +55,7 @@ SCENES = {
                  ' H.hold("UP"); H.play(0.4); H.release("UP"); H.hold("RIGHT"); H.play(0.3); H.release("RIGHT", "B");'
                  ' H.play(0.4); H.hold("Y"); H.play(0.05); H.release("Y"); H.play(0.3); H.hold("X", "R1"); H.play(0.6);'
                  ' H.hold("UP", "A"); H.play(0.5); H.release("A", "X", "UP", "R1"); H.tap("L2"); H.play(0.9)',
-    "track-bass": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.tap("R1"); H.tap("DOWN")',
+    "track-bass": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.tap("RIGHT"); H.tap("DOWN")',
     "pad-idle": 'for _ = 1, 3 do H.tap("SELECT") end; H.play(0.2)',
     "pad-hold": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("B"); H.play(0.5); H.hold("UP", "RIGHT"); H.play(0.6)',
     "pad-layers": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("B"); H.play(0.3); H.hold("R1"); H.play(0.05);'
@@ -73,7 +77,7 @@ SCENES = {
                   ' H.hold("B"); H.play(0.6); H.hold("SELECT", "R2"); H.tap("X"); H.play(0.25)',
     "count-in": 'require("src.looper").countIn = true; H.play(0.3); H.tap("L2"); H.play(0.6)',
     "transport-count": 'H.hold("START"); H.play(0.3); H.tap("X"); H.tap("X")',
-    "drums-rows": 'H.tap("Y"); H.hold("SELECT"); H.play(0.3); for _ = 1, 3 do H.tap("DOWN") end; H.tap("R1"); H.tap("R1")',
+    "drums-rows": 'H.tap("Y"); H.hold("SELECT"); H.play(0.3); for _ = 1, 3 do H.tap("DOWN") end; H.tap("RIGHT"); H.tap("RIGHT")',
     "drums-variation": 'local st = require("src.looper").tracks[1].state; st.variation = "WILD"; st.padTune.Y = 3; st.padLevel.A = 0.6;'
                        ' H.tap("L2"); H.tap("B"); H.play(0.25); H.hold("DOWN"); H.tap("A"); H.play(0.1); H.tap("A"); H.release("DOWN");'
                        ' H.play(0.2); H.tap("Y"); H.play(0.2); H.hold("DOWN"); H.tap("Y"); H.release("DOWN"); H.tap("L2"); H.play(0.4)',

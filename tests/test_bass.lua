@@ -59,13 +59,13 @@ return {
         H.eq(rows[2].kind, "setting", "glide is a setting row")
     end },
 
-    { "R1 on PATCH steps SAW -> SUB -> PLUCK -> SAW and previews each", function()
+    { "RIGHT on PATCH steps SAW -> SUB -> PLUCK -> SAW and previews each", function()
         local M, L, track = boot()
         local seen = triggersOf(M.Synth)
         local got = {}
         onTrackPage(function()
             for _ = 1, 3 do
-                H.tap("R1")
+                H.tap("RIGHT")
                 got[#got + 1] = track.state.patch
             end
         end)
@@ -74,25 +74,25 @@ return {
         H.eq(L.toastText, "BASS PATCH: SAW", "toast")
     end },
 
-    { "L1/R1 on GLIDE steps FAST / MEDIUM / SLOW without a preview", function()
+    { "LEFT/RIGHT on GLIDE steps FAST / MEDIUM / SLOW without a preview", function()
         local M, _, track = boot()
         local Bass = M.Instruments:getDefinition("bass")
         local seen = triggersOf(M.Synth)
         onTrackPage(function()
             H.tap("DOWN")                              -- GLIDE row
-            H.tap("R1")
+            H.tap("RIGHT")
         end)
         H.eq(track.state.glide, "SLOW", "MEDIUM -> SLOW")
         H.eq(#seen, 0, "no preview")
         H.truthy(Bass:getGlideRate(track.state) < Bass.GLIDE_RATES.MEDIUM, "slower rate")
-        onTrackPage(function() H.tap("DOWN"); H.tap("L1"); H.tap("L1") end)
+        onTrackPage(function() H.tap("DOWN"); H.tap("LEFT"); H.tap("LEFT") end)
         H.eq(track.state.glide, "FAST", "SLOW -> MEDIUM -> FAST")
         H.truthy(Bass:getGlideRate(track.state) > Bass.GLIDE_RATES.MEDIUM, "faster rate")
     end },
 
     { "notes play with the chosen patch", function()
         local M, _, track = boot()
-        onTrackPage(function() H.tap("R1") end)       -- SUB
+        onTrackPage(function() H.tap("RIGHT") end)       -- SUB
         local seen = triggersOf(M.Synth)
         H.tap("B")
         H.eq(seen[1], "bass_sub", "SUB attack")
@@ -101,7 +101,7 @@ return {
     { "each bass track keeps its own patch and glide", function()
         local M, L = boot()
         M.Instruments:swapTrackInstrument(4, "bass")
-        onTrackPage(function() H.tap("R1"); H.tap("DOWN"); H.tap("R1") end)   -- track 3: SUB, SLOW
+        onTrackPage(function() H.tap("RIGHT"); H.tap("DOWN"); H.tap("RIGHT") end)   -- track 3: SUB, SLOW
         H.eq(L.tracks[3].state.patch, "bass_sub", "track 3 patch")
         H.eq(L.tracks[3].state.glide, "SLOW", "track 3 glide")
         H.eq(L.tracks[4].state.patch, "bass_saw", "track 4 untouched")
@@ -110,7 +110,7 @@ return {
 
     { "patch and glide come back with undo after a swap", function()
         local M, L, track = boot()
-        onTrackPage(function() H.tap("R1"); H.tap("DOWN"); H.tap("L1") end)   -- SUB, FAST
+        onTrackPage(function() H.tap("RIGHT"); H.tap("DOWN"); H.tap("LEFT") end)   -- SUB, FAST
         M.Instruments:swapTrackInstrument(3, "harp")
         L:undo()
         H.eq(L.tracks[3].state.patch, "bass_sub", "patch")
@@ -196,7 +196,7 @@ return {
     { "PLUCK lets notes overlap", function()
         local M, L, track = boot()
         local S = M.Synth
-        onTrackPage(function() H.tap("R1"); H.tap("R1") end)   -- PLUCK
+        onTrackPage(function() H.tap("RIGHT"); H.tap("RIGHT") end)   -- PLUCK
         H.eq(track.state.patch, "bass_pluck", "pluck")
         H.tap("L2")
         H.hold("B"); H.play(0.5)
@@ -310,7 +310,7 @@ return {
 
     { "after letting go, the fading note keeps following the D-pad, recorded after len", function()
         local M, L, track = boot()
-        onTrackPage(function() H.tap("R1"); H.tap("R1") end)   -- PLUCK: long release
+        onTrackPage(function() H.tap("RIGHT"); H.tap("RIGHT") end)   -- PLUCK: long release
         H.tap("L2")
         H.hold("B"); H.play(0.4); H.release("B"); H.play(0.05)
         H.hold("UP"); H.play(0.15)                     -- still ringing
@@ -325,7 +325,7 @@ return {
 
     { "recorded bends replay at the same points, tail included", function()
         local M, L, track = boot()
-        onTrackPage(function() H.tap("R1"); H.tap("R1") end)   -- PLUCK
+        onTrackPage(function() H.tap("RIGHT"); H.tap("RIGHT") end)   -- PLUCK
         H.tap("L2")
         H.hold("B"); H.play(0.3); H.hold("UP"); H.play(0.3); H.release("UP")
         H.release("B"); H.play(0.05); H.hold("RIGHT"); H.play(0.1); H.release("RIGHT")
@@ -346,7 +346,7 @@ return {
 
     { "letting go of the D-pad and button together doesn't drag the tail to the root", function()
         local M, _, track = boot()
-        onTrackPage(function() H.tap("R1"); H.tap("R1") end)   -- PLUCK
+        onTrackPage(function() H.tap("RIGHT"); H.tap("RIGHT") end)   -- PLUCK
         H.tap("L2")
         H.hold("B", "UP", "R1"); H.play(0.3)             -- G, an octave up
         H.release("B", "UP", "R1"); H.play(0.6)          -- all at once
