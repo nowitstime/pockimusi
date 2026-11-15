@@ -38,9 +38,10 @@ These limits shaped every design below.
 **What one thumb can reach on the face diamond:**
 
 - one button, or **two neighbouring buttons** (`B+A`, `A+X`, `X+Y`, `Y+B`) by laying the thumb across both;
-- not opposite pairs (`B+X`, `A+Y`), and not three or four at once.
+- **all four** with the thumb laid flat: a little harder than two, but fine (found by playing);
+- three at once only with difficulty, so nothing should need it; opposite pairs (`B+X`, `A+Y`) untried.
 
-So the diamond has **8 reachable fingerings**, not the 15 that four buttons give on paper. (An earlier "Valves" idea assumed 15; §4.2 is the version that fits a thumb.)
+So the diamond has **9 comfortable fingerings**, not the 15 that four buttons give on paper. (An earlier "Valves" idea assumed 15; §4.2 is one version that fits a thumb, and [LAB_WAVE_1.md](LAB_WAVE_1.md) has a Valves that needs only seven.)
 
 **Timing:** input is read once per frame (about 16 ms). Two buttons meant to land together often arrive one frame apart, so anything that reads button combinations needs a short **settle window** (about 35 ms) before it commits.
 

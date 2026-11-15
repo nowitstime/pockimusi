@@ -1,8 +1,8 @@
-# Lab wave 1 · Four instruments to try — Working Plan
+# Lab wave 1 · Five instruments to try — Working Plan
 
 Part of [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md) (the lab). Design background: that file's §2, §4 and §6; [SPEC.md](SPEC.md) §3.4 (Track page), §6 (sound pool).
 
-**Goal:** four new ways of playing are in the app, rough but playable, so playing can decide which ones stay: **Hand Drums** (two thumbs), **Strum** (set the notes with the thumbs, pluck with the shoulders), **Slide** (steer the pitch) and **Dial** (roll the thumb round the scale). The Track page's instrument tabs change first, because nine names no longer fit in a row.
+**Goal:** five new ways of playing are in the app, rough but playable, so playing can decide which ones stay: **Hand Drums** (two thumbs), **Strum** (set the notes with the thumbs, pluck with the shoulders), **Slide** (steer the pitch), **Dial** (roll the thumb round the scale) and **Valves** (fingerings and breath, like a brass instrument). The Track page's instrument tabs change first, because nine names no longer fit in a row.
 
 **Rule for every step:** one step = one or a few commits, app playable, tests green. 📱 = check on the RG35XX. Lab rule: no polish until an instrument has earned its slot (FUTURE_INSTRUMENTS §7).
 
@@ -14,7 +14,8 @@ Part of [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md) (the lab). Design backgro
 
 | Topic | Decision | Why |
 | :-- | :-- | :-- |
-| Which four | Hand Drums, Strum (the doc's "Pick"), Slide, Dial | The doc's first wave: none depends on a later phase. Slide is cheap and answers the hardware-slider question. Dial is the most different, but only if the device's buttons allow it (see L4) |
+| Which five | Hand Drums, Strum (the doc's "Pick"), Slide, Dial, Valves | The doc's first wave, none of which depends on a later phase, plus Valves, which the doc had set aside for needing 15 fingerings. This plan's version needs seven, all easy ones |
+| What a thumb can press | From playing: **one** button and **two neighbouring** buttons are easy; **all four** (the thumb laid flat) is a little harder but fine; **three** is hard to control. So there are **nine fingerings to build on**: four singles, four neighbouring pairs, all four. Three-button fingerings are never required. Opposite pairs (`B + X`, `A + Y`) are not used until they have been tried | This replaces the doc's "not three or four at once" |
 | Not in this wave | Map (bigger, and the Chord Harp already covers chords), Motions and Tape (the doc says: rows and layers, not instruments) | Keep the wave small enough to finish |
 | `LAB` switch | `Config.LAB`, **on** for now. Lab instruments carry `lab = true`; with the switch off they leave the tabs | You are the only player while experimenting; the switch is there for a release |
 | A save with a lab instrument, switch off | The track loads empty, on that slot's default instrument | Never play an experiment's notes as drum hits. Session load already falls back to the default instrument; L0 adds the test that the notes are dropped |
@@ -77,10 +78,31 @@ Part of [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md) (the lab). Design backgro
 
 | Topic | Decision | Why |
 | :-- | :-- | :-- |
-| **Test first** | A lab screen that shows the fingering the app sees (one of eight: four buttons, four neighbouring pairs) and counts how often a pair lands cleanly. Dial is built only if pairs land reliably 📱 | The doc's biggest risk. On the RG35XX's small buttons this decides everything |
-| If it passes | Degrees 1 to 8 clockwise from `B`; rolling to a neighbour slurs; rolling across the seam carries the octave; D-pad `↑ / ↓` dynamics, `← / →` flat / sharp; `L1 / R1` octave. As FUTURE_INSTRUMENTS §4.2 | |
+| Fingering screen | A lab screen that shows the fingering the app sees (one of nine) and counts how often each lands cleanly 📱 | Pairs are comfortable to press, so this is no longer a go / no-go. It is there to tune the settle window, for Dial and Valves both |
+| Positions | Degrees 1 to 8 clockwise from `B`; rolling to a neighbour slurs; rolling across the seam carries the octave; D-pad `↑ / ↓` dynamics, `← / →` flat / sharp; `L1 / R1` octave. As FUTURE_INSTRUMENTS §4.2 | |
 | Settle window | A change of fingering within 35 ms of a fresh press corrects the note; after that it is a slur | Two buttons meant together arrive a frame apart |
+| All four | Free for now; a candidate for "back to the home octave" | Easy to press, and Dial has no use for it yet |
 | Engine pieces | Held notes the instrument releases itself; a fingering reader in `input.lua` | Both small, both listed in the doc's §6 |
+
+### Valves (`VALVE`) — fingerings and breath
+
+| Topic | Decision | Why |
+| :-- | :-- | :-- |
+| The model | A brass instrument. The **left thumb** picks the open note (a bugle's notes), the **right thumb** lowers it with valves, an **index finger** blows. Nothing sounds without breath | Three jobs on three fingers: no other instrument splits the hands this way |
+| D-pad: the open notes | The current chord's tones, absolute as on the Bass compass: neutral = root, `↓` fifth below, `←` third, `↑` fifth, `→` octave, diagonals the tones beyond. With the D-pad alone it plays bugle calls that always fit the chord | Brass open notes are a chord too. Chord-follow comes for free |
+| Face buttons: the valves | Each fingering lowers the open note. The layout is a real four-valve fingering chart (the fourth valve stands in for first + third, as on a euphonium), and it happens to need only easy fingerings: |  |
+| | none 0 · `A` −1 · `B` −2 · `A + B` −3 · `A + X` −4 · `Y` −5 · all four −6 | Six steps down fill the largest gap between open notes |
+| What a step is | `VALVES` row: `SCALE` (a step = one scale note; default) / `CHROMATIC` (a step = one semitone, as on the real thing) | `SCALE` can't play a wrong note. `CHROMATIC` is the first instrument that can leave the key on purpose |
+| `X` alone | −3, the same as `A + B` (a real alternate fingering) | Costs nothing and makes some runs easier |
+| `R1` | Blow: the note sounds while it is held | |
+| `L1` | Tongue: a second breath. Alternating `R1` and `L1` repeats a note fast (double-tonguing); `L1` is the softer of the two | The same alternating move as Strum |
+| While blowing | Changing valves or the D-pad **slurs**: the note moves without a new attack. A valve change slurs quickly, an open-note change a little slower (a lip slur) | That is what makes it sound like brass and not like a keyboard |
+| Settle window | As Dial: a fingering change within 35 ms of the breath corrects the note | |
+| Patch | Any; opens on `SAW` (the closest to brass in the pool). A ringing patch gives a plucked version | |
+| Rows | `PATCH`, `VALVES`, `REGISTER`, `FOLLOW` | The shoulders are the breath, so the octave is a row |
+| Event | One per breath: `action` = `R1` / `L1`, the open note's chord tone, the valve steps, `semis`; slurs are bend keyframes that keep tone and steps, so a recorded line re-harmonises | |
+| Erase | `L2 + R2 + B` clears `R1` breaths, `+ A` clears `L1` breaths (as Strum) | |
+| Built on | The Bass module's voice, bend and trace code; Dial's fingering reader | |
 
 ---
 
@@ -92,11 +114,12 @@ Part of [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md) (the lab). Design backgro
 | L1 | Instrument tabs as a centred carousel 📱 | S |
 | L2 | Hand Drums (`MIRROR`) | S |
 | L3 | Strum: strokes, strings, damp, pluck / bow by patch, strum playback | M |
-| L4 | Dial button test 📱, then a go / no-go | S |
+| L4 | Fingering reader in `input.lua` and its lab screen 📱 | S |
 | L5 | Slide | S–M |
-| L6 | Dial, if L4 passed | M |
+| L6 | Dial | M |
+| L7 | Valves | M |
 
-L1 comes before any instrument, so each new one has a tab to appear in. The Dial test goes early because it needs the device and its answer is needed before L6.
+L1 comes before any instrument, so each new one has a tab to appear in. The fingering reader goes before Dial and Valves, which both stand on it.
 
 ## Tests
 
@@ -104,9 +127,10 @@ L1 comes before any instrument, so each new one has a tab to appear in. The Dial
 - L1: the centred tab is the previewed instrument, else the track's own; stepping past either end wraps; every instrument can be reached with `L1` alone and with `R1` alone; drawing works with 5 and with 9 instruments.
 - L2: `↑ ↓ ← →` play and record under `X B Y A`; a diagonal makes two hits; `L1` = ghost level, `R1` = accent level, both = repeat; Drums ↔ Hand Drums keeps the notes; the erase and lane code see only face actions.
 - L3: no face button = one note at the D-pad's degree; held buttons add their steps; `R1` orders low to high and `L1` high to low, the right spread apart; a second shoulder inside 35 ms damps and removes the stroke; a ringing patch records a hit, a sustaining patch records a length and glides; playback over a changed chord moves the whole stack; rows save and load.
-- L4: the fingering reader reports the eight fingerings and nothing else; opposite pairs and three buttons give no fingering; a pair arriving one frame apart reads as the pair once settled.
+- L4: the fingering reader reports the nine fingerings; opposite pairs and three buttons are reported as such, so an instrument can ignore them; a pair arriving one frame apart reads as the pair once settled, and four arriving over three frames read as four.
 - L5: holding `↑` raises the pitch at the row's speed and it stays on release; `← / →` land on scale notes; `A` settles on the nearest scale note; a slide records at most one keyframe per 30 ticks and replays the same curve; both shoulders return to the root.
 - L6: the eight positions give degrees 1 to 8; a roll is a slur (one event, bends); the seam moves the octave by one per lap and keeps the pitch; a correction inside the settle window rewrites the note instead of slurring.
+- L7: nothing sounds without a shoulder; each D-pad direction gives its chord tone and moves with the chord; each fingering lowers by its steps, in scale notes and in semitones; three-button and opposite fingerings change nothing; a valve or D-pad change while blowing is a slur on the same voice; `L1` after `R1` re-attacks the same pitch; a recorded line replays, and re-harmonises with `FOLLOW` on.
 
 ## Playtests (what decides a slot)
 
@@ -116,6 +140,7 @@ L1 comes before any instrument, so each new one has a tab to appear in. The Dial
 | Strum | Steady alternate-picked 1/16 notes at 120 BPM for two bars? Is the bow worth keeping? Does damping fire by accident? |
 | Slide | Can you land on a note by ear with `SNAP` off? With `SNAP` soft, is it expressive or just out of tune? |
 | Dial | A one-octave scale up and down by rolling, evenly, without looking? Does the seam feel natural? |
+| Valves | Can you play a scale after two minutes with the chart? Do bugle calls on the D-pad alone feel good? Is `CHROMATIC` fun or just wrong notes? |
 
 An instrument moves to the roadmap when it passes the five tests in FUTURE_INSTRUMENTS §7.5; the last one is "you want to pick it up again a week later".
 
@@ -124,11 +149,13 @@ An instrument moves to the roadmap when it passes the five tests in FUTURE_INSTR
 - [ ] `python3 tests/run.py` green
 - [ ] Nine tabs read clearly and the slide shows which way you stepped 📱
 - [ ] Each instrument has had a session of real playing and a verdict: slot, row on another instrument, or dropped 📱
-- [ ] Dial go / no-go recorded here 📱
+- [ ] Settle window tuned on the fingering screen 📱
 
 ## Open (settle by playing)
 
 1. Hand Drums: its own instrument, or a `HANDS` row on Drums?
 2. Strum: the string map (`B` third, `A` fifth, `X` octave, `Y` seventh), and whether 35 ms is the right damp window.
 3. Slide: default `SNAP`; whether `FOLLOW` (the home pitch follows the chord root) is wanted.
-4. With two or more winners, what leaves the library or becomes a row (FUTURE_INSTRUMENTS §8)?
+4. Do opposite pairs (`B + X`, `A + Y`) press comfortably? If so, Valves can use the real first + third fingering and Dial gains two positions.
+5. Valves: is the fingering chart learnable, or should `SCALE` use a simpler one (one more button = one more step)?
+6. With two or more winners, what leaves the library or becomes a row (FUTURE_INSTRUMENTS §8)?
