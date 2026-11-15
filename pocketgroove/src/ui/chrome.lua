@@ -861,6 +861,8 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         self:setColor(col)
         local octStr = chord.isWide and "WIDE OPEN" or (chord.octShift < 0 and "OCT -1" or (chord.octShift > 0 and "OCT +1" or "OCT 0"))
         local sub = string.format("%s  -  %s  -  %s", chord.roman, octStr, chord.colour or "TRIAD")
+        local patch = def:getPatch(state)
+        if patch and patch.id ~= def.DEFAULT_PATCH then sub = sub .. "  -  " .. patch.label end
         local sw = self.fontSmall:getWidth(sub)
         love.graphics.print(sub, math_floor(320 - sw * 0.5), 158)
 

@@ -16,6 +16,7 @@ local Input   = require("src.input")
 local Synth   = require("src.synth")
 local Looper  = require("src.looper")
 local Harmony = require("src.harmony")
+local Patches = require("src.instruments.patches")
 
 local clamp     = Config.clamp
 local math_abs  = math.abs
@@ -37,7 +38,11 @@ local Pad = {
     },
 
     -- Track page rows
-    PATCHES = { "pad_warm", "pad_bell", "pad_choir", "pad_drone" },
+    HOME_GROUP = "PAD",
+    DEFAULT_PATCH = "pad_warm",
+    REGISTER = 4,             -- 0 semitones = C4
+    VOICES = 12,              -- two four-note chords and a tail
+    NEEDS_LOOP = true,        -- a held chord needs a patch that sustains
     ATTACKS = { "FAST", "MEDIUM", "SLOW" },
     ATTACK_TIMES = { FAST = 0.03, MEDIUM = 0.25, SLOW = 0.9 },
     RELEASES = { "SHORT", "MEDIUM", "LONG" },
@@ -84,20 +89,16 @@ local function step(list, value, delta)
     return list[((indexOf(list, value) - 1 + delta) % #list) + 1]
 end
 
-
--- Picker items for a list row: plain labels, or patch ids shown by their label
-local function itemsOf(list, patches)
+-- Picker items for a list row of plain labels
+local function itemsOf(list)
     local items = {}
-    for i, v in ipairs(list) do
-        local patch = patches and Synth.patches[v]
-        items[i] = { label = patch and patch.label or v }
-    end
+    for i, v in ipairs(list) do items[i] = { label = v } end
     return items
 end
 local ON_OFF = { { label = "OFF" }, { label = "ON" } }
 
 function Pad:getPatch(state)
-    return Synth.patches[state.patch] or Synth.patches[self.PATCHES[1]]
+    return Patches.get(self, state)
 end
 
 function Pad:getAttackTime(state, swell)
@@ -111,10 +112,8 @@ function Pad:getReleaseTime(state)
 end
 
 function Pad:getSoundRows(state)
-    local patch = self:getPatch(state)
     return {
-        { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
-          items = itemsOf(self.PATCHES, true), index = indexOf(self.PATCHES, state.patch) },
+        Patches.row(self, state),
         { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
           items = ON_OFF, index = state.follow and 2 or 1 },
         { key = "ATTACK", label = "ATTACK", value = state.attack, kind = "setting",
@@ -126,9 +125,7 @@ end
 
 function Pad:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx ~= 1 then return end
-    state.patch = step(self.PATCHES, state.patch, delta)
-    local patch = self:getPatch(state)
-    if patch then Looper:showToast("PAD PATCH: " .. patch.label) end
+    Patches.step(self, state, delta)
     if not quiet then self:previewRowSound(state, rowIdx) end
 end
 
@@ -136,8 +133,7 @@ end
 function Pad:previewRowSound(state, rowIdx)
     if rowIdx ~= 1 or not self:getPatch(state) then return end
     local root = Theory:getPadVoicing(Harmony:tonic(), "OPEN", 0)[1]
-    local v = Synth:noteOn(state.patch, root, 0.6, { attack = 0.03, release = 0.5, bright = state.bright, move = state.move })
-    if v then Synth:schedule(0.45, function() v:noteOff() end) end
+    Patches.preview(self, state, root, 0.6, { attack = 0.03, release = 0.5, bright = state.bright, move = state.move }, 0.45)
 end
 
 function Pad:cycleSetting(state, key, delta)
@@ -240,7 +236,7 @@ function Pad:startNote(ev, state, track, notes, chord, bright, move)
     -- starts a moment later): changes of this one move a following note
     note.exact = Harmony:chordAt(Looper.tick, 0)
     for i, semis in ipairs(notes) do
-        local v = Synth:noteOn(state.patch, semis, vel, {
+        local v = Patches.noteOn(self, state, semis, vel, {
             track = track,
             attack = attack,
             release = self:getReleaseTime(state),
@@ -397,9 +393,7 @@ end
 
 function Pad:loadState(state, data)
     if type(data) ~= "table" then return end
-    for _, p in ipairs(self.PATCHES) do
-        if data.patch == p then state.patch = p end
-    end
+    Patches.load(self, state, data.patch)
     for _, a in ipairs(self.ATTACKS) do
         if data.attack == a then state.attack = a end
     end

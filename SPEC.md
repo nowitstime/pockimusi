@@ -215,7 +215,22 @@ Erasing or swapping away the chord source makes followers fall back (live chord,
 Two shared pools:
 
 1. **One-shot pool** — drum hits, perc, FX. Any drum pad can hold any one-shot. ✅ 24-sound catalogue and six kits (808 Classic, 909 House, Lo-Fi, Acoustic, Latin, Industrial; a changed pad marks the kit with `*`).
-2. **Pitched patch pool** 📐 — each patch has a *one-shot* form and a *sustain* form (§9.2). Shared by Chord Harp, Bass, Pad and Lead/Arp. Initial patches: Rhodes-ish, pluck/harp, saw bass, sub, square lead, warm pad, glass bell, choir, drone (the last four from the old Grain textures).
+2. **Pitched patch pool** ✅ — one catalogue (`src/synth/synths_bank.lua`) shared by Chord Harp, Bass, Pad and Lead/Arp. A patch has an *attack one-shot*, a *seamless loop*, or both (§9.2), and each instrument's `PATCH` row lists the whole pool with its own group first.
+
+   | Group | Patches |
+   | :-- | :-- |
+   | `BASS` | `SAW`, `SUB`, `PLUCK`, `808` |
+   | `LEAD` | `SQUARE`, `SAW`, `PLUCK`, `KEYS` |
+   | `PAD` | `WARM`, `BELL`, `CHOIR`, `DRONE`, `STRINGS` |
+   | `PLUCK` | `HARP`, `NYLON`, `RHODES`, `KALIMBA`, `SILENT` |
+   | `ODD` | `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM` |
+
+   - **Restrictions come from what a patch has, not from who owns it.** The Pad needs a loop, so it skips the one-shot patches (`HARP`, `NYLON`, `KALIMBA`, `GONG`, `REVERSE`). `SILENT` is offered only to chord instruments (the Chord Harp): the chords still drive the followers. A patch without a bright layer plays on the Pad with the brightness control doing nothing.
+   - **A patch says how it behaves** and instruments read that: `rings` (notes ring out by themselves and overlap) or `sustains` (a note lasts as long as it is held). Bass and Lead are mono on a sustaining patch and overlap on a ringing one. The Chord Harp, whose presses have no length, lets a ringing patch ring and holds a sustaining one for 0.35 s.
+   - **Register belongs to the instrument.** A patch stores the octave its 0 semitones plays; the instrument's register (Bass C3, the others C4) moves any patch into its own octave.
+   - **Voice count belongs to the instrument** (Bass 6, Lead 8, Harp 8, Pad 12); a patch's pools grow to what is asked.
+   - **Generated on first use.** Only the eleven original patches are generated at boot; the others when first selected or loaded, so the boot time doesn't grow with the catalogue.
+   - Adding a patch = one entry in the catalogue; every instrument that can play it lists it.
 
 Goal: swapping the patch changes how the part sits with the drums **without changing how you play it**.
 
@@ -237,6 +252,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 - ✅ Chords on the D-pad (§3.3); each face button plucks one string of the chord (`B` root, `A`, `Y`, `X` top). One press, one note.
 - ✅ Shoulders = voicing octave; both = wide voicing. Colour on the `COLOUR` row.
+- ✅ Rows: `PATCH` (the sound pool, §6, starting on `HARP`; `SILENT` makes it a chord track that isn't heard), `COLOUR`.
 - ✅ Every harp event stores its chord relative to the key (root offset, 3rd, 5th, 7th, suffix, numeral, colour, recording key); a key change transposes recorded notes and chords. The lowest-numbered harp track with chords is the **chord source** for Harmony (§5).
 - 📐 Strumming is planned as a separate instrument, with Lead/Arp (§7.5).
 
@@ -246,7 +262,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ **Held notes:** a note sounds while its button is held and releases on button-up (§9.2). `SAW`/`SUB` are mono (a new press ends the previous note, exactly at the new note's start); `PLUCK` notes overlap.
 - ✅ Face buttons = articulations only: `B` hold, `A` legato (glides from the held note without a new attack, or from the last note), `Y` staccato (one step of the track's grid), `X` accent with vibrato. The old `Y` +octave and `X` +fifth shortcuts go: `R1` is the octave and degree 5 is on the D-pad.
 - ✅ Moving the D-pad or shoulders while holding a note **glides** to the new pitch at the track's glide speed; recorded as `bend` keyframes and replayed. After letting go, the fading tail keeps following D-pad directions (not neutral), also recorded. Glide points show as ticks on the tape-deck ribbon.
-- ✅ Rows: `PATCH` (`SAW`, `SUB`, `PLUCK`; `PLUCK` notes overlap and ring), `GLIDE` (fast / medium / slow), `FOLLOW` (on / off: degrees are played over the current chord, §5).
+- ✅ Rows: `PATCH` (the sound pool, §6, starting on `SAW`; ringing patches such as `PLUCK` overlap), `GLIDE` (fast / medium / slow), `FOLLOW` (on / off: degrees are played over the current chord, §5).
 
 ### 7.4 Pad ✅ (replaces Grain; details: [PHASE_E.md](PHASE_E.md))
 
@@ -254,7 +270,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ `L1/R1` = octave, read at the press. With no harp chords the pad plays the key's I chord.
 - ✅ `FOLLOW ON`: a held or recorded chord glides to each new chord as it arrives. `FOLLOW OFF`: a held chord stays put and playback uses the notes as recorded (moved with the key).
 - ✅ D-pad = tone, and the values stay where they are left: `↑/↓` brightness (the level of the patch's bright layer), `←/→` movement (slow per-note pitch drift, the bright layer detuned and shimmering). Sweeps while holding are recorded as keyframes on the event and replayed.
-- ✅ Rows: `PATCH` (`WARM`, `BELL`, `CHOIR`, `DRONE`), `FOLLOW`, `ATTACK` (fast / medium / slow), `RELEASE` (short / medium / long).
+- ✅ Rows: `PATCH` (the sound pool, §6, starting on `WARM`; patches with a loop only), `FOLLOW`, `ATTACK` (fast / medium / slow), `RELEASE` (short / medium / long).
 - ✅ Stage view: the chord, the shape and octave, one glowing line per sounding note, `BRIGHT` and `MOVE` bars.
 - ❓ After playing on the device: glide or re-attack on chord changes; values that spring back; `X` as a charge.
 
@@ -266,7 +282,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ Steps fall on the clock's grid at `ARP RATE` with the track's swing. A press within 45 ms of a step plays at once and counts as that step; a press between steps starts on the next one. With the clock paused the arp keeps its own time.
 - ✅ Each arp step is recorded as an ordinary note (degree, octave, pitch, 80 % of the step long) on the arp's own grid.
 - ✅ `L1/R1` octave; `L1 + R1` = arp rate ×2 while held. Notes too high for the voices drop an octave.
-- ✅ Rows: `PATCH` (`SQUARE`, `SAW`, `PLUCK`), `FOLLOW`, `ARP RATE` (1/8, 1/16, 1/8T), `ARP PATTERN` (`CHORD`, `CHORD 2 OCT`, `7TH`, `7TH 2 OCT`, `SCALE`).
+- ✅ Rows: `PATCH` (the sound pool, §6, starting on `SQUARE`), `FOLLOW`, `ARP RATE` (1/8, 1/16, 1/8T), `ARP PATTERN` (`CHORD`, `CHORD 2 OCT`, `7TH`, `7TH 2 OCT`, `SCALE`).
 - ✅ Bass ↔ Lead swaps keep the track's notes and grid (undoable like any swap).
 - ✅ Follow lookahead is under half a 1/32 for the Lead (a 1/16 for the Bass), so the arp step before a chord change keeps the old chord.
 - ❓ Arp latch; note length as a row; vibrato on long notes. 📐 Strumming stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)).
@@ -337,7 +353,9 @@ Event = {
 - A voice = attack (optional) + loop sources with an envelope (attack / release, per note if asked) driven in `Synth:update` via `setVolume`; pitch and glide via `setPitch`. Voices route through the track's effects like one-shots do.
 - API: `Synth:noteOn(patch, semis, vel, opts) → voice`, `voice:setPitch(semis)`, `voice:noteOff()`. One-shots keep using `Synth:trigger`.
 - Pad patches have a second **bright** loop layer (upper harmonics) paired with the main one: its level is the voice's brightness; the voice's movement drifts the pitch (±9 cents), detunes the bright layer (7 cents) and makes it shimmer.
-- Patches so far: `bass_saw`, `bass_sub`, `bass_pluck`, `lead_square`, `lead_saw`, `lead_pluck`, `pad_warm`, `pad_bell`, `pad_choir`, `pad_drone`. Loops contain only whole harmonics; bass patches have 6 to 8 loop sources, pad patches 12 per layer, and a patch steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the generation cost.
+- A patch with no loop layer is a **one-shot voice**: the same voice object, alive as long as its one-shot, so instruments handle both kinds the same way. `noteOff` cuts it over the patch's release.
+- `opts.register` moves a patch to the instrument's octave; `opts.voices` grows its pools. `Synth:preparePatch(id, voices)` generates a patch ahead of its first note.
+- The patches are listed in §6. Loops must repeat exactly: whole harmonics of the fundamental, or of the whole loop (`SWARM`: three saws on harmonics 191 to 193 of a 96-period loop, a few cents apart). Attack one-shots may hold anything (noise, inharmonic partials, pitch sweeps; `NYLON` is a Karplus-Strong string). A patch steals its oldest voice when full. `Synth.bootTimes` / `log.txt` report the boot's generation cost.
 
 ### 9.3 Effects & mix
 

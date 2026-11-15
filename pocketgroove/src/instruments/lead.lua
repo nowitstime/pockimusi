@@ -18,6 +18,7 @@ local Synth   = require("src.synth")
 local Looper  = require("src.looper")
 local Harmony = require("src.harmony")
 local Bass    = require("src.instruments.bass")
+local Patches = require("src.instruments.patches")
 
 local math_floor = math.floor
 local math_max   = math.max
@@ -30,7 +31,10 @@ local Lead = setmetatable({
     defaultGridIndex = 3, -- 1/16
     eventClass = "mono",
 
-    PATCHES = { "lead_square", "lead_saw", "lead_pluck" },
+    HOME_GROUP = "LEAD",
+    DEFAULT_PATCH = "lead_square",
+    REGISTER = 4,              -- 0 semitones = C4
+    VOICES = 8,
 
     -- Track page ARP RATE row: steps per bar
     RATES = { "1/8", "1/16", "1/8T" },
@@ -90,23 +94,17 @@ local function step(list, value, delta)
     return list[((indexOf(list, value) - 1 + delta) % #list) + 1]
 end
 
-
--- Picker items for a list row: plain labels, or patch ids shown by their label
-local function itemsOf(list, patches)
+-- Picker items for a list row of plain labels
+local function itemsOf(list)
     local items = {}
-    for i, v in ipairs(list) do
-        local patch = patches and Synth.patches[v]
-        items[i] = { label = patch and patch.label or v }
-    end
+    for i, v in ipairs(list) do items[i] = { label = v } end
     return items
 end
 local ON_OFF = { { label = "OFF" }, { label = "ON" } }
 
 function Lead:getSoundRows(state)
-    local patch = self:getPatch(state)
     return {
-        { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
-          items = itemsOf(self.PATCHES, true), index = indexOf(self.PATCHES, state.patch) },
+        Patches.row(self, state),
         { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
           items = ON_OFF, index = state.follow and 2 or 1 },
         { key = "RATE", label = "ARP RATE", value = state.rate, kind = "setting",
@@ -118,16 +116,13 @@ end
 
 function Lead:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx ~= 1 then return end
-    state.patch = step(self.PATCHES, state.patch, delta)
-    local patch = self:getPatch(state)
-    if patch then Looper:showToast("LEAD PATCH: " .. patch.label) end
+    Patches.step(self, state, delta)
     if not quiet then self:previewRowSound(state, rowIdx) end
 end
 
 function Lead:previewRowSound(state, rowIdx)
-    if rowIdx ~= 1 or not self:getPatch(state) then return end
-    local v = Synth:noteOn(state.patch, Theory:getRootSemis(), 0.8, {})
-    if v then Synth:schedule(0.25, function() v:noteOff() end) end
+    if rowIdx ~= 1 then return end
+    Patches.preview(self, state, Theory:getRootSemis(), 0.8, nil, 0.25)
 end
 
 function Lead:cycleSetting(state, key, delta)
@@ -201,14 +196,13 @@ end
 -- Sound: as the bass, without the accent vibrato
 -- ---------------------------------------------------------------------------
 function Lead:startVoice(ev, state, track, semis, glideFrom)
-    local patch = self:getPatch(state)
     semis = semis or ev.semis or 0
     if glideFrom == nil then glideFrom = ev.glideFrom end
-    return Synth:noteOn(state.patch, semis, ev.vel or 0.85, {
+    return Patches.noteOn(self, state, semis, ev.vel or 0.85, {
         track = track,
         glideFrom = glideFrom,
         glideRate = self:getGlideRate(state),
-    }) or (patch and patch.attack and Synth:trigger(patch.attack, semis, ev.vel or 0.85, 1.0, nil, track.volume, track))
+    })
 end
 
 -- ---------------------------------------------------------------------------
@@ -244,7 +238,7 @@ end
 -- Start a note; a mono patch ends the one before, exactly where this starts
 function Lead:startHeld(state, track, hold, ev, opts, chord)
     local patch = self:getPatch(state)
-    local mono = not (patch and patch.overlap)
+    local mono = not (patch and patch.rings)
     local prev = state.handles[#state.handles]
     local cut = mono and prev and physicallyHeld(prev)
     if cut then prev:release() end
@@ -406,9 +400,7 @@ end
 
 function Lead:loadState(state, data)
     if type(data) ~= "table" then return end
-    for _, p in ipairs(self.PATCHES) do
-        if data.patch == p then state.patch = p end
-    end
+    Patches.load(self, state, data.patch)
     for _, r in ipairs(self.RATES) do
         if data.rate == r then state.rate = r end
     end

@@ -63,7 +63,18 @@ function Synth:createPool(name, soundData, poolSize, baseDuration)
         cursor = 1,
         size = poolSize,
         baseDuration = baseDuration,
+        data = soundData,
     }
+end
+
+-- Add sources to a one-shot pool until it has `size`
+function Synth:growPool(name, size)
+    local pool = self.pools[name]
+    if not pool or not pool.data then return end
+    for i = pool.size + 1, size do
+        pool.voices[i] = love.audio.newSource(pool.data, "static")
+    end
+    pool.size = math.max(pool.size, size)
 end
 
 function Synth:init()
@@ -71,19 +82,19 @@ function Synth:init()
     local function whiteNoise()
         return rng:random() * 2.0 - 1.0
     end
+    self.whiteNoise = whiteNoise         -- for patches generated later
 
     local t0 = love.timer.getTime()
     DrumsBank.build(self, whiteNoise)
     local t1 = love.timer.getTime()
-    SynthsBank.build(self, whiteNoise)
+    SynthsBank.build(self)
     local t2 = love.timer.getTime()
-    SynthsBank.buildSustain(self)
-    local t3 = love.timer.getTime()
     self:initTrackFx()
-    -- Boot cost, printed to the PortMaster log (log.txt) on the device
-    self.bootTimes = { drums = t1 - t0, synths = t2 - t1, sustain = t3 - t2, total = t3 - t0 }
-    print(string.format("[PocketGroove] sound generation: drums %.2fs, synths %.2fs, sustain loops %.2fs, total %.2fs",
-        t1 - t0, t2 - t1, t3 - t2, t3 - t0))
+    -- Boot cost, printed to the PortMaster log (log.txt) on the device. Only
+    -- the core patches are generated here; the rest on first use.
+    self.bootTimes = { drums = t1 - t0, patches = t2 - t1, total = t2 - t0 }
+    print(string.format("[PocketGroove] sound generation: drums %.2fs, patches %.2fs, total %.2fs",
+        t1 - t0, t2 - t1, t2 - t0))
 end
 
 -- ============================================================================
@@ -221,6 +232,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
     -- Evict any old active voice using this source before reusing it
     for i = #self.activeVoices, 1, -1 do
         if self.activeVoices[i].source == src then
+            self.activeVoices[i].evicted = true
             table.remove(self.activeVoices, i)
         end
     end
@@ -279,7 +291,7 @@ function Synth:update(dt)
             end
             for i = 1, #self.sustainVoices do
                 local v = self.sustainVoices[i]
-                self:applyFilter(v.loopSrc, v.track)
+                if v.loopSrc then self:applyFilter(v.loopSrc, v.track) end
                 if v.brightSrc then self:applyFilter(v.brightSrc, v.track) end
             end
         end
@@ -332,7 +344,7 @@ function Synth:updateMeters(dt)
     end
     for i = 1, #self.sustainVoices do
         local v = self.sustainVoices[i]
-        if v.alive then
+        if v.alive and v.loopSrc then     -- (a one-shot voice is counted above)
             local g = v:envelope() * v.vel * v.trackVolume * common
             local p = g * g * (1.0 + (v.brightSrc and v.brightNow * v.brightNow or 0.0))
             local slot = v.track and v.track.slot

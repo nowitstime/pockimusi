@@ -36,10 +36,21 @@ local Install = {}
 -- Loop buffers
 -- ---------------------------------------------------------------------------
 
--- Build a seamless loop at `freq` Hz from `wave(angle)`, a function of the
--- fundamental's angle (radians) that must only contain whole harmonics.
--- Returns soundData, the number of samples, and the tuning correction in
--- semitones (the loop's real frequency is snapped to SAMPLE_RATE / period).
+-- The tuning correction (semitones) for a loop at `freq` Hz: the loop's real
+-- frequency is snapped to SAMPLE_RATE / period
+function Install.loopTune(Synth, freq)
+    local sr = Config.SAMPLE_RATE
+    local period = math_max(2, math_floor(sr / freq + 0.5))
+    return 12.0 * math_log(freq / (sr / period)) / math_log(2.0)
+end
+
+-- Build a seamless loop at `freq` Hz from `wave(angle, loopAngle)`.
+--   angle      the fundamental's angle (radians): use whole harmonics of it
+--   loopAngle  the angle of the whole loop (one turn over all `periods`):
+--              whole harmonics of it also loop, and sit between the
+--              fundamental's harmonics (detuned partials that beat once per
+--              loop, or a timbre that changes over the loop)
+-- Returns soundData, the number of samples, and the tuning correction.
 function Install.createLoop(Synth, freq, periods, wave)
     local sr = Config.SAMPLE_RATE
     local period = math_max(2, math_floor(sr / freq + 0.5))
@@ -47,35 +58,85 @@ function Install.createLoop(Synth, freq, periods, wave)
     local sd = love.sound.newSoundData(n, sr, 16, 1)
     local twoPi = Config.TWO_PI
     for i = 0, n - 1 do
-        sd:setSample(i, clamp(wave(twoPi * i / period), -1.0, 1.0))
+        sd:setSample(i, clamp(wave(twoPi * i / period, twoPi * i / n), -1.0, 1.0))
     end
-    local actual = sr / period
-    local tune = 12.0 * math_log(freq / actual) / math_log(2.0)
-    return sd, n, tune
+    return sd, n, Install.loopTune(Synth, freq)
 end
 
 -- A pool of looping sources for a patch's loop layer
 function Install.createLoopPool(Synth, name, soundData, size)
-    local sources = {}
-    for i = 1, size do
-        local src = love.audio.newSource(soundData, "static")
-        src:setLooping(true)
-        sources[i] = src
-    end
-    Synth.loopPools[name] = { sources = sources, inUse = {} }
+    Synth.loopPools[name] = { sources = {}, inUse = {}, data = soundData }
+    Install.growLoopPool(Synth, name, size)
 end
 
--- Register a sustaining patch
+function Install.growLoopPool(Synth, name, size)
+    local pool = Synth.loopPools[name]
+    if not pool or not pool.data then return end
+    for i = #pool.sources + 1, size do
+        local src = love.audio.newSource(pool.data, "static")
+        src:setLooping(true)
+        pool.sources[i] = src
+    end
+end
+
+-- Register a patch (the pitched sound pool, SPEC §6)
 --   attack   name of the one-shot pool played at note start (optional)
---   loop     name of the loop pool
+--   loop     name of the loop pool (optional: without it the patch is a
+--            one-shot that rings out)
 --   bright   name of the bright layer's loop pool (optional; same size as
 --            `loop`, sources paired by index)
 --   tune     semitone correction for the loop layer (from createLoop)
 --   sustain  loop level (0..1) relative to the note's velocity
 --   xfade    seconds for the loop to fade in under the attack
 --   release  seconds to fade out after noteOff
+--   octave   the octave of C that 0 semitones plays (default 4); an
+--            instrument's `register` moves the patch to its own octave
+--   overlap  true = notes ring over each other
+--   silent   true = makes no sound (a chord track that isn't heard)
+--   label, full, group   names for the Track page picker
+--   gen      how to generate the buffers, on first use (preparePatch):
+--            { attack = { dur, voices, fn(t) | make(Synth) -> fn }, freq,
+--              loop = fn(angle, loopAngle), bright = fn(...), voices }
+-- What instruments may ask of a patch (set here):
+--   rings     notes ring on by themselves (overlap, or no loop)
+--   sustains  a note lasts as long as it is held
 function Install.definePatch(Synth, id, def)
+    def.id = id
+    def.tune = def.tune or 0.0
+    def.rings = (def.overlap or not def.loop) and not def.silent or false
+    def.sustains = (def.loop ~= nil) and not def.overlap
+    def.built = (def.gen == nil)
+    if not Synth.patches[id] then Synth.patchOrder[#Synth.patchOrder + 1] = id end
     Synth.patches[id] = def
+end
+
+-- Make sure a patch's buffers exist, with at least `voices` voices. Patches
+-- are generated the first time they are needed, so the boot only pays for
+-- the sounds in use.
+function Install.preparePatch(Synth, id, voices)
+    local p = Synth.patches[id]
+    if not p or p.silent then return p end
+    local gen = p.gen
+    if gen and not p.built then
+        p.built = true
+        if gen.attack then
+            local fn = gen.attack.fn or gen.attack.make(Synth)
+            local sd = Synth:createBuffer(gen.attack.dur, fn)
+            Synth:createPool(p.attack, sd, math_max(gen.attack.voices or 8, voices or 0), gen.attack.dur)
+        end
+        local n = math_max(gen.voices or 6, voices or 0)
+        if gen.loop then
+            Synth:createLoopPool(p.loop, (Synth:createLoop(gen.freq, gen.periods or 24, gen.loop)), n)
+        end
+        if gen.bright then
+            Synth:createLoopPool(p.bright, (Synth:createLoop(gen.freq, gen.periods or 24, gen.bright)), n)
+        end
+    elseif voices then
+        if p.attack then Synth:growPool(p.attack, voices) end
+        if p.loop then Synth:growLoopPool(p.loop, voices) end
+        if p.bright then Synth:growLoopPool(p.bright, voices) end
+    end
+    return p
 end
 
 -- ---------------------------------------------------------------------------
@@ -86,35 +147,44 @@ local function semisToRatio(semis)
     return clamp(2.0 ^ (semis / 12.0), 0.125, 8.0)
 end
 
--- Start a sustained note.
+-- Start a note.
 -- opts: { track, glideFrom, glideRate, vibrato,
 --         attack, release   seconds, instead of the patch's xfade / release
 --         bright, move      0..1: bright layer level, drift and shimmer depth
---         noAttack          true = skip the patch's attack one-shot }
--- Returns the voice, or nil if the patch doesn't exist.
+--         noAttack          true = skip the patch's attack one-shot
+--         register          the instrument's octave of C at 0 semitones
+--         voices            how many voices the instrument needs
+--         decay             length of a one-shot patch (as Synth:trigger) }
+-- Returns the voice, or nil if the patch doesn't exist or is silent.
+-- A patch without a loop gives a voice that is only its one-shot.
 function Install.noteOn(Synth, patchId, semis, vel, opts)
     local patch = Synth.patches[patchId]
-    if not patch then return nil end
+    if not patch or patch.silent then return nil end
     opts = opts or {}
-    local pool = Synth.loopPools[patch.loop]
+    Synth:preparePatch(patchId, opts.voices)
+    local pool = patch.loop and Synth.loopPools[patch.loop]
+    local shift = opts.register and (opts.register - (patch.octave or 4)) * 12 or 0
 
     -- Free loop source, or steal this patch's oldest voice
-    local idx
-    for i, s in ipairs(pool.sources) do
-        if not pool.inUse[s] then idx = i break end
-    end
-    if not idx then
-        local oldest
-        for _, v in ipairs(Synth.sustainVoices) do
-            if v.patch == patch and (not oldest or v.age > oldest.age) then oldest = v end
+    local idx, src, brightSrc = 0, nil, nil
+    if pool then
+        idx = nil
+        for i, s in ipairs(pool.sources) do
+            if not pool.inUse[s] then idx = i break end
         end
-        oldest:kill()
-        idx = oldest.srcIndex
+        if not idx then
+            local oldest
+            for _, v in ipairs(Synth.sustainVoices) do
+                if v.patch == patch and (not oldest or v.age > oldest.age) then oldest = v end
+            end
+            oldest:kill()
+            idx = oldest.srcIndex
+        end
+        src = pool.sources[idx]
+        pool.inUse[src] = true
+        local brightPool = patch.bright and Synth.loopPools[patch.bright]
+        brightSrc = brightPool and brightPool.sources[idx] or nil
     end
-    local src = pool.sources[idx]
-    pool.inUse[src] = true
-    local brightPool = patch.bright and Synth.loopPools[patch.bright]
-    local brightSrc = brightPool and brightPool.sources[idx] or nil
 
     local track = opts.track
     local startSemis = opts.glideFrom or semis
@@ -130,6 +200,7 @@ function Install.noteOn(Synth, patchId, semis, vel, opts)
         trackVolume = track and track.volume or 1.0,
         currentSemis = startSemis,
         targetSemis = semis,
+        shift = shift,                 -- the instrument's register against the patch's
         glideRate = opts.glideRate or 18.0,
         vibrato = opts.vibrato or false,
         attackTime = opts.attack or patch.xfade,
@@ -146,14 +217,17 @@ function Install.noteOn(Synth, patchId, semis, vel, opts)
     }, Voice)
 
     -- Attack layer: the patch's one-shot, glided the same way
-    if patch.attack and not opts.noAttack then
-        v.attack = Synth:trigger(patch.attack, semis, v.vel, patch.attackDecay or 1.0, opts.glideFrom, v.trackVolume, track)
+    if patch.attack and not (opts.noAttack and pool) then
+        v.attack = Synth:trigger(patch.attack, semis + shift, v.vel, opts.decay or patch.attackDecay or 1.0,
+                                 opts.glideFrom and (opts.glideFrom + shift), v.trackVolume, track)
+        if v.attack and not pool then v.attack.vibrato = v.vibrato end
     end
+    if not pool and not (v.attack and v.attack.elapsed) then return nil end    -- nothing to play
 
     for _, s in ipairs({ src, brightSrc }) do
         s:stop()
         Synth:applyTrackFx(s, track)
-        s:setPitch(semisToRatio(startSemis + patch.tune))
+        s:setPitch(semisToRatio(startSemis + shift + patch.tune))
         s:setVolume(0.0)
         s:play()
     end
@@ -167,7 +241,7 @@ function Voice:setPitch(semis)
     self.targetSemis = semis
     if self.attack then
         self.attack.hasGlide = true
-        self.attack.targetSemis = semis
+        self.attack.targetSemis = semis + self.shift
     end
 end
 
@@ -195,9 +269,11 @@ end
 function Voice:kill()
     if not self.alive then return end
     self.alive = false
-    self.loopSrc:stop()
+    if self.loopSrc then
+        self.loopSrc:stop()
+        self.pool.inUse[self.loopSrc] = nil
+    end
     if self.brightSrc then self.brightSrc:stop() end
-    self.pool.inUse[self.loopSrc] = nil
     if self.attack and self.attack.source then self.attack.maxLife = 0 end
 end
 
@@ -205,8 +281,19 @@ function Voice:isSounding()
     return self.alive
 end
 
+-- A one-shot voice lasts as long as its one-shot
+local function attackSounding(a)
+    return a and a.elapsed and not a.evicted and a.elapsed < a.maxLife and a.source:isPlaying()
+end
+
 -- Loop level for this frame (0..1, before velocity and mix)
 function Voice:envelope()
+    if not self.loopSrc then
+        local a = self.attack
+        if not attackSounding(a) then return 0.0 end
+        local left = 1.0 - a.elapsed / a.maxLife
+        return left * left
+    end
     if self.releasedAt then
         return self.releaseFrom * math_max(0.0, 1.0 - (self.age - self.releasedAt) / math_max(self.releaseTime, 0.001))
     end
@@ -226,12 +313,15 @@ function Install.updateVoices(Synth, dt)
             -- movement: a slow drift of up to DRIFT semitones either way
             local lfo = v.age * v.lfoRate * TWO_PI + v.lfoPhase
             local drift = (v.move > 0.0) and (math_sin(lfo) * v.move * Voice.DRIFT) or 0.0
-            local pitch = v.currentSemis + vib + drift + fxPitch + v.patch.tune
-            v.loopSrc:setPitch(semisToRatio(pitch))
-
+            local pitch = v.currentSemis + v.shift + vib + drift + fxPitch + v.patch.tune
             local level = v:envelope()
             local gain = level * v.vel * v.trackVolume * Synth.masterVolume * Synth.duckEnvelope
-            v.loopSrc:setVolume(clamp(gain, 0.0, 1.0))
+            if v.loopSrc then
+                v.loopSrc:setPitch(semisToRatio(pitch))
+                v.loopSrc:setVolume(clamp(gain, 0.0, 1.0))
+            elseif not attackSounding(v.attack) then
+                v:kill()                      -- a one-shot voice ends with its one-shot
+            end
 
             if v.brightSrc then
                 -- bright layer: level = brightness (smoothed), detuned against
@@ -241,7 +331,7 @@ function Install.updateVoices(Synth, dt)
                 v.brightSrc:setPitch(semisToRatio(pitch + v.move * Voice.DETUNE))
                 v.brightSrc:setVolume(clamp(gain * v.brightNow * shimmer, 0.0, 1.0))
             end
-            if v.releasedAt and level <= 0.0 then
+            if v.loopSrc and v.releasedAt and level <= 0.0 then
                 v:kill()
             end
         end
@@ -260,6 +350,7 @@ end
 -- ---------------------------------------------------------------------------
 function Voice.install(Synth)
     Synth.patches = Synth.patches or {}
+    Synth.patchOrder = Synth.patchOrder or {}      -- ids in the order they were defined
     Synth.loopPools = Synth.loopPools or {}
     Synth.sustainVoices = Synth.sustainVoices or {}
     for name, fn in pairs(Install) do

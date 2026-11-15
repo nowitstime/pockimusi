@@ -266,7 +266,7 @@ Small pieces that several ideas need. None is required by the roadmap, so each i
 
 ## 7. How the lab works
 
-1. **Prototype rough.** A lab instrument is one file in `src/instruments/` with `lab = true`, a plain stage view (labels only) and one patch. No polish until it has earned a slot.
+1. **Prototype rough.** A lab instrument is one file in `src/instruments/` with `lab = true`, a plain stage view (labels only) and one default patch. It gets the whole sound pool by declaring what it needs (`HOME_GROUP`, `DEFAULT_PATCH`, `REGISTER`, `VOICES`; see `src/instruments/patches.lua`), and can read `patch.rings` / `patch.sustains` to let the patch decide its behaviour (Pick's pluck or bow). No polish until it has earned a slot.
 2. **Hidden by default.** Lab instruments appear in the Track page swap list only when a `LAB` switch in `config.lua` is on, so the normal list stays short. With `LEFT/RIGHT` stepping through the catalog one at a time, the main library should stay at about six.
 3. **Saves must survive a deleted experiment.** Today an unknown instrument id falls back to Drums (`Instruments:getDefinition`), which would play a deleted experiment's notes as drum hits. Phase C2 should load a track with an unknown instrument as an empty track of the default instrument instead.
 4. **Tests as usual.** Each prototype gets a test file for its input → events mapping; the feel is judged on the device.

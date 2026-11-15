@@ -29,19 +29,22 @@ return {
     -- ------------------------------------------------------------------
     -- B2: patches and rows
     -- ------------------------------------------------------------------
-    { "three bass patches with attack pools and loops", function()
+    { "the bass's own patches come first in its list, with attack pools and loops", function()
         local M = H.loadMain()
         local S = M.Synth
         local Bass = M.Instruments:getDefinition("bass")
+        local list = require("src.instruments.patches").list(Bass)
         local labels = {}
-        for _, id in ipairs(Bass.PATCHES) do
-            local p = S.patches[id]
-            H.truthy(p, id .. " defined")
+        for i = 1, 4 do
+            local id = list[i]
+            local p = S:preparePatch(id)
+            H.eq(p.group, "BASS", id .. " is a bass patch")
             H.truthy(S.pools[p.attack], id .. " attack pool")
             H.truthy(S.loopPools[p.loop], id .. " loop pool")
             labels[#labels + 1] = p.label
         end
-        H.eq(table.concat(labels, " "), "SAW SUB PLUCK", "labels in order")
+        H.eq(table.concat(labels, " "), "SAW SUB PLUCK 808", "labels in order")
+        H.truthy(S.patches[list[5]].group ~= "BASS", "then the other groups")
         H.truthy(S.patches.bass_pluck.overlap, "PLUCK overlaps")
         H.falsy(S.patches.bass_saw.overlap or S.patches.bass_sub.overlap, "SAW and SUB are mono")
         H.truthy(S.patches.bass_pluck.release > S.patches.bass_saw.release, "PLUCK rings longer")
@@ -59,7 +62,7 @@ return {
         H.eq(rows[2].kind, "setting", "glide is a setting row")
     end },
 
-    { "RIGHT on PATCH steps SAW -> SUB -> PLUCK -> SAW and previews each", function()
+    { "RIGHT on PATCH steps SAW -> SUB -> PLUCK -> 808 and previews each; LEFT goes back", function()
         local M, L, track = boot()
         local seen = triggersOf(M.Synth)
         local got = {}
@@ -68,10 +71,12 @@ return {
                 H.tap("RIGHT")
                 got[#got + 1] = track.state.patch
             end
+            H.eq(table.concat(seen, " "), "bass_sub bass_pluck bass_808", "a preview of each attack")
+            for _ = 1, 3 do H.tap("LEFT") end
         end)
-        H.eq(table.concat(got, " "), "bass_sub bass_pluck bass_saw", "order")
-        H.eq(table.concat(seen, " "), "bass_sub bass_pluck bass", "a preview of each attack")
-        H.eq(L.toastText, "BASS PATCH: SAW", "toast")
+        H.eq(table.concat(got, " "), "bass_sub bass_pluck bass_808", "order")
+        H.eq(track.state.patch, "bass_saw", "back on SAW")
+        H.eq(L.toastText, "BASS PATCH: SAW BASS", "toast")
     end },
 
     { "LEFT/RIGHT on GLIDE steps FAST / MEDIUM / SLOW without a preview", function()

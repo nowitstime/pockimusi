@@ -6,6 +6,7 @@ local Theory = require("src.theory")
 local Input  = require("src.input")
 local Synth  = require("src.synth")
 local Looper = require("src.looper")
+local Patches = require("src.instruments.patches")
 
 local math_max   = math.max
 
@@ -14,14 +15,24 @@ local Harp = {
     name = "CHORD HARP",
     shortName = "HARP",
     title = "OMNICHORD HARP",
-    patchName = "STARLIGHT PLUCK",
     defaultGridIndex = 5, -- FREE
+    -- Track page PATCH row: the sound pool (src/instruments/patches.lua)
+    HOME_GROUP = "PLUCK",
+    DEFAULT_PATCH = "harp",
+    REGISTER = 4,              -- 0 semitones = C4
+    VOICES = 8,
+    ALLOW_SILENT = true,       -- a chord track that isn't heard
+    -- A press has no length. Patches that ring are left to ring; a patch that
+    -- sustains is held for this long, then released.
+    GATE = 0.35,
+    RING = 1.6,
     BUTTON_TO_INDEX = { B = 1, A = 2, Y = 3, X = 4 },
 }
 
 function Harp:newState()
     return {
         currentChord = nil,
+        patch = "harp",            -- Track page PATCH row
         colour = "TRIAD",          -- Track page COLOUR row (Theory.COLOURS)
         strings = {
             { button = "B", label = "STR 1 (ROOT)", energy = 0.0, phase = 0.0, lastSemis = 0 },
@@ -51,11 +62,26 @@ end
 -- ---------------------------------------------------------------------------
 -- Track page rows: one sound row (PATCH) and the COLOUR setting
 -- ---------------------------------------------------------------------------
+function Harp:getPatch(state)
+    return Patches.get(self, state)
+end
+
+function Harp:cycleRowSound(state, rowIdx, delta, quiet)
+    if rowIdx ~= 1 then return end
+    Patches.step(self, state, delta)
+    if not quiet then self:previewRowSound(state, rowIdx) end
+end
+
+function Harp:previewRowSound(state, rowIdx)
+    if rowIdx ~= 1 then return end
+    self:pluck(state, nil, Theory:getRootSemis(), 0.82, 1.0)
+end
+
 function Harp:getSoundRows(state)
     local colours = {}
     for i, c in ipairs(Theory.COLOURS) do colours[i] = { label = c } end
     return {
-        { key = "PATCH", label = "PATCH", value = self.title, items = { { label = self.title } }, index = 1 },
+        Patches.row(self, state),
         { key = "COLOUR", label = "COLOUR", value = state.colour, kind = "setting",
           items = colours, index = self:colourIndex(state) },
     }
@@ -101,10 +127,23 @@ function Harp:chordData(chord)
              borrowed = chord.borrowed or nil, key = Theory:getRootSemis() }
 end
 
+-- One string. Without a sound pool (no Synth:init) it is the plain one-shot.
+function Harp:pluck(state, track, semis, vel, decay)
+    local patch = self:getPatch(state)
+    if not patch then
+        return Synth:trigger("harp", semis, vel, decay, nil, track and track.volume, track)
+    end
+    local v = Patches.noteOn(self, state, semis, vel, { track = track, decay = decay })
+    if v and v.loopSrc then
+        Synth:schedule((patch.rings and self.RING or self.GATE) * decay, function() v:noteOff() end)
+    end
+    return v
+end
+
 function Harp:noteOn(ev, state, track)
     -- recorded in another key: play it in this one
     local semis = (ev.semis or 0) + Theory:keyShift(ev.chord and ev.chord.key)
-    Synth:trigger("harp", semis, ev.vel or 0.85, ev.decay or 1.0, nil, track.volume, track)
+    self:pluck(state, track, semis, ev.vel or 0.85, ev.decay or 1.0)
     local str = state.strings[self.BUTTON_TO_INDEX[ev.action] or 1]
     if str then
         str.energy = 1.0
@@ -114,11 +153,12 @@ end
 
 -- Save / load (Phase C)
 function Harp:saveState(state)
-    return { colour = state.colour }
+    return { colour = state.colour, patch = state.patch }
 end
 
 function Harp:loadState(state, data)
     if type(data) ~= "table" then return end
+    Patches.load(self, state, data.patch)
     for _, c in ipairs(Theory.COLOURS) do
         if data.colour == c then state.colour = c end
     end

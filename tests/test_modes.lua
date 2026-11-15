@@ -259,11 +259,13 @@ return {
         H.release("SELECT"); H.play(0.1)
     end },
 
-    { "Track page: LEFT/RIGHT on a PATCH-only row just shows a toast", function()
+    { "Track page: LEFT/RIGHT on the harp's PATCH row steps through the sound pool", function()
         local _, L = boot()
-        H.tap("SELECT")                                  -- track 2 = harp (one patch)
+        H.tap("SELECT")                                  -- track 2 = harp
+        H.eq(L.tracks[2].state.patch, "harp", "starts on its own sound")
         H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.release("SELECT"); H.play(0.1)
-        H.eq(L.toastText, "CHORD HARP: ONE PATCH FOR NOW", "toast")
+        H.eq(L.tracks[2].state.patch, "pluck_nylon", "the next sound in its group")
+        H.eq(L.toastText, "HARP PATCH: NYLON STRING", "toast")
     end },
 
     { "every list row has items and an index inside them; number rows have an amount", function()
