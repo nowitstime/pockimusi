@@ -1123,31 +1123,103 @@ end
 
 Chrome.ROWS_SHOWN = 6
 
--- The instruments as tabs across the top of the Track page: the track's own
--- is outlined; one previewed with L1 / R1 is filled until SELECT is released
+-- The instruments as a carousel across the top of the Track page. The
+-- selected one (the instrument previewed with L1 / R1, else the track's own)
+-- sits in the centre; the others run out to both sides as a ring and fade
+-- towards the edges. A step slides the strip under the centre.
+Chrome.TAB_PITCH = 46          -- pixels from one tab's centre to the next
+Chrome.TAB_REACH = 2.5         -- tabs further than this from the centre aren't drawn
+Chrome.TAB_SLIDE = 0.1         -- seconds for the strip to reach its new place
+
+-- Catalogue position of the tab that belongs in the centre
+function Chrome:selectedTab(track)
+    local id = Modes.trackPage.pending or track.instrumentId
+    for i, inst in ipairs(Instruments.catalog) do
+        if inst.id == id then return i end
+    end
+    return 1
+end
+
+-- The tabs in view when the strip stands at catalogue position `pos` (a
+-- fraction while it slides), left to right: { inst, d, x, alpha } with d =
+-- tabs from the centre. No instrument appears twice, however few there are.
+function Chrome:tabLayout(pos)
+    local catalog = Instruments.catalog
+    local n = #catalog
+    local reach = math_min(self.TAB_REACH, n * 0.5)
+    local base = math_floor(pos + 0.5)
+    local out = {}
+    for k = -3, 3 do
+        local d = (base + k) - pos
+        if math_abs(d) < reach then
+            out[#out + 1] = {
+                inst = catalog[((base + k - 1) % n) + 1],
+                d = d,
+                x = 320 + d * self.TAB_PITCH,
+                alpha = clamp((reach - math_abs(d)) / 1.2, 0.0, 1.0),
+            }
+        end
+    end
+    return out
+end
+
+-- Where the strip stands this frame: it slides the short way round the ring
+-- to the selected tab, and starts in place when the page opens
+function Chrome:tabPosition(track)
+    local n = #Instruments.catalog
+    local target = self:selectedTab(track)
+    local now = love.timer.getTime()
+    local anim = self.tabAnim
+    if not anim or anim.slot ~= track.slot or anim.n ~= n or now - anim.time > 0.2 then
+        anim = { pos = target, slot = track.slot, n = n }
+        self.tabAnim = anim
+    else
+        local diff = ((target - anim.pos + n * 0.5) % n) - n * 0.5
+        local dt = math_max(0.0, now - anim.time)
+        -- most of the way in TAB_SLIDE seconds
+        anim.pos = anim.pos + diff * (1.0 - math.exp(-dt * 3.0 / self.TAB_SLIDE))
+        if math_abs(diff) < 0.02 then anim.pos = target end
+        anim.pos = ((anim.pos - 1) % n) + 1
+    end
+    anim.time = now
+    return anim.pos
+end
+
 function Chrome:drawInstrumentTabs(track, col)
     local C = Config.COLORS
     local font = self.fontTiny
     local pending = Modes.trackPage.pending
-    local gap, pad = 4, 7
-    local total = -gap
-    for _, inst in ipairs(Instruments.catalog) do
-        total = total + font:getWidth(inst.shortName or inst.name) + pad * 2 + gap
-    end
-    local x = math_floor(320 - total * 0.5)
-    for _, inst in ipairs(Instruments.catalog) do
+    local selectedId = pending or track.instrumentId
+    local y, h, pad = 60, 18, 7
+    love.graphics.setFont(font)
+    for _, tab in ipairs(self:tabLayout(self:tabPosition(track))) do
+        local inst = tab.inst
         local label = inst.shortName or inst.name
         local w = font:getWidth(label) + pad * 2
-        if inst.id == pending then
-            self:drawCapsule(x, 60, w, 18, label, col, col, C.BG, font)
+        local x = math_floor(tab.x - w * 0.5)
+        local a = tab.alpha
+        local textCol = C.MUTED
+        if inst.id == selectedId then
+            -- the centre: filled while it is only a preview
+            self:setColor(col, (pending and 1.0 or 0.12) * a)
+            love.graphics.rectangle("fill", x, y, w, h, h * 0.5, h * 0.5)
+            self:setColor(col, a)
+            love.graphics.rectangle("line", x, y, w, h, h * 0.5, h * 0.5)
+            textCol = pending and C.BG or C.TEXT
         elseif inst.id == track.instrumentId then
-            self:drawCapsule(x, 60, w, 18, label, col, col, pending and C.MUTED or C.TEXT, font, 0.12)
-        else
-            self:setColor(C.MUTED)
-            love.graphics.setFont(font)
-            love.graphics.print(label, x + pad, 60 + math_floor((18 - font:getHeight()) * 0.5))
+            -- the track's own keeps its outline while another is previewed
+            self:setColor(col, 0.12 * a)
+            love.graphics.rectangle("fill", x, y, w, h, h * 0.5, h * 0.5)
+            self:setColor(col, a)
+            love.graphics.rectangle("line", x, y, w, h, h * 0.5, h * 0.5)
         end
-        x = x + w + gap
+        self:setColor(textCol, a)
+        love.graphics.print(label, x + pad, y + math_floor((h - font:getHeight()) * 0.5))
+        if inst.lab then
+            -- a lab instrument: a small dot over the name
+            self:setColor(col, a)
+            love.graphics.circle("fill", math_floor(tab.x), y - 4, 1.6)
+        end
     end
 end
 

@@ -44,6 +44,27 @@ local function withLab(defs, fn)
     end
 end
 
+-- A catalogue of exactly n instruments: the library plus stand-ins
+local function setCatalog(I, n)
+    I.catalog, I.byId = {}, {}
+    for _, inst in ipairs(I.LIBRARY) do I.catalog[#I.catalog + 1] = inst end
+    for i = 6, n do I.catalog[i] = labDef("lab" .. i) end
+    for _, inst in ipairs(I.catalog) do I.byId[inst.id] = inst end
+end
+
+-- The Track page's tabs as they stand now (after any slide has finished)
+local function tabs(M)
+    local Chrome = require("src.ui.chrome")
+    local track = M.Looper.tracks[M.Looper.activeTrack]
+    return Chrome:tabLayout(Chrome:tabPosition(track)), Chrome
+end
+
+local function centreTab(M)
+    for _, tab in ipairs((tabs(M))) do
+        if math.abs(tab.d) < 0.01 then return tab end
+    end
+end
+
 local function ids(I)
     local out = {}
     for i, inst in ipairs(I.catalog) do out[i] = inst.id end
@@ -172,4 +193,139 @@ return {
         H.eq(#L.tracks[2].events, 0, "no lab notes on the harp")
         H.eq(#L.tracks[1].events, 1, "the drum track is intact")
     end) },
+
+    -- ------------------------------------------------------------------
+    -- L0.2: the instrument tabs as a centred carousel
+    -- ------------------------------------------------------------------
+    { "the centred tab is the track's own instrument, then the previewed one", function()
+        local M = bootSession()
+        local page = require("src.modes").trackPage
+        H.hold("SELECT"); H.play(0.3)
+        H.eq(centreTab(M).inst.id, "drums", "own instrument in the centre")
+        H.eq(centreTab(M).x, 320, "the centre of the strip")
+        H.near(centreTab(M).alpha, 1.0, "fully lit")
+
+        H.tap("R1"); H.play(0.3)
+        H.eq(page.pending, "harp", "previewing the harp")
+        H.eq(centreTab(M).inst.id, "harp", "the preview takes the centre")
+        local own
+        for _, tab in ipairs((tabs(M))) do
+            if tab.inst.id == "drums" then own = tab end
+        end
+        H.truthy(own and own.d == -1, "the track's own is still in view, one to the left")
+
+        H.tap("L1"); H.play(0.3)
+        H.eq(page.pending, nil, "back on the track's own: no preview")
+        H.eq(centreTab(M).inst.id, "drums", "own instrument back in the centre")
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "the tabs are a ring: stepping past either end wraps", function()
+        local M = bootSession()
+        local I = M.Instruments
+        setCatalog(I, 7)
+        local first, last = I.catalog[1].id, I.catalog[7].id
+        H.eq(I:stepInstrumentId(last, 1), first, "past the last comes the first")
+        H.eq(I:stepInstrumentId(first, -1), last, "before the first comes the last")
+
+        -- on screen too: the first instrument has the last one on its left
+        H.hold("SELECT"); H.play(0.3)
+        local list = tabs(M)
+        local seen = {}
+        for _, tab in ipairs(list) do seen[tab.d] = tab.inst.id end
+        H.eq(seen[0], first, "centre")
+        H.eq(seen[-1], last, "the last instrument sits left of the first")
+        H.eq(seen[-2], I.catalog[6].id, "and the one before it")
+        H.eq(seen[1], I.catalog[2].id, "the second on the right")
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "every instrument can be reached with L1 alone and with R1 alone", function()
+        for _, btn in ipairs({ "L1", "R1" }) do
+            local M = bootSession()
+            local I = M.Instruments
+            setCatalog(I, 10)
+            local page = require("src.modes").trackPage
+            H.hold("SELECT"); H.play(0.3)
+            local reached = { drums = true }
+            local count = 1
+            for _ = 1, 9 do
+                H.tap(btn)
+                H.truthy(page.pending, btn .. " previews an instrument")
+                H.falsy(reached[page.pending], btn .. " never repeats before the ring is done: " .. page.pending)
+                reached[page.pending] = true
+                count = count + 1
+                H.play(0.2)
+                H.eq(centreTab(M).inst.id, page.pending, "the centre follows")
+            end
+            H.eq(count, 10, "all ten with " .. btn)
+            H.tap(btn)
+            H.eq(page.pending, nil, "one more step is back home")
+            H.release("SELECT"); H.play(0.1)
+        end
+    end },
+
+    { "the strip slides the way of the step and settles", function()
+        local M = bootSession()
+        local Chrome = require("src.ui.chrome")
+        local track = M.Looper.tracks[1]
+        H.hold("SELECT"); H.play(0.3)
+        H.eq(Chrome:tabPosition(track), 1, "at rest on the first tab")
+        H.hold("R1"); H.play(1 / 60); H.release("R1")
+        local pos = Chrome.tabAnim.pos
+        H.truthy(pos > 1 and pos < 2, "part of the way to the second tab: " .. pos)
+        H.play(0.2)
+        H.eq(Chrome.tabAnim.pos, 2, "settled on it")
+
+        -- from the first tab back to the last: the short way, leftwards
+        H.tap("L1"); H.play(0.2)
+        H.hold("L1"); H.play(1 / 60); H.release("L1")
+        local n = #M.Instruments.catalog
+        pos = Chrome.tabAnim.pos
+        H.truthy(pos > n and pos < n + 1, "sliding left through the seam: " .. pos)
+        H.play(0.2)
+        H.eq(Chrome.tabAnim.pos, n, "settled on the last tab")
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "the tabs draw with 5, 6 and 10 instruments, never showing one twice", function()
+        for _, n in ipairs({ 5, 6, 10 }) do
+            local M = bootSession()
+            setCatalog(M.Instruments, n)
+            H.hold("SELECT"); H.play(0.3)
+            for _ = 1, n do
+                H.hold("R1"); H.play(1 / 60); H.release("R1")
+                for _ = 1, 8 do                          -- mid-slide frames too
+                    H.play(1 / 60)
+                    local list = tabs(M)
+                    local seen = {}
+                    H.truthy(#list >= 3 and #list <= 5, n .. " instruments: 3 to 5 tabs in view, got " .. #list)
+                    for _, tab in ipairs(list) do
+                        H.falsy(seen[tab.inst.id], tab.inst.id .. " drawn twice")
+                        seen[tab.inst.id] = true
+                        H.truthy(tab.x > 198 and tab.x < 442, "inside the centre column")
+                    end
+                end
+            end
+            H.release("SELECT"); H.play(0.1)
+            H.eq(M.Looper.tracks[1].instrumentId, "drums", "a full circle changes nothing")
+        end
+    end },
+
+    { "a lab instrument's tab is marked; the outer tabs fade", function()
+        local M = bootSession()
+        setCatalog(M.Instruments, 10)
+        H.hold("SELECT"); H.play(0.3)
+        local list = tabs(M)
+        for _, tab in ipairs(list) do
+            if math.abs(tab.d) == 2 then
+                H.truthy(tab.alpha < 0.6 and tab.alpha > 0.2, "faded but readable: " .. tab.alpha)
+            else
+                H.near(tab.alpha, 1.0, "centre and neighbours fully lit")
+            end
+        end
+        H.truthy(list[1].inst.lab and list[2].inst.lab, "left of DRUMS: the last two (lab) instruments")
+        H.falsy(list[3].inst.lab, "the library is not marked")
+        H.release("SELECT"); H.play(0.1)
+    end },
 }
