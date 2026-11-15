@@ -121,7 +121,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] ❓ Replace vs overdub, auto-stop after one pass (not built: no free control)
 - [ ] Device check: is EFX there (filter sweep), do the meters match what is heard, count-in feel
 
-## Phase H · Drums pass 2
+## Phase H · Drums pass 2 ← **next up** — working plan in [PHASE_H.md](PHASE_H.md)
 
 - [ ] Already on v2 from A5; check flam/ratchet/choke/repeat still behave
 - [ ] `VARIATION` row: Off / Light / Wild (velocity jitter → timing nudge + fills)
