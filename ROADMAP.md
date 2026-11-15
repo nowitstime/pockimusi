@@ -129,6 +129,16 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] H4 Per-pad `TUNE` and `LEVEL` rows for the last pad hit; the Track page list scrolls (5 rows shown)
 - [ ] Device check: does `LIGHT` feel human, are `WILD` fills welcome, is tuning a pad quick enough
 
+## Sound pool ✅ (device listen pending) — SPEC §6
+
+- [x] One catalogue for all pitched instruments; each `PATCH` row lists it with the instrument's own group first, grouped in the picker
+- [x] Restrictions by what a patch has (Pad: loop needed; `SILENT`: Chord Harp only); register and voice count come from the instrument
+- [x] Chord Harp on the pool: `PATCH` row, saved with the session
+- [x] Patches generated on first use (boot generates the original eleven)
+- [x] New patches: `808`, `KEYS`, `STRINGS`, `NYLON`, `RHODES`, `KALIMBA`, `SILENT`
+- [x] `ODD` group: `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM`
+- [ ] Device listen: every new patch (written without hearing it), levels against the old ones, the hitch when a patch is first selected
+
 ## Phase I · Tape deck v2 & visual polish
 
 - [ ] Beads for hits, ribbons for held notes, bend lines, chord lane labels

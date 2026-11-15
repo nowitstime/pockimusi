@@ -7,6 +7,7 @@ local Input  = require("src.input")
 local Synth  = require("src.synth")
 local Looper = require("src.looper")
 local Harmony = require("src.harmony")
+local Patches = require("src.instruments.patches")
 
 local math_max   = math.max
 
@@ -29,8 +30,11 @@ local Bass = {
     eventClass = "mono",     -- Bass and Lead play each other's notes (kept on a swap)
     defaultGridIndex = 3, -- 1/16
 
-    -- Track page PATCH row: synth patches (src/synth/synths_bank.lua)
-    PATCHES = { "bass_saw", "bass_sub", "bass_pluck" },
+    -- Track page PATCH row: the sound pool (src/instruments/patches.lua)
+    HOME_GROUP = "BASS",
+    DEFAULT_PATCH = "bass_saw",
+    REGISTER = 3,            -- 0 semitones = C3
+    VOICES = 6,
     -- Track page GLIDE row: how fast legato and bends reach the new pitch
     -- (fraction of the remaining distance covered per second)
     GLIDES = { "FAST", "MEDIUM", "SLOW" },
@@ -89,20 +93,16 @@ local function indexOf(list, value)
     return 1
 end
 
-
--- Picker items for a list row: plain labels, or patch ids shown by their label
-local function itemsOf(list, patches)
+-- Picker items for a list row of plain labels
+local function itemsOf(list)
     local items = {}
-    for i, v in ipairs(list) do
-        local patch = patches and Synth.patches[v]
-        items[i] = { label = patch and patch.label or v }
-    end
+    for i, v in ipairs(list) do items[i] = { label = v } end
     return items
 end
 local ON_OFF = { { label = "OFF" }, { label = "ON" } }
 
 function Bass:getPatch(state)
-    return Synth.patches[state.patch] or Synth.patches[self.PATCHES[1]]
+    return Patches.get(self, state)
 end
 
 function Bass:getGlideRate(state)
@@ -110,10 +110,8 @@ function Bass:getGlideRate(state)
 end
 
 function Bass:getSoundRows(state)
-    local patch = self:getPatch(state)
     return {
-        { key = "PATCH", label = "PATCH", value = patch and patch.label or state.patch,
-          items = itemsOf(self.PATCHES, true), index = indexOf(self.PATCHES, state.patch) },
+        Patches.row(self, state),
         { key = "GLIDE", label = "GLIDE", value = state.glide, kind = "setting",
           items = itemsOf(self.GLIDES), index = indexOf(self.GLIDES, state.glide) },
         { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
@@ -123,18 +121,13 @@ end
 
 function Bass:cycleRowSound(state, rowIdx, delta, quiet)
     if rowIdx ~= 1 then return end
-    local n = #self.PATCHES
-    state.patch = self.PATCHES[((indexOf(self.PATCHES, state.patch) - 1 + delta) % n) + 1]
-    local patch = self:getPatch(state)
-    if patch then Looper:showToast("BASS PATCH: " .. patch.label) end
+    Patches.step(self, state, delta)
     if not quiet then self:previewRowSound(state, rowIdx) end
 end
 
 function Bass:previewRowSound(state, rowIdx)
-    local patch = self:getPatch(state)
-    if rowIdx == 1 and patch then
-        Synth:trigger(patch.attack, Theory:getRootSemis(), 0.85, 0.7)
-    end
+    if rowIdx ~= 1 then return end
+    Patches.preview(self, state, Theory:getRootSemis(), 0.85)
 end
 
 -- The pitch of a D-pad degree: over `chord` when following, else in the key
@@ -206,7 +199,7 @@ function Bass:updateInput(dt, state, track, play, hold)
     end
 
     local patch = self:getPatch(state)
-    local mono = not (patch and patch.overlap)
+    local mono = not (patch and patch.rings)
 
     for _, btn in ipairs({ "B", "A", "Y", "X" }) do
         if Input.pressed[btn] then
@@ -275,15 +268,14 @@ end
 -- Sound
 -- ---------------------------------------------------------------------------
 function Bass:startVoice(ev, state, track, semis, glideFrom)
-    local patch = self:getPatch(state)
     semis = semis or ev.semis or 0
     if glideFrom == nil then glideFrom = ev.glideFrom end
-    return Synth:noteOn(state.patch, semis, ev.vel or 0.85, {
+    return Patches.noteOn(self, state, semis, ev.vel or 0.85, {
         track = track,
         glideFrom = glideFrom,
         glideRate = self:getGlideRate(state),
         vibrato = (ev.action == "X"),
-    }) or (patch and Synth:trigger(patch.attack, semis, ev.vel or 0.85, 1.0, nil, track.volume, track))
+    })
 end
 
 function Bass:showNote(state, semis)
@@ -443,9 +435,7 @@ end
 
 function Bass:loadState(state, data)
     if type(data) ~= "table" then return end
-    for _, p in ipairs(self.PATCHES) do
-        if data.patch == p then state.patch = p end
-    end
+    Patches.load(self, state, data.patch)
     for _, g in ipairs(self.GLIDES) do
         if data.glide == g then state.glide = g end
     end

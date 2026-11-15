@@ -60,29 +60,121 @@ return {
         H.truthy(seamRatio(sd) > 2.0, "a click at the seam: " .. seamRatio(sd))
     end },
 
-    { "the real bass, lead and pad loops are all seamless and in tune", function()
+    { "every patch in the pool: loops seamless and in tune, levels sane, layers paired", function()
         H.captureSamples = true
         local M = H.fresh({ realSynth = true })
         M.Synth:init()
-        H.captureSamples = false
         local S = M.Synth
-        local names = {}
-        for id, patch in pairs(S.patches) do
-            names[#names + 1] = id
-            local src = S.loopPools[patch.loop].sources[1]
-            H.truthy(seamRatio(src.soundData) <= SMOOTH, id .. " seam " .. seamRatio(src.soundData))
-            H.truthy(math.abs(patch.tune) < 0.05, id .. " tune " .. patch.tune)
-            if patch.attack then H.truthy(S.pools[patch.attack] ~= nil, id .. " has its attack pool") end
-            if patch.bright then
-                local b = S.loopPools[patch.bright]
-                H.truthy(seamRatio(b.sources[1].soundData) <= SMOOTH, id .. " bright seam")
-                H.eq(#b.sources, #S.loopPools[patch.loop].sources, id .. " layers paired")
-                H.eq(b.sources[1].soundData.n, src.soundData.n, id .. " layers the same length")
+        local function peakOf(sd)
+            local peak = 0
+            for i = 0, sd.n - 1 do
+                local x = sd.samples[i]
+                H.truthy(x == x, "no NaN")
+                peak = math.max(peak, math.abs(x))
+            end
+            return peak
+        end
+        local core, lazy = {}, {}
+        for _, id in ipairs(S.patchOrder) do
+            local patch = S.patches[id]
+            if patch.silent then
+                H.falsy(patch.attack or patch.loop, "silent: nothing to play")
+            else
+                local t = patch.core and core or lazy
+                t[#t + 1] = id
+                H.eq(patch.built, patch.core == true, id .. ": only core patches are generated at boot")
+                S:preparePatch(id)
+                H.truthy(patch.attack or patch.loop, id .. " has a layer")
+                if patch.attack then
+                    local peak = peakOf(S.pools[patch.attack].data)
+                    H.truthy(peak > 0.25 and peak <= 0.95, id .. " attack peak " .. peak)
+                end
+                if patch.loop then
+                    local src = S.loopPools[patch.loop].sources[1]
+                    H.truthy(seamRatio(src.soundData) <= SMOOTH, id .. " seam " .. seamRatio(src.soundData))
+                    H.truthy(math.abs(patch.tune) < 0.05, id .. " tune " .. patch.tune)
+                    local peak = peakOf(src.soundData)
+                    H.truthy(peak > 0.15 and peak <= 0.9, id .. " loop peak " .. peak)
+                    if patch.bright then
+                        local b = S.loopPools[patch.bright]
+                        H.truthy(seamRatio(b.sources[1].soundData) <= SMOOTH, id .. " bright seam")
+                        H.eq(#b.sources, #S.loopPools[patch.loop].sources, id .. " layers paired")
+                        H.eq(b.sources[1].soundData.n, src.soundData.n, id .. " layers the same length")
+                        local bp = peakOf(b.sources[1].soundData)
+                        H.truthy(bp > 0.15 and bp <= 0.9, id .. " bright peak " .. bp)
+                    end
+                end
+                H.truthy(patch.label and patch.full and patch.group, id .. " named for the picker")
+                H.truthy(#patch.label <= 8, id .. " label fits a chip")
             end
         end
-        table.sort(names)
-        H.eq(table.concat(names, " "), "bass_pluck bass_saw bass_sub lead_pluck lead_saw lead_square pad_bell pad_choir pad_drone pad_warm", "patches")
-        H.truthy(S.bootTimes and S.bootTimes.sustain >= 0, "boot time measured")
+        H.captureSamples = false
+        table.sort(core)
+        H.eq(table.concat(core, " "), "bass_pluck bass_saw bass_sub harp lead_pluck lead_saw lead_square pad_bell pad_choir pad_drone pad_warm", "core patches")
+        H.truthy(#lazy >= 12, "and the rest wait until they are chosen")
+        H.truthy(S.bootTimes and S.bootTimes.patches >= 0, "boot time measured")
+    end },
+
+    -- ------------------------------------------------------------------
+    -- The sound pool: generated on demand, any register, one-shot patches
+    -- ------------------------------------------------------------------
+    { "a patch is generated on its first note, and its pools grow to the voices asked for", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        H.falsy(S.patches.pad_strings.built, "not at boot")
+        H.eq(S.loopPools.pad_strings_loop, nil, "no pool yet")
+        local v = S:noteOn("pad_strings", 0, 0.8)
+        H.truthy(v and v.loopSrc.playing, "plays")
+        H.eq(#S.loopPools.pad_strings_loop.sources, 12, "its own voice count")
+        H.eq(#S.loopPools.lead_square_loop.sources, 6, "lead square: 6")
+        S:noteOn("lead_square", 0, 0.8, { voices = 12 })
+        H.eq(#S.loopPools.lead_square_loop.sources, 12, "grown for an instrument that needs 12")
+        S:preparePatch("bass_saw", 12)
+        H.eq(S.pools.bass.size, 12, "attack pool grown too")
+        H.eq(#S.pools.bass.voices, 12, "with real sources")
+    end },
+
+    { "register: an instrument plays any patch in its own octave", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        local home = S:noteOn("bass_saw", 0, 0.8, { register = 3 })
+        local up = S:noteOn("bass_saw", 0, 0.8, { register = 4 })           -- a lead playing a bass patch
+        local down = S:noteOn("lead_square", 0, 0.8, { register = 3 })      -- a bass playing a lead patch
+        step(S, 0.1)
+        H.near(home.loopSrc.pitch, 2 ^ (home.patch.tune / 12), "home register: as before", 1e-9)
+        H.near(up.loopSrc.pitch, 2 * home.loopSrc.pitch, "an octave up", 1e-9)
+        H.near(down.loopSrc.pitch, 0.5 * 2 ^ (down.patch.tune / 12), "an octave down", 1e-9)
+        H.eq(up.currentSemis, 0, "the voice still reports the instrument's pitch")
+        H.near(up.attack.currentSemis, 12, "attack layer moved too", 1e-9)
+        up:setPitch(7)
+        H.eq(up.attack.targetSemis, 19, "glides in the same register")
+    end },
+
+    { "a patch without a loop is a one-shot voice: it rings, ends by itself, and noteOff cuts it", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        local p = S.patches.harp
+        H.truthy(p.rings and not p.sustains, "harp rings")
+        H.truthy(S.patches.lead_square.sustains and not S.patches.lead_square.rings, "square sustains")
+        H.truthy(S.patches.lead_pluck.rings, "pluck rings")
+        local v = S:noteOn("harp", 4, 0.8)
+        H.eq(v.loopSrc, nil, "no loop layer")
+        H.truthy(v.attack.source.playing, "the one-shot plays")
+        step(S, 0.5)
+        H.truthy(v:isSounding() and v:envelope() > 0, "ringing")
+        step(S, 1.0)
+        H.falsy(v:isSounding(), "over when the one-shot is")
+        H.eq(#S.sustainVoices, 0, "voice freed")
+
+        local cut = S:noteOn("harp", 0, 0.8)
+        step(S, 0.1)
+        cut:noteOff()
+        step(S, p.release + 0.05)
+        H.falsy(cut:isSounding(), "noteOff ends it after the patch's release")
+        H.eq(S:noteOn("silent", 0, 0.8), nil, "the silent patch plays nothing")
     end },
 
     -- ------------------------------------------------------------------

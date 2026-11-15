@@ -32,6 +32,8 @@ SCENES = {
     "picker-drums": 'H.tap("Y"); H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.tap("RIGHT")',
     "picker-kit": 'H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("UP") end; H.tap("RIGHT")',
     "picker-pad-patch": 'for _ = 1, 3 do H.tap("SELECT") end; H.hold("SELECT"); H.play(0.3); H.tap("RIGHT")',
+    "picker-harp-patch": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.tap("RIGHT")',
+    "picker-bass-odd": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("LEFT") end',
     "fx-rows": 'H.hold("SELECT"); H.play(0.3); H.tap("B"); H.tap("Y"); H.tap("RIGHT"); H.tap("RIGHT")',
     "harp-play": 'H.tap("SELECT"); H.play(0.2)',
     "harp-colour": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT")',

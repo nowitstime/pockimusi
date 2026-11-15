@@ -21,6 +21,7 @@ local FILES = {
     "test_harmony",
     "test_pad",
     "test_lead",
+    "test_patches",
     "test_mix",
     "test_drums",
     "test_session",

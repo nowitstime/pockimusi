@@ -241,7 +241,10 @@ return {
         L.tracks[3].events = { bassNote(960, 1, { len = 600, bend = { { dt = 200, degree = 3, octave = 0, semis = 99 } } }) }
         L:seek(0.24); L.lastClockTime = H.time
         H.play(L:getLoopDuration() * 0.12)
-        local v = M.Synth.sustainVoices[1]
+        local v
+        for _, voice in ipairs(M.Synth.sustainVoices) do       -- (the harp's plucks are voices too)
+            if voice.track == L.tracks[3] then v = voice end
+        end
         H.eq(v.targetSemis, 0, "third of Am = C (not the stored 99)")
     end },
 

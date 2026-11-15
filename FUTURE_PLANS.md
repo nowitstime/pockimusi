@@ -50,7 +50,7 @@ Still open:
 
 - 🧪 Play a short phrase on instrument preview; show that instrument's stage view behind the card.
 - 🧪 The same picker for key and scale on the Transport page.
-- Patch groups, once there are more patches.
+- ~~Patch groups, once there are more patches.~~ ✅ Built with the sound pool (SPEC §6).
 
 ---
 
@@ -104,9 +104,9 @@ Colour changes chord by chord; octave is set once. This answers SPEC §3.3's ope
 ### 6.3 A chord track that makes no sound 🧪
 
 - **Works today:** record chords on the harp and mute that track (`R2` + its face button). Muting the chord source doesn't change the harmony (SPEC §5), so the followers still follow. Play this way for a few sessions first.
-- **Option A:** a silent patch for the harp. Cheap, but it uses one of the four tracks.
+- **Option A:** a silent patch for the harp. Cheap, but it uses one of the four tracks. ✅ Built: `SILENT` on the harp's `PATCH` row.
 - **Option B:** a chord lane outside the four tracks. Frees a slot, but adds a concept and needs somewhere to be recorded from.
-- **Also:** let the harp use the Pad and Lead patches, in case the problem is only the harp's sound.
+- **Also:** let the harp use the Pad and Lead patches, in case the problem is only the harp's sound. ✅ Built: the harp plays the whole sound pool (SPEC §6).
 
 ---
 
