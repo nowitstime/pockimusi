@@ -157,6 +157,16 @@ function Chrome:drawCapsuleRow(cx, y, h, items, gap)
     end
 end
 
+-- Which stage view draws an instrument: its `viewKind` ("drums", "bass",
+-- "lab"), or the view that goes with its id. An instrument with neither gets
+-- the plain lab view.
+Chrome.VIEW_KINDS = { drums = true, harp = true, bass = true, lead = true, pad = true, lab = true }
+
+function Chrome:viewKind(def)
+    local kind = def.viewKind or def.id
+    return self.VIEW_KINDS[kind] and kind or "lab"
+end
+
 function Chrome:isPlayMode(mode)
     return mode == "NORMAL" or mode == "REC_LATCH" or mode == "REC_HOLD"
 end
@@ -430,7 +440,8 @@ end
 -- ============================================================================
 -- DELICATE ASTROLABE MOTIFS AROUND D-PAD AND FACE ZONES
 -- ============================================================================
-function Chrome:drawZoneMotifs(instId, col, t)
+function Chrome:drawZoneMotifs(kind, col, t)
+    local instId = kind
     local lx, ly, rx, ry = 102, 188, 538, 188
 
     if instId == "drums" then
@@ -484,6 +495,11 @@ function Chrome:drawZoneMotifs(instId, col, t)
             local a = t * 0.2 + i * (math_pi * 0.5)
             self:drawStarGlint(rx + math_cos(a) * 82, ry + math_sin(a) * 82, 4.5, col, 0.45)
         end
+    else
+        -- the plain lab view: two dashed rings, nothing more
+        self:setColor(col, 0.2)
+        self:drawDashedCircle(lx, ly, 78, 3, 7)
+        self:drawDashedCircle(rx, ry, 84, 3, 7)
     end
 end
 
@@ -649,6 +665,8 @@ function Chrome:drawCenterStage()
     local playMode = self:isPlayMode(mode)
     local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
+    local kind = self:viewKind(def)
+    local view = def.VIEW or {}
 
     -- Frame: grid line while jamming, mode colour (with a soft glow) otherwise
     local borderCol = (mode == "NORMAL") and C.GRID or (Config.MODE_COLORS[mode] or C.GRID)
@@ -673,7 +691,7 @@ function Chrome:drawCenterStage()
 
     -- Zone motifs: the instrument's own while playing, a generic astrolabe ring on settings pages
     if playMode then
-        self:drawZoneMotifs(def.id, instCol, t)
+        self:drawZoneMotifs(kind, instCol, t)
     else
         self:drawZoneMotifs("drums", accent, t)
     end
@@ -691,14 +709,24 @@ function Chrome:drawCenterStage()
         l1Label, r1Label = "L1: UNDO", "R1: -"
     elseif mode == "NEW" then
         l1Label, r1Label = "L1: -", "R1: -"
-    elseif def.id == "drums" then
-        l1Label, r1Label = "L1: 1/4", "R1: 1/8"
-    elseif def.id == "harp" then
-        l1Label, r1Label = "L1: OCT -", "R1: OCT +"
-    elseif def.id == "lead" and lOn and rOn then
-        l1Label, r1Label = "L1+R1: RATE x2", "L1+R1: RATE x2"
     else
-        l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
+        -- playing: the view's own labels, then the instrument's VIEW over them
+        if kind == "drums" then
+            l1Label, r1Label = "L1: 1/4", "R1: 1/8"
+        elseif kind == "harp" then
+            l1Label, r1Label = "L1: OCT -", "R1: OCT +"
+        elseif kind == "lead" and lOn and rOn then
+            l1Label, r1Label = "L1+R1: RATE x2", "L1+R1: RATE x2"
+        elseif kind == "lab" then
+            l1Label, r1Label = "L1: -", "R1: -"
+        else
+            l1Label, r1Label = "L1: OCT -1", "R1: OCT +1"
+        end
+        if view.l1 then l1Label = "L1: " .. view.l1 end
+        if view.r1 then r1Label = "R1: " .. view.r1 end
+        if view.both and lOn and rOn then
+            l1Label, r1Label = "L1+R1: " .. view.both, "L1+R1: " .. view.both
+        end
     end
     local function shoulder(x, label, on)
         if on then
@@ -748,7 +776,7 @@ function Chrome:drawCenterStage()
     }
     local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
     local faceSub = { TRACK = "FACE: EFFECTS ON / OFF", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
-    local dpadSubtitle = dpadSub[mode] or instSub[def.id] or "D-PAD"
+    local dpadSubtitle = dpadSub[mode] or instSub[def.id] or instSub[kind] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
@@ -809,11 +837,27 @@ function Chrome:getControlLabels(def, state, mode)
     elseif mode == "NEW" then
         dpadLabels = {}
         faceLabels = { B = "", A = "", Y = "", X = "" }
-    elseif def.id == "drums" then
+    else
+        dpadLabels, faceLabels, flashMap, activeMap = self:getInstrumentLabels(def, state)
+    end
+
+    return dpadLabels, faceLabels, flashMap, activeMap
+end
+
+-- The play surface's labels: those of the instrument's stage view, with the
+-- instrument's own VIEW.dpad / VIEW.face in their place where it has them
+function Chrome:getInstrumentLabels(def, state)
+    local kind = self:viewKind(def)
+    local dpadLabels = {}
+    local faceLabels = { B = "B", A = "A", Y = "Y", X = "X" }
+    local flashMap = {}
+    local activeMap = {}
+
+    if kind == "drums" then
         dpadLabels = { UP = "ACCENT", DOWN = "GHOST", LEFT = "FLAM", RIGHT = "RATCHET" }
         faceLabels = { B = "", A = "", Y = "", X = "" }
         flashMap = state.padFlash
-    elseif def.id == "harp" then
+    elseif kind == "harp" then
         dpadLabels = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         local n = chord.notes
@@ -827,17 +871,23 @@ function Chrome:getControlLabels(def, state, mode)
             local s = state.strings[i]
             flashMap[s.button] = s.energy
         end
-    elseif def.id == "bass" then
+    elseif kind == "bass" then
         dpadLabels = { NEUTRAL = "1", DOWN = "L5", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
         faceLabels = { B = "HOLD", A = "LEGATO", Y = "STAC", X = "ACCENT" }
-    elseif def.id == "lead" then
+    elseif kind == "lead" then
         dpadLabels = { NEUTRAL = "1", DOWN = "L5", DOWN_LEFT = "2", LEFT = "3", UP_LEFT = "4", UP = "5", UP_RIGHT = "6", RIGHT = "7", DOWN_RIGHT = "8" }
         faceLabels = { B = "NOTE", A = "ARP UP", Y = "ARP DOWN", X = "UP DOWN" }
         if state.arpBtn then activeMap[state.arpBtn] = true end
-    elseif def.id == "pad" then
+    elseif kind == "pad" then
         dpadLabels = { UP = "BRIGHT +", DOWN = "BRIGHT -", LEFT = "MOVE -", RIGHT = "MOVE +" }
         faceLabels = { B = "FULL", A = "OPEN", Y = "HIGH", X = "SWELL" }
         for ev in pairs(state.live) do activeMap[ev.action] = true end
+    end
+
+    local view = def.VIEW
+    if view then
+        dpadLabels = view.dpad or dpadLabels
+        faceLabels = view.face or faceLabels
     end
 
     return dpadLabels, faceLabels, flashMap, activeMap
@@ -848,9 +898,10 @@ end
 -- ============================================================================
 function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     local C = Config.COLORS
-    if def.id == "drums" then
+    local kind = self:viewKind(def)
+    if kind == "drums" then
         self:drawDrumLanes(def, state, track, col)
-    elseif def.id == "harp" then
+    elseif kind == "harp" then
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         self:setColor(C.TEXT)
         love.graphics.setFont(self.fontHuge)
@@ -900,14 +951,60 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
             self:drawStarGlint(sx, 276, (str and str.energy > 0.05) and 5 or 3, (str and str.energy > 0.05) and col or C.MUTED)
         end
 
-    elseif def.id == "bass" then
+    elseif kind == "bass" then
         self:drawBassView(def, state, track, col)
 
-    elseif def.id == "lead" then
+    elseif kind == "lead" then
         self:drawLeadView(def, state, track, col)
 
-    elseif def.id == "pad" then
+    elseif kind == "pad" then
         self:drawPadView(def, state, track, col, t)
+
+    else
+        self:drawLabView(def, state, track, col)
+    end
+end
+
+-- ============================================================================
+-- LAB VIEW: the plain view for an instrument without one of its own.
+-- def:getReadout(state) -> a large line, a small line, and (optional) a list
+-- of further lines
+-- ============================================================================
+Chrome.LAB_LINES = 9            -- further lines that fit
+
+function Chrome:drawLabView(def, state, track, col)
+    local C = Config.COLORS
+    local big, small, lines
+    if def.getReadout then big, small, lines = def:getReadout(state) end
+    big = tostring(big or def.name)
+
+    -- the large line steps down a size when it is too long for the column
+    local font = self.fontHuge
+    if font:getWidth(big) > 224 then font = self.fontLarge end
+    self:setColor(C.TEXT)
+    love.graphics.setFont(font)
+    love.graphics.print(big, math_floor(320 - font:getWidth(big) * 0.5), 112 + math_floor((28 - font:getHeight()) * 0.5))
+
+    if small and small ~= "" then
+        small = tostring(small)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(col)
+        love.graphics.print(small, math_floor(320 - self.fontSmall:getWidth(small) * 0.5), 148)
+    end
+
+    local items = {}
+    local patch = def.getPatch and def:getPatch(state)
+    if patch then items[#items + 1] = { patch.label or "?", C.GRID, C.PANEL_HI, col } end
+    items[#items + 1] = { "LAB", C.GRID, C.PANEL_HI, C.MUTED }
+    self:drawCapsuleRow(320, 166, 16, items)
+
+    if type(lines) == "table" then
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(C.MUTED)
+        for i = 1, math_min(#lines, self.LAB_LINES) do
+            local text = tostring(lines[i])
+            love.graphics.print(text, math_floor(320 - self.fontSmall:getWidth(text) * 0.5), 176 + i * 13)
+        end
     end
 end
 
@@ -990,7 +1087,9 @@ function Chrome:drawDrumLanes(def, state, track, col)
     for i, pad in ipairs(def.PADS) do
         local top = 88 + (i - 1) * 44
         local flash = state.padFlash[pad] or 0.0
-        local lit = flash > 0.05 or (Input.down[pad] and Modes.current ~= "FX")
+        local down = Input.down[pad]
+        if def.padDown then down = def:padDown(pad) end
+        local lit = flash > 0.05 or (down and Modes.current ~= "FX")
 
         if lit then
             self:setColor(col, 0.16 + flash * 0.12)
@@ -1739,6 +1838,19 @@ end
 
 -- Held notes sit on one sub-row per button, ordered like the button diamond
 Chrome.RIBBON_ROW = { X = -6, Y = -2, A = 2, B = 6 }
+-- The four sub-rows, top to bottom, for an instrument's LANES
+Chrome.LANE_ROW = { -6, -2, 2, 6 }
+
+-- Where an event sits on its track's lane, as pixels from the lane's centre
+-- line. An action the instrument names in LANES (a shoulder, say) goes on
+-- that row, hits included; otherwise held notes go on their button's row and
+-- hits on the centre line.
+function Chrome:eventRow(def, ev)
+    local lane = def.LANES and def.LANES[ev.action]
+    if lane and self.LANE_ROW[lane] then return self.LANE_ROW[lane] end
+    if (ev.len or 0) > 0 or ev.open then return self.RIBBON_ROW[ev.action] or 0 end
+    return 0
+end
 
 -- ============================================================================
 -- BASS VIEW: sounding note, live oscilloscope, pitch trace of the last 1.2 s
@@ -1751,15 +1863,20 @@ function Chrome:drawBassView(def, state, track, col)
     local semis = voice and math_floor(voice.currentSemis + 0.5) or Theory:getScaleDegreeSemis(state.activeDegree or 1)
     local noteName = Theory.NOTE_NAMES[(semis % 12) + 1]
     self:setColor(voice and C.TEXT or col)
+    local oct = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
+    local sub = string.format("DEG %s  -  OCT %s%d  -  %s", def:degreeLabel(state.activeDegree or 1), (oct > 0 and "+" or ""), oct,
+        voice and (state.lastArticulation or "HOLD") or "READY")
+    -- an instrument borrowing this view may word the two lines itself
+    if def.getReadout then
+        local big, small = def:getReadout(state)
+        noteName, sub = tostring(big or noteName), tostring(small or sub)
+    end
     love.graphics.setFont(self.fontHuge)
     local nw = self.fontHuge:getWidth(noteName)
     love.graphics.print(noteName, math_floor(320 - nw * 0.5), 112)
 
     love.graphics.setFont(self.fontSmall)
     self:setColor(C.MUTED)
-    local oct = (Input.down.L1 and -1 or 0) + (Input.down.R1 and 1 or 0)
-    local sub = string.format("DEG %s  -  OCT %s%d  -  %s", def:degreeLabel(state.activeDegree or 1), (oct > 0 and "+" or ""), oct,
-        voice and (state.lastArticulation or "HOLD") or "READY")
     local sw = self.fontSmall:getWidth(sub)
     love.graphics.print(sub, math_floor(320 - sw * 0.5), 148)
 
@@ -2092,6 +2209,7 @@ function Chrome:drawTapeDeck()
         local col = track.muted and C.DIM or tColor
         local loopTicks = Looper:getLoopTicks()
         local laneW = lw - 4
+        local trackDef = Instruments:getDefinition(track.instrumentId)
         for _, ev in ipairs(track.events) do
             local x = lx + Looper:evPhase(ev) * laneW
             local len = ev.len or 0
@@ -2101,7 +2219,7 @@ function Chrome:drawTapeDeck()
             end
             if len > 0 or ev.open then
                 local lit = track.sounding[ev] or ev.open
-                local ry2 = cy + (self.RIBBON_ROW[ev.action] or 0)
+                local ry2 = cy + self:eventRow(trackDef, ev)
                 self:drawRibbon(x, len / loopTicks * laneW, lx, lx + laneW, ry2, col, lit, ev.open)
                 -- Glide points: a tick above the ribbon for a glide up, below for down
                 -- (tail glides land past the ribbon's end)
@@ -2126,16 +2244,17 @@ function Chrome:drawTapeDeck()
                 end
             else
                 local vel = ev.vel or 0.85
+                local hy = cy + self:eventRow(trackDef, ev)
                 if vel >= 0.88 and not track.muted then
-                    self:drawStarGlint(x, cy, 5.5, col, 0.95)
+                    self:drawStarGlint(x, hy, 5.5, col, 0.95)
                     self:setColor(C.TEXT)
-                    love.graphics.circle("fill", x, cy, 1.8)
+                    love.graphics.circle("fill", x, hy, 1.8)
                 else
                     local radius = 2.0 + vel * 1.6
                     self:setColor(col, 0.22)
-                    love.graphics.circle("fill", x, cy, radius + 1.5)
+                    love.graphics.circle("fill", x, hy, radius + 1.5)
                     self:setColor(col)
-                    love.graphics.circle("fill", x, cy, radius)
+                    love.graphics.circle("fill", x, hy, radius)
                 end
             end
         end

@@ -44,6 +44,14 @@ local function withLab(defs, fn)
     end
 end
 
+-- The real game (sounds generated), as the session tests boot it
+local function bootSession()
+    local M = H.loadMain()
+    M.Config = require("src.config")
+    H.play(0.1)
+    return M, M.Looper
+end
+
 -- A catalogue of exactly n instruments: the library plus stand-ins
 local function setCatalog(I, n)
     I.catalog, I.byId = {}, {}
@@ -65,18 +73,49 @@ local function centreTab(M)
     end
 end
 
+-- Boot the real game with a love.graphics that keeps every printed text.
+-- Returns M and seen(text): was exactly this text printed in the next frame?
+local function bootCapturing()
+    local texts = {}
+    local noop = function() end
+    H.graphicsOverride = setmetatable({
+        newFont = function(size)
+            size = size or 12
+            return { size = size, getHeight = function() return size end,
+                     getWidth = function(_, t) return #tostring(t) * math.floor(size * 0.6) end }
+        end,
+        getDimensions = function() return 640, 480 end,
+        print = function(text) texts[#texts + 1] = tostring(text) end,
+    }, { __index = function() return noop end })
+    local M = bootSession()
+    H.graphicsOverride = nil
+    local function frame()
+        for i = #texts, 1, -1 do texts[i] = nil end
+        H.play(1 / 60)
+        local set = {}
+        for _, t in ipairs(texts) do set[t] = true end
+        return set
+    end
+    return M, frame
+end
+
+-- Add stand-in instruments to the running catalogue
+local function addInstrument(I, def)
+    I.catalog[#I.catalog + 1] = def
+    I.byId[def.id] = def
+    return def
+end
+
+-- Make `id` the instrument of track `slot` and the active track
+local function playOn(M, slot, id)
+    M.Instruments:swapTrackInstrument(slot, id)
+    M.Looper.activeTrack = slot
+end
+
 local function ids(I)
     local out = {}
     for i, inst in ipairs(I.catalog) do out[i] = inst.id end
     return table.concat(out, " ")
-end
-
--- The real game (sounds generated), as the session tests boot it
-local function bootSession()
-    local M = H.loadMain()
-    M.Config = require("src.config")
-    H.play(0.1)
-    return M, M.Looper
 end
 
 return {
@@ -327,5 +366,154 @@ return {
         H.truthy(list[1].inst.lab and list[2].inst.lab, "left of DRUMS: the last two (lab) instruments")
         H.falsy(list[3].inst.lab, "the library is not marked")
         H.release("SELECT"); H.play(0.1)
+    end },
+
+    -- ------------------------------------------------------------------
+    -- L0.3: stage views from data (viewKind, VIEW, getReadout, LANES)
+    -- ------------------------------------------------------------------
+    { "viewKind \"bass\" on a Bass-built instrument: the Bass view with its own labels", function()
+        local M, frame = bootCapturing()
+        local Bass = require("src.instruments.bass")
+        addInstrument(M.Instruments, setmetatable({
+            id = "slide", name = "SLIDE", shortName = "SLID", title = "SLIDE", lab = true, viewKind = "bass",
+            VIEW = { dpad = { UP = "RISE", DOWN = "FALL" }, face = { B = "PLAY", A = "SNAP", Y = "DIVE", X = "LOUD" },
+                     l1 = "LOW", r1 = "HIGH", both = "WIDE" },
+        }, { __index = Bass }))
+        playOn(M, 3, "slide")
+        local seen = frame()
+        H.truthy(seen["PITCH TRACE"], "the Bass's pitch trace")
+        H.truthy(seen["GLIDE MEDIUM"], "the Bass's capsules")
+        H.truthy(seen["RISE"] and seen["FALL"], "its own D-pad labels")
+        H.truthy(seen["PLAY"] and seen["SNAP"] and seen["DIVE"] and seen["LOUD"], "its own face labels")
+        H.falsy(seen["LEGATO"] or seen["L5"], "none of the Bass's labels")
+        H.truthy(seen["L1: LOW"] and seen["R1: HIGH"], "its own shoulder labels")
+        H.truthy(seen["SLIDE"], "its name as the title")
+        H.hold("L1", "R1")
+        seen = frame()
+        H.truthy(seen["L1+R1: WIDE"], "the label for both shoulders")
+        H.release("L1", "R1")
+    end },
+
+    { "VIEW parts may be left out: the view's own labels fill in", function()
+        local M, frame = bootCapturing()
+        local Bass = require("src.instruments.bass")
+        addInstrument(M.Instruments, setmetatable({
+            id = "dial", name = "DIAL", shortName = "DIAL", lab = true, viewKind = "bass",
+            VIEW = { face = { B = "ONE", A = "THREE", Y = "SEVEN", X = "FIVE" } },
+        }, { __index = Bass }))
+        playOn(M, 3, "dial")
+        local seen = frame()
+        H.truthy(seen["ONE"] and seen["FIVE"], "its face labels")
+        H.truthy(seen["L5"], "the Bass's D-pad labels")
+        H.truthy(seen["L1: OCT -1"] and seen["R1: OCT +1"], "the Bass's shoulder labels")
+        H.hold("L1", "R1")
+        H.truthy(frame()["L1: OCT -1"], "no label for both: each shoulder keeps its own")
+        H.release("L1", "R1")
+    end },
+
+    { "a Bass-view instrument may word the readout itself", function()
+        local M, frame = bootCapturing()
+        local Bass = require("src.instruments.bass")
+        addInstrument(M.Instruments, setmetatable({
+            id = "slide", name = "SLIDE", shortName = "SLID", lab = true, viewKind = "bass",
+            getReadout = function() return "E +", "BETWEEN 3 AND 4" end,
+        }, { __index = Bass }))
+        playOn(M, 3, "slide")
+        local seen = frame()
+        H.truthy(seen["E +"] and seen["BETWEEN 3 AND 4"], "both lines from the instrument")
+        H.truthy(seen["PITCH TRACE"], "still the Bass view")
+    end },
+
+    { "viewKind \"lab\": the plain view draws the readout", function()
+        local M, frame = bootCapturing()
+        addInstrument(M.Instruments, labDef("strum", {
+            getReadout = function(_, state) return state.big, "DOWN STROKE", { "FIRST LINE", "SECOND LINE" } end,
+            newState = function() return { big = "3  +  5TH" } end,
+        }))
+        playOn(M, 2, "strum")
+        local seen = frame()
+        H.truthy(seen["3  +  5TH"], "the large line, from the state")
+        H.truthy(seen["DOWN STROKE"], "the small line")
+        H.truthy(seen["FIRST LINE"] and seen["SECOND LINE"], "further lines")
+        H.truthy(seen["LAB"], "marked as a lab view")
+        H.truthy(seen["L1: -"] and seen["R1: -"], "no shoulder labels of its own")
+        H.truthy(seen["B"] and seen["X"], "plain face labels")
+    end },
+
+    { "an instrument with no view of its own gets the plain view", function()
+        local M, frame = bootCapturing()
+        local def = labDef("valves")
+        def.viewKind = nil
+        addInstrument(M.Instruments, def)
+        H.eq(require("src.ui.chrome"):viewKind(def), "lab", "falls back to the lab view")
+        playOn(M, 4, "valves")
+        local seen = frame()
+        H.truthy(seen["VALVES"], "its name, large")
+        H.truthy(seen["LAB"], "the plain view")
+    end },
+
+    { "viewKind \"drums\" on a Drums-built instrument: the four lanes with its own labels", function()
+        local M, frame = bootCapturing()
+        local Drums = require("src.instruments.drums")
+        addInstrument(M.Instruments, setmetatable({
+            id = "hands", name = "HAND DRUMS", shortName = "HAND", lab = true, viewKind = "drums", eventClass = "drums",
+            VIEW = { dpad = { UP = "PAD X", DOWN = "PAD B", LEFT = "PAD Y", RIGHT = "PAD A" }, l1 = "SOFT", r1 = "LOUD" },
+        }, { __index = Drums }))
+        playOn(M, 1, "hands")
+        H.tap("L2"); H.tap("B"); H.tap("L2")
+        local seen = frame()
+        H.truthy(seen["1 HIT"], "the lanes count the hit")
+        H.truthy(seen["REPEAT OFF"], "the drum view's capsules")
+        H.truthy(seen["PAD X"] and seen["PAD A"], "its own D-pad labels")
+        H.falsy(seen["FLAM"], "not the Drums' labels")
+        H.truthy(seen["L1: SOFT"] and seen["R1: LOUD"], "its own shoulder labels")
+    end },
+
+    { "the five library instruments keep their views and labels", function()
+        local M, frame = bootCapturing()
+        local expect = {
+            drums = { "ACCENT", "RATCHET", "L1: 1/4", "R1: 1/8", "REPEAT OFF", "D-PAD: EXPRESSION" },
+            harp  = { "bVI", "IVm", "L1: OCT -", "R1: OCT +", "D-PAD: HARMONY" },
+            bass  = { "L5", "LEGATO", "STAC", "L1: OCT -1", "PITCH TRACE", "GLIDE MEDIUM", "D-PAD: SCALE DEGREE" },
+            pad   = { "BRIGHT +", "SWELL", "L1: OCT -1", "MOVE", "D-PAD: TONE" },
+            lead  = { "NOTE", "ARP", "L1: OCT -1", "PITCH TRACE", "D-PAD: SCALE DEGREE" },
+        }
+        for id, labels in pairs(expect) do
+            playOn(M, 3, id)
+            local seen = frame()
+            for _, label in ipairs(labels) do
+                H.truthy(seen[label], id .. " shows " .. label)
+            end
+            H.falsy(seen["LAB"], id .. " is not drawn as a lab view")
+        end
+        playOn(M, 3, "lead")
+        H.hold("L1", "R1")
+        H.truthy(frame()["L1+R1: RATE x2"], "the Lead's both-shoulders label")
+        H.release("L1", "R1")
+    end },
+
+    { "LANES: a shoulder-started note lands on the tape deck row the instrument names", function()
+        local M, frame = bootCapturing()
+        local Chrome = require("src.ui.chrome")
+        local strum = addInstrument(M.Instruments, labDef("strum", { LANES = { R1 = 1, L1 = 2 } }))
+        local bass = M.Instruments.byId.bass
+        H.eq(Chrome:eventRow(strum, { action = "R1", len = 0 }), Chrome.LANE_ROW[1], "R1 hit on row 1")
+        H.eq(Chrome:eventRow(strum, { action = "R1", len = 200 }), Chrome.LANE_ROW[1], "R1 held note on row 1")
+        H.eq(Chrome:eventRow(strum, { action = "L1", len = 0 }), Chrome.LANE_ROW[2], "L1 on row 2")
+        H.truthy(Chrome.LANE_ROW[1] < Chrome.LANE_ROW[2], "row 1 is above row 2")
+        H.eq(Chrome:eventRow(strum, { action = "B", len = 200 }), Chrome.RIBBON_ROW.B, "a face button keeps its own row")
+        H.eq(Chrome:eventRow(strum, { action = "B", len = 0 }), 0, "a face-button hit stays on the centre line")
+        -- instruments without LANES are as before
+        H.eq(Chrome:eventRow(bass, { action = "A", len = 200 }), Chrome.RIBBON_ROW.A, "Bass held note")
+        H.eq(Chrome:eventRow(bass, { action = "A", open = true }), Chrome.RIBBON_ROW.A, "Bass note still held")
+        H.eq(Chrome:eventRow(bass, { action = "A", len = 0 }), 0, "hit")
+        H.eq(Chrome:eventRow(bass, { action = "R1", len = 200 }), 0, "an action nobody names: the centre line")
+
+        -- and the deck draws them
+        playOn(M, 2, "strum")
+        H.record(M.Looper, 2, "R1", 0.1, { len = 300 })
+        H.record(M.Looper, 2, "L1", 0.3)
+        H.record(M.Looper, 2, "R1", 0.6, { vel = 1.0 })
+        frame()
     end },
 }
