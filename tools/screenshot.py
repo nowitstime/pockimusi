@@ -73,6 +73,10 @@ SCENES = {
                   ' H.hold("B"); H.play(0.6); H.hold("SELECT", "R2"); H.tap("X"); H.play(0.25)',
     "count-in": 'require("src.looper").countIn = true; H.play(0.3); H.tap("L2"); H.play(0.6)',
     "transport-count": 'H.hold("START"); H.play(0.3); H.tap("X"); H.tap("X")',
+    "drums-rows": 'H.tap("Y"); H.hold("SELECT"); H.play(0.3); for _ = 1, 3 do H.tap("DOWN") end; H.tap("R1"); H.tap("R1")',
+    "drums-variation": 'local st = require("src.looper").tracks[1].state; st.variation = "WILD"; st.padTune.Y = 3; st.padLevel.A = 0.6;'
+                       ' H.tap("L2"); H.tap("B"); H.play(0.25); H.hold("DOWN"); H.tap("A"); H.play(0.1); H.tap("A"); H.release("DOWN");'
+                       ' H.play(0.2); H.tap("Y"); H.play(0.2); H.hold("DOWN"); H.tap("Y"); H.release("DOWN"); H.tap("L2"); H.play(0.4)',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'
                   ' H.play(0.6); H.hold("Y"); H.play(0.4); H.release("Y"); H.play(1.6); H.hold("X"); H.play(1.2);'
                   ' H.release("X"); H.tap("L2"); H.play(1.1)',

@@ -121,13 +121,13 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] ❓ Replace vs overdub, auto-stop after one pass (not built: no free control)
 - [ ] Device check: is EFX there (filter sweep), do the meters match what is heard, count-in feel
 
-## Phase H · Drums pass 2
+## Phase H · Drums pass 2 ✅ (device check pending) — details in [PHASE_H.md](PHASE_H.md)
 
-- [ ] Already on v2 from A5; check flam/ratchet/choke/repeat still behave
-- [ ] `VARIATION` row: Off / Light / Wild (velocity jitter → timing nudge + fills)
-- [ ] Chance hits ❓ gesture (proposal: ghost hit while Variation ≠ Off)
-- [ ] Per-pad tune and level ❓ where
-- [ ] Device check
+- [x] H1 Flam, ratchet and choke covered by tests (repeat already was)
+- [x] H2 `VARIATION` row: `OFF` / `LIGHT` (level jitter) / `WILD` (more jitter, late off-beat hits, fills in each bar's last beat); playback only
+- [x] H3 Chance hits: a ghost recorded with variation on plays on about half the passes; drawn hollow
+- [x] H4 Per-pad `TUNE` and `LEVEL` rows for the last pad hit; the Track page list scrolls (5 rows shown)
+- [ ] Device check: does `LIGHT` feel human, are `WILD` fills welcome, is tuning a pad quick enough
 
 ## Phase I · Tape deck v2 & visual polish
 
@@ -147,4 +147,4 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](PHASE_F.md)), also unheard. Phase G (Mix & FX finish) is built ([PHASE_G.md](PHASE_G.md)). Next: Phase H, Drums pass 2.
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](PHASE_F.md)), also unheard. Phase G (Mix & FX finish) is built ([PHASE_G.md](PHASE_G.md)). Phase H (Drums pass 2) is built ([PHASE_H.md](PHASE_H.md)). Next: Phase I, Tape deck v2 & visual polish.

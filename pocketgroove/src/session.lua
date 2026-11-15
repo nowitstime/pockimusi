@@ -124,6 +124,7 @@ local function restoreEvent(raw, loop)
     if raw.grid ~= nil then ev.grid = num(raw.grid, 1, loop, nil) end
     if raw.semis ~= nil then ev.semis = num(raw.semis, -48, 48, 0) end
     if raw.takeId ~= nil then ev.takeId = int(raw.takeId, 0, 1e9, 0) end
+    if raw.chance ~= nil then ev.chance = num(raw.chance, 0.0, 1.0, nil) end
 
     -- keyframes (pitch bends, Pad tone sweeps): keep the valid ones, in time order
     if raw.bend ~= nil then

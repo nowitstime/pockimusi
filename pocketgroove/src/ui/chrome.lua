@@ -1001,7 +1001,18 @@ function Chrome:drawDrumLanes(def, state, track, col)
         love.graphics.print(pad, 221, top + 2)
         love.graphics.setFont(self.fontSmall)
         self:setColor(C.TEXT)
-        love.graphics.print(def:getPadSound(state, pad).short, 232, top)
+        local short = def:getPadSound(state, pad).short
+        love.graphics.print(short, 232, top)
+        -- tune and level, when they aren't the defaults
+        local tune, level = state.padTune[pad] or 0, state.padLevel[pad] or 1.0
+        local extra = {}
+        if tune ~= 0 then extra[#extra + 1] = string.format("%+d", tune) end
+        if math_abs(level - 1.0) > 0.001 then extra[#extra + 1] = math_floor(level * 100 + 0.5) .. "%" end
+        if #extra > 0 then
+            love.graphics.setFont(self.fontTiny)
+            self:setColor(C.MUTED)
+            love.graphics.print(table.concat(extra, " "), 232 + self.fontSmall:getWidth(short) + 6, top + 2)
+        end
 
         local count = Looper:countTrackAction(track.slot, pad)
         local info = count .. (count == 1 and " HIT" or " HITS")
@@ -1043,6 +1054,9 @@ function Chrome:drawDrumLanes(def, state, track, col)
                         local hh = h * (1.0 - k * 0.2)
                         love.graphics.rectangle("fill", x + k * (bw / 3 + 0.3), base - hh, 1.2, hh)
                     end
+                elseif ev.chance and ev.chance < 1.0 then
+                    -- a "maybe" hit: hollow
+                    love.graphics.rectangle("line", x + 0.5, base - h + 0.5, bw, h - 1)
                 else
                     love.graphics.rectangle("fill", x, base - h, bw, h)
                     if vel >= 0.95 then
@@ -1075,6 +1089,9 @@ function Chrome:drawDrumLanes(def, state, track, col)
     else
         table.insert(items, { "REPEAT OFF", C.GRID, C.PANEL_HI, C.MUTED })
     end
+    if state.variation ~= "OFF" then
+        table.insert(items, { "VAR " .. state.variation, C.GRID, C.PANEL_HI, col })
+    end
     if (track.swing or 0.5) > 0.5 then
         table.insert(items, { string.format("SWING %d%%", math_floor(track.swing * 100 + 0.5)), C.GRID, C.PANEL_HI, C.TEXT })
     end
@@ -1099,6 +1116,8 @@ function Chrome:drawMoonGauge(x, y, r, amount, on, col)
     love.graphics.setLineWidth(1)
 end
 
+Chrome.ROWS_SHOWN = 5
+
 function Chrome:drawTrackPageView(def, state, track, col)
     local C = Config.COLORS
     local rows = Instruments:getSoundRows(def, state)
@@ -1106,6 +1125,11 @@ function Chrome:drawTrackPageView(def, state, track, col)
     local n = #rows
     local y0 = (n == 1) and 134 or 108
     local nx = 226
+    -- At most ROWS_SHOWN rows fit above the instrument line: a longer list
+    -- scrolls with the cursor
+    local shown = math_min(n, self.ROWS_SHOWN)
+    local first = clamp(sel - 2, 1, n - shown + 1)
+    local last = first + shown - 1
 
     -- Value column starts after the widest label (KIT, X ... COLOUR)
     local labelW = 0
@@ -1116,13 +1140,23 @@ function Chrome:drawTrackPageView(def, state, track, col)
 
     if n > 1 then
         self:setColor(col, 0.3)
-        for yy = y0, y0 + (n - 1) * 26, 4 do
+        for yy = y0, y0 + (shown - 1) * 26, 4 do
             love.graphics.line(nx, yy, nx, yy + 1)
         end
     end
+    -- More rows above / below
+    self:setColor(col, 0.9)
+    if first > 1 then
+        love.graphics.polygon("fill", nx - 4, y0 - 13, nx + 4, y0 - 13, nx, y0 - 18)
+    end
+    if last < n then
+        local by = y0 + (shown - 1) * 26 + 13
+        love.graphics.polygon("fill", nx - 4, by, nx + 4, by, nx, by + 5)
+    end
 
-    for i, row in ipairs(rows) do
-        local y = y0 + (i - 1) * 26
+    for i = first, last do
+        local row = rows[i]
+        local y = y0 + (i - first) * 26
         local isSel = (i == sel)
         local isSetting = (row.kind == "setting")
         if isSel then
