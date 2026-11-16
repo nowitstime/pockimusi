@@ -117,7 +117,7 @@ L0.1 to L0.6 are built and tested (`tests/test_lab.lua`, `tests/test_fingers.lua
 
 Shared changes made by an instrument stream after L0 (keep them additive):
 
-- *(none yet)*
+- **The five are ordinary instruments** (after the first playtest): they dropped `lab = true`, and `buildCatalog` now loads every reserved id and leaves out only modules marked `lab` while `Config.LAB` is off. So `Config.LAB` hides just `FINGERS` now, and only `FINGERS` has the dot in the tabs. Test `test_lab` "LAB off" changed to match.
 
 ## Open (settle by playing)
 

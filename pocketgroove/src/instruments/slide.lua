@@ -31,7 +31,6 @@ local Slide = setmetatable({
     name = "SLIDE",
     shortName = "SLID",
     title = "SLIDE",
-    lab = true,
     viewKind = "bass",
     eventClass = "slide",      -- its own: Bass / Lead notes are not kept on a swap
 

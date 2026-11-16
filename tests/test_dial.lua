@@ -47,14 +47,14 @@ return {
         local M = H.fresh()
         local def = M.Instruments.byId.dial
         H.truthy(def, "registered")
-        H.truthy(def.lab, "lab")
+        H.falsy(def.lab, "an ordinary instrument")
         H.eq(def.viewKind, "bass", "pitch trace view")
         H.eq(def.VIEW.face.B .. def.VIEW.face.A .. def.VIEW.face.X .. def.VIEW.face.Y, "1357", "face labels")
         H.eq(def.HOME_GROUP .. " " .. def.DEFAULT_PATCH .. " " .. def.REGISTER .. " " .. def.VOICES,
             "LEAD lead_square 4 4", "sound")
         M.Config.LAB = false
         M.Instruments:buildCatalog()
-        H.falsy(M.Instruments.byId.dial, "gone with the lab off")
+        H.truthy(M.Instruments.byId.dial, "stays with the lab off")
     end },
 
     -- DL1 ---------------------------------------------------------------

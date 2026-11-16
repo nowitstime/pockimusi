@@ -13,8 +13,8 @@ local Config = {
     MAX_BPM = 180,
     TWO_PI = math_pi * 2.0,
 
-    -- Lab instruments (lab/README.md): with this off, every instrument marked
-    -- `lab = true` is left out of the catalogue
+    -- Lab tools (lab/README.md): with this off, every instrument marked
+    -- `lab = true` (today only the FINGERS test screen) leaves the catalogue
     LAB = true,
 
     COLORS = {

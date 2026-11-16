@@ -122,17 +122,22 @@ return {
     -- ------------------------------------------------------------------
     -- L0.1: the lab switch, reserved ids, saves
     -- ------------------------------------------------------------------
-    { "LAB off: the catalogue is the five library instruments", withLab({ strum = {} }, function()
+    { "LAB off: instruments marked lab leave the catalogue, the rest stay", withLab({ strum = {} }, function()
         local M = H.fresh()
         M.Config.LAB = false
         M.Instruments:buildCatalog()
-        H.eq(ids(M.Instruments), table.concat(LIBRARY, " "), "library only")
-        H.falsy(M.Instruments.byId.strum, "lab instrument not registered")
-        -- stepping goes round the five and never lands anywhere else
-        local id = "drums"
-        for i = 1, 5 do
+        local list = ids(M.Instruments)
+        H.truthy(list:find("^" .. table.concat(LIBRARY, " ")), "library first: " .. list)
+        H.falsy(M.Instruments.byId.strum, "an instrument marked lab is not registered")
+        H.falsy(M.Instruments.byId.fingers, "nor is the FINGERS test screen")
+        for _, inst in ipairs(M.Instruments.catalog) do
+            H.falsy(inst.lab, inst.id .. " is not marked lab")
+        end
+        -- stepping goes round the catalogue and never lands anywhere else
+        local n, id = #M.Instruments.catalog, "drums"
+        for i = 1, n do
             id = M.Instruments:stepInstrumentId(id, 1)
-            H.eq(id, LIBRARY[(i % 5) + 1], "step " .. i)
+            H.eq(id, M.Instruments.catalog[(i % n) + 1].id, "step " .. i)
         end
     end) },
 

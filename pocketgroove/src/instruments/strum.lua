@@ -34,7 +34,6 @@ local Strum = {
     name = "STRUM",
     shortName = "STRM",
     title = "STRUM",
-    lab = true,
     viewKind = "lab",
     eventClass = "strum",
     defaultGridIndex = 3, -- 1/16
