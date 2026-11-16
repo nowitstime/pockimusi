@@ -82,7 +82,22 @@ A held note, as on Bass, with `action`, `semis` (fractional), `vel`, and `bend` 
 
 ## Status
 
-Not started.
+SL1 to SL3 are built and tested (`tests/test_slide.lua`, 10 tests). Left: the playtest. No shared file was touched.
+
+Decisions made while building (say if any is wrong):
+
+- **Shoulders: octave or speed.** A shoulder pressed while `↑ / ↓` is held only speeds the slide up; pressed otherwise it jumps an octave at once (no wait for the release). Holding a shoulder first and then sliding jumps the octave *and* slides four times faster. An octave that would leave the range does nothing (rather than stopping at the end, which would change the note).
+- **The pitch is kept relative to the root,** so changing the key moves it with the key. Range ±24 from the root.
+- **`A` pressed between notes** (with `SNAP` off, or after a step out of tune) eases onto the nearest scale note straight away, not only when the D-pad is let go. It is the "safe" note.
+- **Settling moves the track's pitch,** for `SOFT` and for `A` alike (the pitch is one number). Any D-pad or shoulder move cancels a settle in progress.
+- **`HARD`** steers a hidden position at the row's speed and sounds the nearest scale note, so a held `↑` walks up the scale at roughly the same speed. Switching the row to `HARD` snaps the pitch.
+- **Dive length.** "Over the patch's release" is 90 ms on `SQUARE`, too short to hear, so a `Y` note's voice gets a release of at least 0.4 s (`DIVE_TIME`) and falls an octave over it.
+- **Keyframes.** While sliding, one keyframe at most every 30 ticks, plus one when the pitch stops (steps and octave jumps are recorded on the next frame, when the pitch is still). Playback slides in a straight line between keyframes up to 90 ticks apart (`MAX_SEGMENT`) and steps to a keyframe after a longer still stretch, so a slide plays back within a fraction of a semitone of how it was played.
+- **Only held notes are steered;** a released note's tail keeps its pitch (the Bass bends tails; here that would drag every note's fade along the next slide).
+- **Mono on every patch,** ringing ones too: a new press releases the held note, and the old note's recorded length ends where the new one starts.
+- **`eventClass = "slide"`** (its own): Bass / Lead notes are not kept on a swap to Slide or back. Slide notes would play on Bass, but Bass notes carry degrees Slide would ignore; decide after playing.
+- **Stage.** The large note is the nearest scale note to the track's pitch (shown when silent too), with `+` / `-` between notes; the small line reads `DEG 2+  -  OCT 0  -  SNAP SOFT  -  NOTE`. The Bass view's capsules show `GLIDE FAST` and `FOLLOW OFF`, which are true but say nothing useful; left as is (labels only).
+- **No preview scene:** `tools/screenshot.py` keeps its scenes in the shared file, so none was added.
 
 ## Open (settle by playing)
 
