@@ -791,7 +791,7 @@ function Chrome:drawCenterStage()
     elseif mode == "TRANSPORT" then
         self:drawTransportView(track, instCol, accent)
     elseif mode == "ERASE" then
-        self:drawEraseView(track)
+        self:drawEraseView(track, def)
     elseif mode == "NEW" then
         self:drawFreshSessionView()
     else
@@ -834,6 +834,12 @@ function Chrome:getControlLabels(def, state, mode)
     elseif mode == "ERASE" then
         dpadLabels = { LEFT = "UNDO" }
         faceLabels = { B = "CLR B", A = "CLR A", Y = "CLR Y", X = "CLR X" }
+        if def.ERASE then
+            -- only the buttons the instrument's erase map uses
+            for btn in pairs(faceLabels) do
+                if not def.ERASE[btn] then faceLabels[btn] = "" end
+            end
+        end
     elseif mode == "NEW" then
         dpadLabels = {}
         faceLabels = { B = "", A = "", Y = "", X = "" }
@@ -1706,7 +1712,7 @@ function Chrome:drawTransportView(track, trackCol, col)
     })
 end
 
-function Chrome:drawEraseView(track)
+function Chrome:drawEraseView(track, def)
     local C = Config.COLORS
     self:setColor(C.RED)
     love.graphics.setFont(self.fontLarge)
@@ -1715,7 +1721,20 @@ function Chrome:drawEraseView(track)
 
     love.graphics.setFont(self.fontSmall)
     self:setColor(C.TEXT)
-    love.graphics.print("B / A / Y / X - Clear pad lane", 232, 178)
+    if def and def.ERASE then
+        -- the instrument's erase map: what each face button clears
+        local parts = {}
+        for _, btn in ipairs({ "B", "A", "Y", "X" }) do
+            local entry = def.ERASE[btn]
+            if entry then parts[#parts + 1] = btn .. " - " .. (entry.label or table.concat(entry.actions, " + ")) end
+        end
+        local line = table.concat(parts, "   ")
+        if self.fontSmall:getWidth(line) > 200 then love.graphics.setFont(self.fontTiny) end
+        love.graphics.print(line, 232, 178)
+        love.graphics.setFont(self.fontSmall)
+    else
+        love.graphics.print("B / A / Y / X - Clear pad lane", 232, 178)
+    end
     love.graphics.print("LEFT / L1 - Undo last overdub", 232, 202)
     love.graphics.print("START - Clear entire track", 232, 226)
     self:setColor(C.MUTED)

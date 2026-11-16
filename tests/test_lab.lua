@@ -516,4 +516,79 @@ return {
         H.record(M.Looper, 2, "R1", 0.6, { vel = 1.0 })
         frame()
     end },
+
+    -- ------------------------------------------------------------------
+    -- L0.4: the ERASE map on the Erase page
+    -- ------------------------------------------------------------------
+    { "ERASE map: a face button clears the actions it names, nothing else", function()
+        local M, frame = bootCapturing()
+        local L = M.Looper
+        addInstrument(M.Instruments, labDef("strum", {
+            LANES = { R1 = 1, L1 = 2 },
+            ERASE = { B = { actions = { "R1" }, label = "DOWNSTROKES" },
+                      A = { actions = { "L1" }, label = "UPSTROKES" },
+                      X = { actions = { "R1", "L1" }, label = "ALL STROKES" } },
+        }))
+        playOn(M, 2, "strum")
+        L:beginRecordingTake()
+        H.record(L, 2, "R1", 0.0); H.record(L, 2, "R1", 0.25, { len = 200 })
+        H.record(L, 2, "L1", 0.5); H.record(L, 2, "B", 0.75)
+        H.record(L, 1, "B", 0.0)
+
+        H.hold("L2", "R2"); H.play(0.1)
+        local seen = frame()
+        H.truthy(seen["B - DOWNSTROKES   A - UPSTROKES   X - ALL STROKES"], "the page lists the map")
+        H.tap("B")
+        H.eq(L:countTrackAction(2, "R1"), 0, "B cleared the downstrokes")
+        H.eq(L:countTrackAction(2, "L1"), 1, "upstrokes untouched")
+        H.eq(L:countTrackAction(2, "B"), 1, "the B note is not what B clears here")
+        H.eq(L.toastText, "ERASED DOWNSTROKES (2 HITS)", "the map's label in the toast")
+        H.tap("Y")
+        H.eq(#L.tracks[2].events, 2, "a button the map leaves out clears nothing")
+        H.eq(#L.tracks[1].events, 1, "other tracks untouched")
+
+        -- undo works on the track as for any instrument: the take's remaining notes go
+        L.undoStack = { { kind = "take", takeId = L.tracks[2].events[1].takeId, trackSlot = 2 } }
+        H.tap("LEFT")
+        H.eq(#L.tracks[2].events, 0, "undo removes what is left of the take")
+        H.release("L2", "R2"); H.play(0.1)
+    end },
+
+    { "ERASE map: a list of actions clears them all", function()
+        local M = bootSession()
+        local L = M.Looper
+        addInstrument(M.Instruments, labDef("strum", {
+            ERASE = { X = { actions = { "R1", "L1" }, label = "ALL STROKES" } },
+        }))
+        playOn(M, 2, "strum")
+        H.record(L, 2, "R1", 0.0); H.record(L, 2, "L1", 0.5); H.record(L, 2, "A", 0.75)
+        H.hold("L2", "R2"); H.play(0.1)
+        H.tap("X")
+        H.eq(#L.tracks[2].events, 1, "both shoulders' notes cleared, the A note kept")
+        H.eq(L.tracks[2].events[1].action, "A", "the A note")
+        H.eq(L.toastText, "ERASED ALL STROKES (2 HITS)", "counted together")
+        H.release("L2", "R2"); H.play(0.1)
+    end },
+
+    { "without an ERASE map a face button clears its own notes, as before", function()
+        local M, frame = bootCapturing()
+        local L = M.Looper
+        H.record(L, 1, "B", 0.0); H.record(L, 1, "Y", 0.25); H.record(L, 1, "B", 0.5)
+        H.hold("L2", "R2"); H.play(0.1)
+        H.truthy(frame()["B / A / Y / X - Clear pad lane"], "the usual page")
+        H.tap("B")
+        H.eq(L:countTrackAction(1, "B"), 0, "B's hits cleared")
+        H.eq(L:countTrackAction(1, "Y"), 1, "Y's kept")
+        H.truthy(L.toastText:find("^ERASED B %(.*KICK%)"), "the pad's label in the toast: " .. L.toastText)
+        H.truthy(L.toastText:find("%(2 HITS%)$"), "the count: " .. L.toastText)
+        H.release("L2", "R2"); H.play(0.1)
+
+        -- the Looper call still takes one action, and a list without a label
+        H.record(L, 1, "A", 0.1); H.record(L, 1, "X", 0.2)
+        L:clearTrackAction(1, "A")
+        H.eq(L.toastText, "ERASED A (1 HITS)", "one action")
+        L:clearTrackAction(1, { "X", "Y" })
+        H.eq(L.toastText, "ERASED X + Y (2 HITS)", "a list")
+        H.eq(#L.tracks[1].events, 0, "all gone")
+    end },
 }

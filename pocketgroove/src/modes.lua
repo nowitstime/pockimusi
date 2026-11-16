@@ -192,14 +192,27 @@ end
 -- ---------------------------------------------------------------------------
 local handlers = {}
 
+-- What a face button clears on the Erase page: its own notes, or what the
+-- instrument's ERASE map gives it ({ B = { actions = { "R1" }, label =
+-- "DOWNSTROKES" } }; a button the map leaves out clears nothing).
+-- Returns actions, label, or nil.
+function Modes:eraseTarget(def, state, btn)
+    if def.ERASE then
+        local entry = def.ERASE[btn]
+        if not entry then return nil end
+        return entry.actions, entry.label
+    end
+    return btn, def.getActionLabel and def:getActionLabel(state, btn) or btn
+end
+
 -- L2 + R2: erase a pad, undo a take, clear the track
 function handlers.ERASE(ctx)
     Input.comboUsed.L2, Input.comboUsed.R2 = true, true
     local tIdx = Looper.activeTrack
     for _, btn in ipairs(FACE) do
         if Input.pressed[btn] then
-            local label = ctx.def.getActionLabel and ctx.def:getActionLabel(ctx.state, btn) or btn
-            Looper:clearTrackAction(tIdx, btn, label)
+            local actions, label = Modes:eraseTarget(ctx.def, ctx.state, btn)
+            if actions then Looper:clearTrackAction(tIdx, actions, label) end
         end
     end
     if Input.pressed.LEFT or Input.pressed.L1 then

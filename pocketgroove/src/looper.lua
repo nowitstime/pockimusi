@@ -351,18 +351,22 @@ function Looper:undo()
     self:showToast("NOTHING TO UNDO")
 end
 
--- Per-Drum / Per-Button Clear: Delete only events matching `action` ("B", "A", "Y", "X") on `trackIdx`
-function Looper:clearTrackAction(trackIdx, action, label)
+-- Per-Drum / Per-Button Clear: delete only the events on `trackIdx` whose
+-- action is `actions`: one action ("B", "A", "Y", "X", "L1", "R1") or a list
+function Looper:clearTrackAction(trackIdx, actions, label)
     local track = self.tracks[trackIdx]
     if not track then return end
+    if type(actions) ~= "table" then actions = { actions } end
+    local match = {}
+    for _, a in ipairs(actions) do match[a] = true end
     local removed = 0
     for i = #track.events, 1, -1 do
-        if track.events[i].action == action then
+        if match[track.events[i].action] then
             self:removeEventAt(track, i)
             removed = removed + 1
         end
     end
-    self:showToast(string.format("ERASED %s (%d HITS)", label or action, removed))
+    self:showToast(string.format("ERASED %s (%d HITS)", label or table.concat(actions, " + "), removed))
 end
 
 function Looper:countTrackAction(trackIdx, action)
