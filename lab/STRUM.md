@@ -97,7 +97,15 @@ ST5 can be dropped without hurting the rest if the bow is not worth it.
 
 ## Status
 
-Not started.
+ST1 to ST5 are built and tested (`pocketgroove/src/instruments/strum.lua`, `tests/test_strum.lua`, 11 tests). No shared file changed. Left: the playtest above 📱.
+
+- **Strings with `FOLLOW` on** are the D-pad degree plus the step, read through the chord the way Bass reads a degree (`Bass.pitchFor`): on the chord's root they are its own third, fifth and seventh; on another degree they walk the chord's scale (degree 5 + third = the chord's seventh). Degrees past 7 wrap into the next octave, so every degree and string has a pitch. With `FOLLOW` off the strings are the key's scale steps above the stored root.
+- **`REGISTER` is stored on each stroke** (`octave`, as on Bass): changing the row moves new strokes, not recorded ones.
+- **Damp is not recorded.** It withdraws the stroke that just started and stops everything (live and playback) with a 40 ms release, not a click-hard cut. Playback never damps, so a recorded plucked line rings on until its strings restart. Say if a damp should become an event (it would need an action the save accepts, e.g. an `L1` event with a flag).
+- **"A string plucked again restarts"** is read per pitch on the track: a new string at a pitch already ringing lets the old voice go (also when the pitch comes from another stroke).
+- **Live strokes with `FOLLOW` on** use the chord at the press; playback uses the chord at the stroke's tick (as Bass).
+- **Bowed strokes** spread their strings too; letting go before the last string has started drops the rest. The other shoulder ends the held bow and starts a new one; both shoulders inside the window damp instead.
+- **Previews:** not made (`tools/screenshot.py` has no Strum scene; the lab view draws it in the tests).
 
 ## Open (settle by playing)
 

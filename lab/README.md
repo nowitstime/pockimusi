@@ -89,7 +89,7 @@ An instrument moves to the roadmap when it passes the five tests in FUTURE_INSTR
 
 ## Exit checklist
 
-- [ ] `python3 tests/run.py` green with all five merged
+- [x] `python3 tests/run.py` green with all five merged
 - [ ] Ten tabs read clearly and the slide shows which way you stepped 📱
 - [ ] Settle window tuned on the `FINGERS` screen 📱
 - [ ] Each instrument has had a session of real playing and a verdict in its plan: slot, row on another instrument, or dropped 📱

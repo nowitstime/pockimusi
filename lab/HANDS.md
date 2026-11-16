@@ -62,7 +62,13 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md). Independent of t
 
 ## Status
 
-Not started.
+HD1 and HD2 are built and tested (`tests/test_hands.lua`, 9 tests). No shared file changed. `PocketGroove.love` is not rebuilt (done once after the wave merges). Left: the playtest above 📱.
+
+- **Both shoulders = repeat at the normal level.** With `L1 + R1` held the hits are neither ghost nor accent: the two shoulders cancel, and the repeat plays at the plain level. Repeat is always 1/16 (1/12T on a triplet grid), as Drums' `L1 + R1`; there is no 1/4 or 1/8 repeat here.
+- **One hit per pad per frame, not per stroke.** A face button and its direction landing in the same frame are one hit; a frame apart they are two (that is a roll, and it is what the instrument is for). Say if near-simultaneous doubles sound like accidental flams on the device.
+- **Recorded rolls still quantize.** Two strokes on one pad that land on the same grid step while recording keep only one, as on Drums. Faster rolls need a finer track grid.
+- **One label is the Drums'.** The subtitle under the D-pad still reads `D-PAD: EXPRESSION` (`ui/chrome.lua` picks it by view kind; the `VIEW` contract has no field for it). Left as is under the lab rule; a `VIEW.dpadTitle` hook would be a one-line additive change if it bothers.
+- **Mirror variant:** change `MIRROR_MAP` in `hands.lua` to `{ UP = "X", DOWN = "B", LEFT = "A", RIGHT = "Y" }` (and the `VIEW.dpad` labels) to try it.
 
 ## Open (settle by playing)
 
