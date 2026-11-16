@@ -1,88 +1,119 @@
-# Lab wave 1 — Playtest feedback
+# PocketGroove — Playtest feedback
 
-What playing the lab instruments on the device showed. The plans say what was built; this file says how it felt and what to change. When an instrument's feedback settles into a decision, copy the verdict into its plan.
+How the app feels on the device, and what to change. The whole app is in testing, so every instrument gets a pass and a section here, the library ones and the newer ones alike. The plans and SPEC say what was built; this file says how it played.
 
-**How to add a session:** copy the template at the bottom, fill in what you noticed, and put the newest session first. Keep notes short and in your own words; the "Next" lines are the to-do list for refinement.
+**How to use it:** after a session, copy the template at the bottom, fill in what you noticed, and put the newest session first. Keep the per-instrument sections up to date: they are the to-do list for each instrument's pass. When something settles into a decision, move it into SPEC or the instrument's plan.
+
+To judge an instrument by the part it plays (lead, chords, texture, rhythm, bass), see [MUSICAL_PARTS.md](MUSICAL_PARTS.md) §8.
 
 ---
 
 ## Where things stand
 
-| Instrument | Feel so far | Keep in the tabs? | Main thing to fix |
-| :-- | :-- | :-- | :-- |
-| [Dial](DIAL.md) | ★ Most fun | Yes | Moving round sounds too quiet: wants a new attack per note as an option, not only a glide |
-| [Hand Drums](HANDS.md) | Felt nice | Yes | Refine (nothing specific yet) |
-| [Valves](VALVES.md) | Liked the idea | Yes | Needs sounds made for it (brass) |
-| [Strum](STRUM.md) | Could be good | Yes | Could be the chord source for the other tracks, as the Harp is |
-| [Slide](SLIDE.md) | Could be good, unsure | Yes, for now | Play more before deciding |
+| Instrument | Part | Feel so far | Main thing to fix | Pass |
+| :-- | :-- | :-- | :-- | :-- |
+| Drums | Rhythm | — | — | [ ] |
+| Hand Drums | Rhythm | Felt nice | Nothing specific yet | [ ] |
+| Chord Harp | Chords | — | — | [ ] |
+| Strum | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
+| Bass | Bass | — | — | [ ] |
+| Pad | Texture | — | — | [ ] |
+| Lead / Arp | Lead | — | — | [ ] |
+| Dial | Lead | ★ Most fun | Moving round sounds too quiet: wants a re-strike, not only a glide | [ ] |
+| Slide | Lead | Could be good, unsure | Play more before deciding | [ ] |
+| Valves | Lead | Liked the idea | Needs brass sounds | [ ] |
 
-**Overall:** all five need refinement, one at a time. Most stay in for now: the carousel makes them easy to go through, and ten doesn't feel like too many.
+**Overall:** every instrument needs refinement, one at a time. All ten stay in: the carousel makes them easy to go through, and ten doesn't feel like too many.
 
 ---
 
-## Across all instruments
+## Across the app
 
 ### More sounds (patches)
 
-The lab instruments need sounds made for how they play. Today Dial, Slide and Valves open on the `LEAD` group (`SQUARE`, `SAW`, `PLUCK`, `KEYS`) and Strum on `PLUCK`.
+The newer instruments need sounds made for how they play. Today Dial, Slide and Valves open on the `LEAD` group (`SQUARE`, `SAW`, `PLUCK`, `KEYS`) and Strum on `PLUCK`.
 
-- **Brass:** for Valves first, and probably Dial and Slide too. Something like a trumpet, a horn section, a muted horn.
-- **Others to try:** bowed strings for Strum's bow, a reed or woodwind, a sound that keeps its loudness through a slur.
-- **Next:** a patch wave: decide a list, add a `BRASS` group in `synth/synths_bank.lua`, point Valves' `HOME_GROUP` at it.
+- **Brass:** for Valves first, probably Dial and Slide too. A trumpet, a horn section, a muted horn.
+- **Others:** bowed strings for Strum's bow, a reed or woodwind, leads that keep their level through a slur.
+- **Next:** a patch wave by part (list in MUSICAL_PARTS §7.3): add a `BRASS` group in `synth/synths_bank.lua` and point Valves' `HOME_GROUP` at it.
 
 ### Where chords come from
 
-Today the Harp is the track that sets the chords others follow. Two ideas:
+Today the Chord Harp is the track the others follow. Two ideas:
 
-1. **Strum as a chord source**, as the Harp is. Strum already picks a chord shape, so it would mostly be a matter of publishing it.
-2. **A separate chord track**: a track whose only job is the chord progression, so no instrument has to carry it. Part of this exists already: the Harp on its `SILENT (CHORDS ONLY)` patch is a chord track that isn't heard. A real chord track might start from there.
+1. **Strum as a chord source**, as the Harp is. Strum follows chords today, so it would need to *choose* them: the Harp's chord map on the D-pad (MUSICAL_PARTS §3.4).
+2. **A separate chord track** whose only job is the progression. Part of this exists: the Harp on its `SILENT (CHORDS ONLY)` patch is a chord track that isn't heard.
 
-- **Next:** decide between the two (or both). A chord track is a bigger change and touches the shared harmony code.
+- **Next:** decide between the two, or both.
+
+### What each part needs
+
+Playing Dial and the other lead instruments raised the question: what does a lead part need (moves on the scale, bends, skips, timing), and the same for chords, texture and rhythm. That is written up in [MUSICAL_PARTS.md](MUSICAL_PARTS.md), with what each instrument covers today and the direction it suggests.
 
 ---
 
 ## By instrument
 
-### Dial ★
+### Drums
 
-- **Good:** the most fun of the five.
-- **Not yet:** with some sounds, moving round the dial is too quiet. Every move is a slur on the one held note (no new attack), so a sound that fades after its attack fades away while you roll.
-- **Idea:** a setting for how a move sounds, per patch or as a row: `GLIDE` (today), `BEND` (instant slur) or `NEW NOTE` (each position strikes a fresh attack). Possibly a default per patch: plucky sounds strike, sustained sounds slur.
-- **Next:** add the setting, try it with each patch, and pick a default per patch.
+- **Not played in a pass yet.**
 
 ### Hand Drums
 
 - **Good:** felt nice.
-- **Not yet:** —
-- **Next:** play more; check the open points in [HANDS.md](HANDS.md) Status (a face button and a direction a frame apart give two hits; the D-pad label still says `EXPRESSION`).
+- **Next:** play more; check the open points in [lab/HANDS.md](lab/HANDS.md) Status (a face button and a direction a frame apart give two hits; the D-pad label still says `EXPRESSION`).
 
-### Valves
+### Chord Harp
 
-- **Good:** liked the idea.
-- **Not yet:** needs sounds that suit it. The saw lead doesn't sell it as a brass instrument.
-- **Next:** brass patches (above), then play again: is the chart learnable, does the 35 ms slur wait feel late?
+- **Not played in a pass yet.**
 
 ### Strum
 
 - **Good:** could be good.
-- **Idea:** let it be the chord source for the other tracks, as the Harp is (above).
+- **Idea:** let it set the chords for the other tracks, as the Harp does (above).
 - **Next:** decide the chord-source question; then the plan's open points (string map, louder downstrokes on the beat, neutral D-pad).
+
+### Bass
+
+- **Not played in a pass yet.**
+
+### Pad
+
+- **Not played in a pass yet.**
+
+### Lead / Arp
+
+- **Not played in a pass yet.**
+
+### Dial ★
+
+- **Good:** the most fun of the newer instruments.
+- **Not yet:** with some sounds, moving round the dial is too quiet. Every move slurs the one held note to a new pitch (no new attack), so a sound that fades after its attack fades away while you roll.
+- **Idea:** a choice of how a move sounds: `GLIDE` (today), `BEND` (instant slur) or `NEW NOTE` (each position strikes a fresh attack). Possibly a default per patch: plucky sounds strike, sustained ones slur. Better still, per note (MUSICAL_PARTS §2.2).
+- **Next:** add the choice, try it with each patch, pick the defaults.
 
 ### Slide
 
 - **Good:** could be good.
 - **Not yet:** unsure about it.
-- **Next:** another session focused on the plan's questions: can you land a note by ear with `SNAP` off, and is `SOFT` expressive or just out of tune?
+- **Next:** a session on the plan's questions: can you land a note by ear with `SNAP` off; is `SOFT` expressive or just out of tune?
+
+### Valves
+
+- **Good:** liked the idea.
+- **Not yet:** needs sounds that suit it. The saw lead doesn't sell it as brass.
+- **Next:** brass patches, then play again: is the chart learnable; does the 35 ms slur wait feel late?
 
 ---
 
 ## Sessions
 
-### Session 1 — first look at all five 📱 (2026-11-16)
+### Session 1 — first look at the five new instruments 📱 (2026-11-16)
 
 - **Build:** `claude/vigilant-gates-h1z44f` at the five-instrument rebuild.
 - **Ranking:** Dial > Hand Drums > Valves (idea) > Strum ≈ Slide.
-- **Notes:** as summarised above.
+- **Decided:** all of them stay in, as ordinary instruments; the whole app is in testing, and every instrument gets a pass.
+- **Notes:** as above.
 
 <!--
 Template — copy above the newest session:

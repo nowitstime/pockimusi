@@ -23,7 +23,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Topic | Decision |
 | :-- | :-- |
 | Tracks | **Four**, fixed. Instruments are swappable per slot |
-| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp** (swap it in on the Track page). Sample chop parked |
+| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp**, and from lab wave 1 **Hand Drums, Strum, Slide, Dial, Valves**: ten, all ordinary instruments while the app is in testing. Sample chop parked |
 | Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
 | Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `LEFT / RIGHT` change the value. A new option costs a row, not a button |
 | Instrument swap | Preview with `LEFT/RIGHT`, apply on `SELECT` release, **undoable** |
@@ -155,39 +155,27 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ---
 
-## Up next · Lab wave 1 — plans in [lab/](lab/README.md)
+## Lab wave 1 ✅ (built) — plans in [lab/](lab/README.md)
 
-Five instruments to try, ahead of Phase I. Experiments, not a phase: each one earns a place in the library by being played, or it goes (FUTURE_INSTRUMENTS §7). The foundation goes first; after it the five instruments are independent and can be built at the same time.
+Five instruments built at the same time on a shared foundation. After the first playtest all five stay in as **ordinary instruments** (no `lab` flag; only the `FINGERS` test screen stays behind `Config.LAB`).
 
-**Foundation** — [lab/L0_FOUNDATION.md](lab/L0_FOUNDATION.md)
-
-- [ ] L0.1 `LAB` switch; reserved instrument ids and test files; saves with a missing instrument
-- [ ] L0.2 Track page instrument tabs as a carousel: the selected one centred, the names slide
-- [ ] L0.3 Stage views and tape deck rows from data the instrument provides
-- [ ] L0.4 Erase map
-- [ ] L0.5 Held notes an instrument releases itself; Drums pad hooks
-- [ ] L0.6 Fingering reader (nine fingerings) and the `FINGERS` test screen
+- [x] L0 Foundation: lab switch, carousel tabs, views from data, erase map, held notes, fingering reader ([lab/L0_FOUNDATION.md](lab/L0_FOUNDATION.md))
+- [x] Hand Drums · Strum · Slide · Dial · Valves built, tests green
+- [x] First look on the device: Dial most fun, Hand Drums nice, Valves needs brass, Strum and Slide promising ([FEEDBACK.md](FEEDBACK.md))
 - [ ] Device check: tabs, fingerings, settle window
 
-**Instruments** (any order, or all at once; each owns one module, one test file and its plan)
+---
 
-| Instrument | Plan | Feel | Size |
-| :-- | :-- | :-- | :-- |
-| Hand Drums | [lab/HANDS.md](lab/HANDS.md) | Two thumbs: the D-pad is four more pads | S |
-| Strum | [lab/STRUM.md](lab/STRUM.md) | Thumbs choose silently, shoulders pluck | M |
-| Slide | [lab/SLIDE.md](lab/SLIDE.md) | Steer the pitch; it stays where you leave it | S–M |
-| Dial | [lab/DIAL.md](lab/DIAL.md) | Roll the thumb round the scale | M |
-| Valves | [lab/VALVES.md](lab/VALVES.md) | Brass: open note, valves, breath | M |
+## Up next · Instrument passes
 
-- [ ] Hand Drums built · [ ] played, verdict
-- [ ] Strum built · [ ] played, verdict
-- [ ] Slide built · [ ] played, verdict
-- [ ] Dial built · [ ] played, verdict
-- [ ] Valves built · [ ] played, verdict
-- [ ] Decide what the winners replace: the library stays at about six (FUTURE_INSTRUMENTS §8)
+The whole app is in testing, so **every** instrument gets a pass, one at a time: play it, write the feedback in [FEEDBACK.md](FEEDBACK.md), refine it. Judge each by the part it plays: [MUSICAL_PARTS.md](MUSICAL_PARTS.md) lists what lead, chord, texture, rhythm and bass parts need and what each instrument covers today.
+
+- [ ] Decide the open questions from MUSICAL_PARTS §7.4 (chord source, Dial slur vs re-strike, Pad latch, first shared expression piece, default slots)
+- [ ] Patch wave by part, brass first (MUSICAL_PARTS §7.3)
+- [ ] A pass per instrument: Drums · Hand Drums · Chord Harp · Strum · Bass · Pad · Lead/Arp · Dial · Slide · Valves
 
 ---
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](PHASE_F.md)), also unheard. Phase G (Mix & FX finish) is built ([PHASE_G.md](PHASE_G.md)). Phase H (Drums pass 2) is built ([PHASE_H.md](PHASE_H.md)). The sound pool is built (SPEC §6), unheard on the device. Next: lab wave 1 ([lab/README.md](lab/README.md)), starting with its foundation; then Phase I, Tape deck v2 & visual polish.
+Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](PHASE_F.md)), also unheard. Phase G (Mix & FX finish) is built ([PHASE_G.md](PHASE_G.md)). Phase H (Drums pass 2) is built ([PHASE_H.md](PHASE_H.md)). The sound pool is built (SPEC §6), unheard on the device. Lab wave 1 is built; next are the instrument passes above, starting from the decisions in MUSICAL_PARTS §7.4.

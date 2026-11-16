@@ -238,7 +238,7 @@ Goal: swapping the patch changes how the part sits with the drums **without chan
 
 ## 7. Instruments
 
-Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library: Drums, Chord Harp, Bass, Pad, Lead/Arp. Each must be a *different way of playing*, not a different sound.
+Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library: Drums, Chord Harp, Bass, Pad, Lead/Arp, plus the five from lab wave 1 (§7.6). Each must be a *different way of playing*, not a different sound.
 
 ### 7.1 Drums ✅ / 📐
 
@@ -287,7 +287,19 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ Follow lookahead is under half a 1/32 for the Lead (a 1/16 for the Bass), so the arp step before a chord change keeps the old chord.
 - ❓ Arp latch; note length as a row; vibrato on long notes. 📐 Strumming stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)).
 
-### 7.6 Parked ideas
+### 7.6 From lab wave 1 ✅ (plans in [lab/](lab/README.md))
+
+Ordinary instruments while the app is in testing; each gets a pass ([FEEDBACK.md](FEEDBACK.md)). The part each plays and what it still needs: [MUSICAL_PARTS.md](MUSICAL_PARTS.md).
+
+| Instrument | Part | Way of playing | Plan |
+| :-- | :-- | :-- | :-- |
+| Hand Drums | Rhythm | Two thumbs: the D-pad is four more pads; shoulders ghost / accent | [lab/HANDS.md](lab/HANDS.md) |
+| Strum | Chords | Thumbs choose the notes silently; `R1` / `L1` strum down / up; both damp | [lab/STRUM.md](lab/STRUM.md) |
+| Slide | Lead | The D-pad steers one pitch that stays where it's left | [lab/SLIDE.md](lab/SLIDE.md) |
+| Dial | Lead | Roll the right thumb round eight positions to walk the scale | [lab/DIAL.md](lab/DIAL.md) |
+| Valves | Lead | D-pad open note, face buttons valves, shoulders breath | [lab/VALVES.md](lab/VALVES.md) |
+
+### 7.7 Parked ideas
 
 - Sample chop instrument (needs `.wav` loading; not planned).
 - Separate Perc/FX instrument — superseded by Drums Variation.
