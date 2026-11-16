@@ -24,6 +24,21 @@ local Input = {
     repeatTimer = {},
 }
 
+-- The right thumb's fingering (lab/README.md): which face buttons are down
+-- together. Two buttons pressed together arrive a frame apart, so a
+-- fingering counts once it has stood still for FINGER_SETTLE seconds.
+Input.FINGER_SETTLE = 0.035
+Input.fingering = { id = "NONE", prev = "NONE", settled = true, changed = false, time = 0.0 }
+
+-- Bit per button, going round the diamond: B (bottom), A (right), X (top), Y (left)
+local FINGER_BITS = { B = 1, A = 2, X = 4, Y = 8 }
+local FINGER_IDS = {
+    [0] = "NONE",
+    [1] = "B", [2] = "A", [4] = "X", [8] = "Y",
+    [3] = "BA", [6] = "AX", [12] = "XY", [9] = "YB",       -- neighbouring pairs
+    [15] = "ALL",
+}                                                          -- anything else: "OTHER"
+
 Input.REPEAT_DELAY = 0.35     -- seconds held before auto-repeat starts
 Input.REPEAT_RATE  = 0.08     -- seconds between auto-repeats
 
@@ -127,6 +142,8 @@ function Input:update(dt)
         end
     end
 
+    self:updateFingering(dt or 0.016)
+
     if self.pressed.SELECT then
         self.selectHoldTime = 0.0
     elseif self.down.SELECT then
@@ -155,6 +172,36 @@ function Input:clearReleasedCombos()
     for mod in pairs(self.comboUsed) do
         if self.released[mod] then self.comboUsed[mod] = false end
     end
+end
+
+function Input:updateFingering(dt)
+    local bits = 0
+    for btn, bit in pairs(FINGER_BITS) do
+        if self.down[btn] then bits = bits + bit end
+    end
+    local id = FINGER_IDS[bits] or "OTHER"
+    local f = self.fingering
+    if id ~= f.id then
+        f.prev, f.id = f.id, id
+        f.changed, f.time = true, 0.0
+    else
+        f.changed = false
+        f.time = f.time + dt
+    end
+    -- a hair of slack, so a window that is a whole number of frames isn't
+    -- missed by rounding
+    f.settled = f.time >= self.FINGER_SETTLE - 1e-6
+end
+
+-- The right thumb's fingering this frame:
+--   id       "NONE", one button "B" "A" "X" "Y", a neighbouring pair "BA" "AX"
+--            "XY" "YB", "ALL", or "OTHER" (three buttons, or an opposite pair)
+--   settled  it has been the same for FINGER_SETTLE seconds
+--   changed  it changed this frame
+--   prev     the fingering before this one
+-- (The same table every frame: read it, don't keep it.)
+function Input:getFingering()
+    return self.fingering
 end
 
 function Input:isRecording()

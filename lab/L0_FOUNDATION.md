@@ -43,10 +43,10 @@ Instrument plans rely on exactly these. Names are final once L0 is merged.
 | :-- | :-- |
 | `lab = true` | A lab instrument: dotted in the tabs, hidden when `Config.LAB` is off |
 | `viewKind` | Which stage view draws it: `"drums"` (the four lanes), `"bass"` (pitch trace, degree, patch capsules) or `"lab"` (the plain view). Without it, the instrument's id decides, as today |
-| `VIEW` | Control labels for the stage: `{ dpad = { UP = "...", ... , NEUTRAL = "..." }, face = { B = "...", A = "...", Y = "...", X = "..." }, l1 = "...", r1 = "...", both = "..." }`. Any part may be left out |
-| `getReadout(state)` | For the `"lab"` view: returns a large line and a small line (what is sounding now) |
-| `LANES` | Tape deck row (1 to 4) for each event action that is not a face button, e.g. `{ R1 = 1, L1 = 2 }` |
-| `ERASE` | Erase page: what each face button clears, e.g. `{ B = { actions = { "R1" }, label = "DOWNSTROKES" } }`. Without it, a face button clears events with that action, as today |
+| `VIEW` | Control labels for the stage: `{ dpad = { UP = "...", ... , NEUTRAL = "..." }, face = { B = "...", A = "...", Y = "...", X = "..." }, l1 = "...", r1 = "...", both = "..." }`. Any part may be left out: the view's own labels show instead. `dpad` and `face` each replace the whole set; `l1` / `r1` are the text after `L1:` / `R1:`; `both` shows on both capsules while both shoulders are held |
+| `getReadout(state)` | For the `"lab"` view: returns a large line and a small line (what is sounding now), and optionally a list of up to nine further lines. In the `"bass"` view the same call, if the instrument has it, words the note name and the line under it (either may be `nil` to keep the Bass's) |
+| `LANES` | Tape deck row (1 to 4, top to bottom) for each event action that is not a face button, e.g. `{ R1 = 1, L1 = 2 }`. Hits and held notes of that action both sit on the row |
+| `ERASE` | Erase page: what each face button clears, e.g. `{ B = { actions = { "R1" }, label = "DOWNSTROKES" } }`. A button the map leaves out clears nothing. Without a map, a face button clears events with that action, as today |
 | `eventClass` | Unchanged: instruments with the same class keep each other's notes on a swap. L0 gives Drums `"drums"` |
 
 ### Calls
@@ -58,6 +58,12 @@ Instrument plans rely on exactly these. Names are final once L0 is merged.
 | `hold(ev, { manual = true })` | A held note that ends only when the instrument calls `h:release()` (or a page takes the controls, or the track stops being active). Without `manual`, a note still ends when its `action` button goes up |
 | `Drums:padPressed(btn)`, `Drums:padDown(btn)` | Whether a pad was hit this frame / is held. Default: the face button. Drums' own input code asks these instead of reading the buttons |
 | `Looper:clearTrackAction(slot, actions, label)` | `actions` may be a list |
+
+### Where things are
+
+- The reserved ids: `Instruments.LAB_IDS` (`src/instruments/init.lua`), and the same list in `tests/run.lua`.
+- An event's `action` may be a face button, `"L1"` or `"R1"`. Anything else is dropped when a save loads (`src/session.lua`).
+- Stand-in instruments that use every part of this contract: `tests/test_lab.lua`.
 
 ### Already there (no L0 work), for reference
 
@@ -93,10 +99,19 @@ Instrument plans rely on exactly these. Names are final once L0 is merged.
 
 ## Exit checklist
 
-- [ ] `python3 tests/run.py` green; the existing tests pass without edits, except where a test names the old tab layout
+- [x] `python3 tests/run.py` green; the existing tests pass without edits, except one line (see Status)
 - [ ] Six tabs (five + `FINGERS`) slide and wrap; the dot reads at a glance 📱
 - [ ] Pairs and all-four land on the `FINGERS` screen; `FINGER_SETTLE` set from what it shows 📱
-- [ ] The contract above matches the code, name for name
+- [x] The contract above matches the code, name for name
+
+## Status
+
+L0.1 to L0.6 are built and tested (`tests/test_lab.lua`, `tests/test_fingers.lua`); `PocketGroove.love` is rebuilt. Left: the two 📱 checks above.
+
+- **One existing test changed.** `test_session` "bad values are fixed up" used an unknown instrument name and expected its notes to be kept. That is the opposite of the decision here, so that track now has no instrument name (still the slot's default, notes kept), and the unknown-name case is tested in `test_lab`.
+- **Erase is not undoable, with or without a map.** The test line "undo restores" is read as "undo still works after an erase": it removes what is left of the take. Bringing erased notes back would be a new feature for every instrument; say if it is wanted.
+- **A missing track name versus an unknown one.** Only a save that *names* an instrument that is not there loads the track empty. A track with no instrument name at all (a damaged file) keeps its notes on the slot's default, as before.
+- **Previews:** `python3 tools/screenshot.py lab-fingers tabs-lab`.
 
 ## Added later
 

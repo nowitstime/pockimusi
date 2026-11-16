@@ -1323,7 +1323,7 @@ function Chrome:drawInstrumentTabs(track, col)
         if inst.lab then
             -- a lab instrument: a small dot over the name
             self:setColor(col, a)
-            love.graphics.circle("fill", math_floor(tab.x), y - 4, 1.6)
+            love.graphics.circle("fill", math_floor(tab.x), y - 3, 1.6)
         end
     end
 end

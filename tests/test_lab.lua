@@ -731,4 +731,105 @@ return {
         H.eq(L.tracks[1].instrumentId, "drums", "undo brings the drums back")
         H.eq(#L.tracks[1].events, 3, "with their hits")
     end },
+
+    -- ------------------------------------------------------------------
+    -- L0.6: the fingering reader
+    -- ------------------------------------------------------------------
+    { "getFingering reports each of the nine fingerings, and NONE", function()
+        local M = H.fresh()
+        local I = M.Input
+        local function frames(n) for _ = 1, n do I:update(1 / 60) end end
+        H.eq(I:getFingering().id, "NONE", "nothing down")
+        local nine = { B = { "B" }, A = { "A" }, X = { "X" }, Y = { "Y" },
+                       BA = { "B", "A" }, AX = { "A", "X" }, XY = { "X", "Y" }, YB = { "Y", "B" },
+                       ALL = { "B", "A", "X", "Y" } }
+        for id, btns in pairs(nine) do
+            H.hold(unpack(btns)); frames(1)
+            local f = I:getFingering()
+            H.eq(f.id, id, "fingering " .. id)
+            H.truthy(f.changed, id .. " changed this frame")
+            H.falsy(f.settled, id .. " not settled at once")
+            H.eq(f.prev, "NONE", id .. " came from nothing")
+            frames(3)
+            H.truthy(I:getFingering().settled, id .. " settled after the window")
+            H.falsy(I:getFingering().changed, id .. " no longer changing")
+            H.release(unpack(btns)); frames(4)
+            H.eq(I:getFingering().id, "NONE", "released")
+        end
+    end },
+
+    { "three buttons and opposite pairs are OTHER", function()
+        local M = H.fresh()
+        local I = M.Input
+        for _, btns in ipairs({ { "B", "X" }, { "A", "Y" }, { "B", "A", "X" }, { "A", "X", "Y" }, { "X", "Y", "B" }, { "Y", "B", "A" } }) do
+            H.hold(unpack(btns)); I:update(1 / 60)
+            H.eq(I:getFingering().id, "OTHER", table.concat(btns, "+"))
+            H.release(unpack(btns)); I:update(1 / 60)
+        end
+    end },
+
+    { "a pair arriving one frame apart settles as the pair, never as the single", function()
+        local M = H.fresh()
+        local I = M.Input
+        local settledAs = {}
+        local function frame()
+            I:update(1 / 60)
+            local f = I:getFingering()
+            if f.settled and f.id ~= "NONE" then settledAs[f.id] = true end
+        end
+        H.hold("B"); frame()
+        H.eq(I:getFingering().id, "B", "the first button alone, for one frame")
+        H.hold("A"); frame()
+        local f = I:getFingering()
+        H.eq(f.id, "BA", "now the pair"); H.eq(f.prev, "B", "it came through B"); H.truthy(f.changed, "changed")
+        for _ = 1, 6 do frame() end
+        H.truthy(settledAs.BA, "settled as the pair")
+        H.falsy(settledAs.B, "the single never settled")
+        H.truthy(I.FINGER_SETTLE > 1 / 60, "the window is longer than one frame")
+    end },
+
+    { "four buttons arriving over three frames settle as ALL", function()
+        local M = H.fresh()
+        local I = M.Input
+        local settledAs, order = {}, {}
+        local function frame()
+            I:update(1 / 60)
+            local f = I:getFingering()
+            if f.changed then order[#order + 1] = f.id end
+            if f.settled and f.id ~= "NONE" then settledAs[f.id] = true end
+        end
+        H.hold("B", "A"); frame()
+        H.hold("X"); frame()
+        H.hold("Y"); frame()
+        for _ = 1, 6 do frame() end
+        H.eq(table.concat(order, " "), "BA OTHER ALL", "what it passed through")
+        H.truthy(settledAs.ALL, "settled as all four")
+        H.falsy(settledAs.BA or settledAs.OTHER, "nothing on the way settled")
+    end },
+
+    { "changed and prev follow a roll round the diamond", function()
+        local M = H.fresh()
+        local I = M.Input
+        local function frames(n) for _ = 1, n do I:update(1 / 60) end end
+        local function step(expectId, expectPrev)
+            frames(1)
+            local f = I:getFingering()
+            H.eq(f.id, expectId, "fingering"); H.eq(f.prev, expectPrev, "prev of " .. expectId)
+            H.truthy(f.changed, expectId .. " changed")
+            frames(4)
+            f = I:getFingering()
+            H.truthy(f.settled, expectId .. " settled"); H.falsy(f.changed, expectId .. " steady")
+            H.eq(f.prev, expectPrev, "prev stays while it is held")
+        end
+        H.hold("B");    step("B", "NONE")
+        H.hold("A");    step("BA", "B")
+        H.release("B"); step("A", "BA")
+        H.hold("X");    step("AX", "A")
+        H.release("A"); step("X", "AX")
+        H.hold("Y");    step("XY", "X")
+        H.release("X"); step("Y", "XY")
+        H.hold("B");    step("YB", "Y")
+        H.release("Y"); step("B", "YB")
+        H.release("B"); step("NONE", "B")
+    end },
 }
