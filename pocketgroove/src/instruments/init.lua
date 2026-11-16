@@ -15,9 +15,11 @@ local Lead  = require("src.instruments.lead")
 local Instruments = {
     -- The library: always in the catalogue, in this order
     LIBRARY = { Drums, Harp, Bass, Pad, Lead },
-    -- Lab instruments (lab/README.md), in tab order. Each is the module
-    -- src/instruments/<id>.lua, marked `lab = true`. An id whose module isn't
-    -- there yet is skipped, so a lab instrument is added by adding its file.
+    -- The instruments added after the library (lab/README.md), in tab order.
+    -- Each is the module src/instruments/<id>.lua; an id whose module isn't
+    -- there is skipped, so an instrument is added by adding its file. Only a
+    -- module marked `lab = true` (a test tool such as FINGERS) depends on
+    -- Config.LAB.
     LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" },
     catalog = {},
     byId = {},
@@ -35,17 +37,17 @@ local function loadLab(id)
     error(mod, 0)
 end
 
--- (Re)build the catalogue: the library, then the lab instruments that exist
--- (none while Config.LAB is off)
+-- (Re)build the catalogue: the library, then the added instruments that
+-- exist (those marked `lab` only while Config.LAB is on)
 function Instruments:buildCatalog()
     self.catalog, self.byId = {}, {}
     for _, inst in ipairs(self.LIBRARY) do
         self.catalog[#self.catalog + 1] = inst
     end
-    if Config.LAB then
-        for _, id in ipairs(self.LAB_IDS) do
-            local inst = loadLab(id)
-            if inst then self.catalog[#self.catalog + 1] = inst end
+    for _, id in ipairs(self.LAB_IDS) do
+        local inst = loadLab(id)
+        if inst and (Config.LAB or not inst.lab) then
+            self.catalog[#self.catalog + 1] = inst
         end
     end
     for _, inst in ipairs(self.catalog) do

@@ -32,7 +32,6 @@ local Valves = setmetatable({
     name = "VALVES",
     shortName = "VALV",
     title = "VALVES",
-    lab = true,
     viewKind = "bass",
     eventClass = "valves",     -- its notes mean nothing to the Bass (and the reverse)
     defaultGridIndex = 3,      -- 1/16

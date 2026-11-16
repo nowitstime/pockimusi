@@ -44,10 +44,10 @@ local function releaseAll()
 end
 
 return {
-    { "VALVES is a lab instrument on the Bass view, with its rows", function()
+    { "VALVES is an instrument on the Bass view, with its rows", function()
         local M, state, def, track = boot()
         H.truthy(def, "registered")
-        H.truthy(def.lab, "marked lab")
+        H.falsy(def.lab, "an ordinary instrument")
         H.eq(def.viewKind, "bass", "the Bass's pitch trace")
         H.eq(def.HOME_GROUP, "LEAD", "lead sounds first")
         H.eq(def:getPatch(state).id, "lead_saw", "opens on SAW")

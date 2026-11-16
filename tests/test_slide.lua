@@ -37,10 +37,10 @@ local function playEntry(st)
 end
 
 return {
-    { "SLIDE is a lab instrument on the Bass view with PATCH, SPEED and SNAP rows", function()
+    { "SLIDE is an instrument on the Bass view with PATCH, SPEED and SNAP rows", function()
         local M, st, def = boot()
         H.truthy(def, "registered")
-        H.truthy(def.lab, "marked lab")
+        H.falsy(def.lab, "an ordinary instrument")
         H.eq(def.viewKind, "bass", "drawn by the Bass view")
         local rows = M.Instruments:getSoundRows(def, st)
         H.eq(#rows, 3, "three rows")

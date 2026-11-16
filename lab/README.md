@@ -6,6 +6,8 @@ Five new instruments to try, built so that they can be worked on **at the same t
 
 **Lab rule:** no polish until an instrument has earned its slot (FUTURE_INSTRUMENTS §7).
 
+> **Update (after the first playtest):** the wave is built and all five stay in as **ordinary instruments**. They no longer carry `lab = true`, so they stay in the tabs with `Config.LAB` off; only the `FINGERS` test screen is still a lab tool. The whole app is in testing, so these five get an instrument pass like the library ones, with feedback in [feedback/](../feedback/README.md) and direction from [MUSICAL_PARTS.md](../MUSICAL_PARTS.md). The plans below stay as the record of how each was built.
+
 ---
 
 ## The plans
@@ -71,7 +73,7 @@ L0 exists so that an instrument never has to touch a shared file. It reserves a 
 
 ## Playtest feedback
 
-How each instrument felt on the device, and what to refine next: [FEEDBACK.md](FEEDBACK.md).
+How each instrument felt on the device, and what to refine next: one file per instrument in [feedback/](../feedback/README.md).
 
 ---
 

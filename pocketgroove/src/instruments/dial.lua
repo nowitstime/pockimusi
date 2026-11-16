@@ -30,7 +30,6 @@ local Dial = setmetatable({
     name = "DIAL",
     shortName = "DIAL",
     title = "DIAL",
-    lab = true,
     viewKind = "bass",
     eventClass = "dial",       -- its notes carry accidentals Bass/Lead would re-pitch
     defaultGridIndex = 3,      -- 1/16

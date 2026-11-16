@@ -37,7 +37,7 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md). Independent of t
 - `padPressed(btn)` / `padDown(btn)`: the face button **or** its mirrored direction.
 - `computeExpression`: ghost and accent from the shoulders (same levels and decay as Drums' `↓` and `↑`); no flam, no ratchet.
 - `getRepeatRate`: repeat only with both shoulders (Drums also repeats with one; here one shoulder is ghost or accent).
-- `id = "hands"`, `shortName = "HANDS"`, `lab = true`. Everything else is inherited.
+- `id = "hands"`, `shortName = "HANDS"`. Everything else is inherited. (It was `lab = true` until the five became ordinary instruments.)
 
 ## Order
 

@@ -60,7 +60,7 @@ return {
         local M = H.fresh()
         local def = M.Instruments.byId.strum
         H.truthy(def, "registered")
-        H.truthy(def.lab, "marked lab")
+        H.falsy(def.lab, "an ordinary instrument")
         H.eq(def.viewKind, "lab", "the plain lab view")
         H.eq(def.HOME_GROUP, "PLUCK", "plucked sounds first")
         H.eq(def.DEFAULT_PATCH, "pluck_nylon", "opens on NYLON")

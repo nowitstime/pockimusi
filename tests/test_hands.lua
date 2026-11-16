@@ -35,7 +35,7 @@ return {
         local M = H.fresh()
         local def = M.Instruments.byId.hands
         H.truthy(def, "registered")
-        H.truthy(def.lab, "marked lab")
+        H.falsy(def.lab, "an ordinary instrument")
         H.eq(def.shortName, "HANDS", "short name")
         H.eq(def.viewKind, "drums", "the four lanes")
         H.eq(def.eventClass, "drums", "the Drums' event class")
@@ -45,7 +45,7 @@ return {
         H.eq(dpad.UP, "X", "D-pad labels name the pads"); H.eq(dpad.RIGHT, "A", "D-pad labels name the pads")
         M.Config.LAB = false
         M.Instruments:buildCatalog()
-        H.falsy(M.Instruments.byId.hands, "gone with the lab off")
+        H.truthy(M.Instruments.byId.hands, "stays with the lab off")
     end },
 
     { "UP DOWN LEFT RIGHT play the sounds of X B Y A and record under those actions", function()
