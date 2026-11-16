@@ -97,7 +97,7 @@ Newest first. One line each; the details go in the screens' files.
 
 | # | Date | Focus | Screens | Headline |
 | :-- | :-- | :-- | :-- | :-- |
-| 2 | 2026-11-16 📱 | Lead / Arp first pass | Lead / Arp | Fun and easy; `B` + arps mix well; ×2 on both shoulders is the move. Wants `1/4` rate, no latch. Worries: loop slop, everything sounds like boss music |
+| 2 | 2026-11-16 📱 | Lead / Arp first pass | Lead / Arp | Fun and easy; `B` + arps mix well; ×2 on both shoulders is the move. Wants `1/4` rate, gate row, MiniFreak-style chaos + double, per-button pattern sets; no latch. Worries: loop slop, everything sounds like boss music |
 | 1 | 2026-11-16 📱 | First look at the five new instruments | Hand Drums, Strum, Slide, Dial, Valves | Dial most fun; Hand Drums nice; Valves needs brass; Strum and Slide promising. All ten stay in as ordinary instruments |
 
 ---
