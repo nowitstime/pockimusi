@@ -69,6 +69,12 @@ L0 exists so that an instrument never has to touch a shared file. It reserves a 
 
 ---
 
+## Playtest feedback
+
+How each instrument felt on the device, and what to refine next: [FEEDBACK.md](FEEDBACK.md).
+
+---
+
 ## Order
 
 1. **L0 Foundation.** Ends with the app playable, the tabs as a carousel, and a `FINGERS` test instrument on the device 📱.
