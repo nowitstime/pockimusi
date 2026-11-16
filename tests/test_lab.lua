@@ -591,4 +591,144 @@ return {
         H.eq(L.toastText, "ERASED X + Y (2 HITS)", "a list")
         H.eq(#L.tracks[1].events, 0, "all gone")
     end },
+
+    -- ------------------------------------------------------------------
+    -- L0.5: manual held notes; Drums pad hooks and event class
+    -- ------------------------------------------------------------------
+    { "a manual note survives its button going up and ends on h:release(), with the right length", function()
+        local M = bootSession()
+        local L = M.Looper
+        local Input = M.Input
+        local ons, offs = 0, 0
+        -- B starts a note that X ends
+        addInstrument(M.Instruments, labDef("dial", {
+            noteOn = function() ons = ons + 1 end,
+            noteOff = function() offs = offs + 1 end,
+            updateInput = function(_, _, state, _, _, hold)
+                if Input.pressed.B and not (state.h and state.h:isHeld()) then
+                    state.h = hold({ action = "B", vel = 0.8 }, { manual = true })
+                end
+                if Input.pressed.X and state.h then state.h:release() end
+            end,
+        }))
+        playOn(M, 2, "dial")
+        local state = L.tracks[2].state
+        L.tracks[2].gridIndex = 5                              -- FREE: lengths as played
+
+        H.tap("L2")                                            -- record
+        H.tap("B")
+        H.play(0.5)
+        H.truthy(state.h:isHeld(), "still held with B up")
+        H.eq(offs, 0, "no note-off yet")
+        H.truthy(L.tracks[2].events[1].open, "the recording is still open")
+        H.tap("X")
+        H.falsy(state.h:isHeld(), "released by the instrument")
+        H.eq(ons, 1, "one note-on"); H.eq(offs, 1, "one note-off")
+        local ev = L.tracks[2].events[1]
+        H.falsy(ev.open, "the recording is closed")
+        local tps = L:getTicksPerSecond()
+        H.truthy(ev.len > 0.55 * tps and ev.len < 0.70 * tps, "about 0.6 s long: " .. ev.len / tps)
+        H.tap("L2")
+
+        -- an ordinary held note still ends with its button
+        addInstrument(M.Instruments, labDef("slide", {
+            noteOff = function() offs = offs + 1 end,
+            updateInput = function(_, _, st, _, _, hold)
+                if Input.pressed.B then st.h = hold({ action = "B", vel = 0.8 }) end
+            end,
+        }))
+        playOn(M, 3, "slide")
+        offs = 0
+        H.tap("B")
+        H.falsy(L.tracks[3].state.h:isHeld(), "ended on button-up")
+        H.eq(offs, 1, "note-off sent")
+    end },
+
+    { "a manual note ends when a page takes the controls and when the track changes", function()
+        local M = bootSession()
+        local L = M.Looper
+        local Input = M.Input
+        local offs = 0
+        addInstrument(M.Instruments, labDef("dial", {
+            noteOff = function() offs = offs + 1 end,
+            updateInput = function(_, _, state, _, _, hold)
+                if Input.pressed.B then state.h = hold({ action = "B", vel = 0.8 }, { manual = true }) end
+            end,
+        }))
+        playOn(M, 2, "dial")
+        local state = L.tracks[2].state
+
+        H.tap("B"); H.play(0.2)
+        H.truthy(state.h:isHeld(), "held")
+        H.hold("SELECT"); H.play(0.3)                          -- the Track page
+        H.falsy(state.h:isHeld(), "the page ended it")
+        H.eq(offs, 1, "note-off sent")
+        H.release("SELECT"); H.play(0.1)
+
+        H.tap("B"); H.play(0.2)
+        H.truthy(state.h:isHeld(), "held again")
+        H.tap("SELECT")                                        -- next track
+        H.eq(L.activeTrack, 3, "on the next track")
+        H.falsy(state.h:isHeld(), "the track change ended it")
+        H.eq(offs, 2, "note-off sent")
+        H.eq(#M.Instruments.held[2], 0, "nothing left held")
+    end },
+
+    { "Drums pad hooks: an instrument built on Drums plays the same pads from other buttons", function()
+        local M = bootSession()
+        local L = M.Looper
+        local Input = M.Input
+        local Drums = require("src.instruments.drums")
+        local MIRROR = { X = "UP", B = "DOWN", Y = "LEFT", A = "RIGHT" }
+        addInstrument(M.Instruments, setmetatable({
+            id = "hands", name = "HAND DRUMS", shortName = "HAND", lab = true, viewKind = "drums",
+            padPressed = function(self, btn)
+                -- one hit when the face button and its direction land together
+                return (Input.pressed[btn] and not Input.down[MIRROR[btn]])
+                    or (Input.pressed[MIRROR[btn]] and not (Input.down[btn] and not Input.pressed[btn]))
+            end,
+            padDown = function(self, btn) return Input.down[btn] or Input.down[MIRROR[btn]] end,
+            computeExpression = function(self, state) Drums.resetExpression(self, state) end,
+        }, { __index = Drums }))
+        H.eq(M.Instruments.byId.hands.eventClass, "drums", "the Drums' event class comes with it")
+        playOn(M, 1, "hands")
+        L.tracks[1].gridIndex = 5
+
+        H.tap("L2")
+        H.tap("UP"); H.play(0.1)                               -- X's sound from the D-pad
+        H.tap("B"); H.play(0.1)
+        H.tap("LEFT", "DOWN"); H.play(0.1)                     -- a diagonal: two hits
+        H.tap("A", "RIGHT"); H.play(0.1)                       -- face and D-pad on one pad: one hit
+        H.tap("L2")
+        local n = { X = 0, B = 0, Y = 0, A = 0 }
+        for _, ev in ipairs(L.tracks[1].events) do n[ev.action] = n[ev.action] + 1 end
+        H.eq(n.X, 1, "UP recorded as X"); H.eq(n.B, 2, "B, and DOWN as B")
+        H.eq(n.Y, 1, "LEFT as Y"); H.eq(n.A, 1, "A + RIGHT together: one hit")
+        H.eq(L.tracks[1].events[1].soundId, Drums:getPadSound(L.tracks[1].state, "X").id, "with X's sound")
+
+        -- note repeat asks the hooks too: RIGHT held with R1 repeats pad A
+        L:clearTrack(1)
+        H.tap("L2")
+        H.hold("RIGHT", "R1"); H.play(1.1); H.release("RIGHT", "R1")
+        H.tap("L2")
+        H.truthy(L:countTrackAction(1, "A") >= 3, "repeated hits on A: " .. L:countTrackAction(1, "A"))
+    end },
+
+    { "Drums and a Drums-class instrument keep each other's hits on a swap", function()
+        local M = bootSession()
+        local L = M.Looper
+        local Drums = require("src.instruments.drums")
+        addInstrument(M.Instruments, setmetatable({ id = "hands", name = "HAND DRUMS", shortName = "HAND", lab = true },
+            { __index = Drums }))
+        H.record(L, 1, "B", 0.0); H.record(L, 1, "Y", 0.25); H.record(L, 1, "A", 0.5)
+        M.Instruments:swapTrackInstrument(1, "hands")
+        H.eq(#L.tracks[1].events, 3, "Drums -> Hand Drums keeps the hits")
+        M.Instruments:swapTrackInstrument(1, "drums")
+        H.eq(#L.tracks[1].events, 3, "and back")
+        M.Instruments:swapTrackInstrument(1, "bass")
+        H.eq(#L.tracks[1].events, 0, "another class still starts empty")
+        L:undo()
+        H.eq(L.tracks[1].instrumentId, "drums", "undo brings the drums back")
+        H.eq(#L.tracks[1].events, 3, "with their hits")
+    end },
 }

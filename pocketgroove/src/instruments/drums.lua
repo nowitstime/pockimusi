@@ -23,6 +23,7 @@ local Drums = {
     shortName = "DRUM",
     title = "DRUM MACHINE",
     defaultGridIndex = 3, -- 1/16
+    eventClass = "drums",    -- instruments built on Drums keep each other's hits on a swap
 
     PADS = { "X", "Y", "A", "B" },   -- display order: matches the button diamond top -> bottom
     RATCHET_HITS = 3,
@@ -318,6 +319,16 @@ function Drums:buildHit(state, track, btn, gridSteps)
     }
 end
 
+-- Was a pad hit this frame / is it held? The face button; an instrument
+-- built on Drums may answer differently (other buttons playing the same pads).
+function Drums:padPressed(btn)
+    return Input.pressed[btn]
+end
+
+function Drums:padDown(btn)
+    return Input.down[btn]
+end
+
 function Drums:updateInput(dt, state, track, emitEvent)
     self:computeExpression(state)
 
@@ -328,7 +339,7 @@ function Drums:updateInput(dt, state, track, emitEvent)
         -- One-shot: every press plays immediately
         state.skipTick, state.pendingTick = {}, {}
         for _, btn in ipairs(self.PADS) do
-            if Input.pressed[btn] then
+            if self:padPressed(btn) then
                 state.lastPad = btn
                 emitEvent(self:buildHit(state, track, btn, stepsPerBar and stepsPerBar * Looper.bars or nil))
             end
@@ -348,7 +359,7 @@ function Drums:updateInput(dt, state, track, emitEvent)
 
     -- New presses: snap to the nearest tick or wait for the next one
     for _, btn in ipairs(self.PADS) do
-        if Input.pressed[btn] then
+        if self:padPressed(btn) then
             state.lastPad = btn
             local sinceTick = (u - tickTime(tickNow, sw)) * subDur
             local toNext = (tickTime(tickNow + 1, sw) - u) * subDur
@@ -371,7 +382,7 @@ function Drums:updateInput(dt, state, track, emitEvent)
     if not crossed then return end
 
     for _, btn in ipairs(self.PADS) do
-        local held = Input.down[btn] and not Input.pressed[btn]
+        local held = self:padDown(btn) and not self:padPressed(btn)
         local pending = (state.pendingTick[btn] == tickIdx)
         if state.skipTick[btn] == tickIdx then
             state.skipTick[btn] = nil

@@ -174,6 +174,9 @@ end
 --       hold(ev)  a held note: sounds now, released automatically when
 --                 ev.action's button goes up (or a page takes the controls);
 --                 recorded with the held length
+--       hold(ev, { manual = true })  a held note that no button ends: the
+--                 instrument calls h:release() (a page taking the controls
+--                 or a change of track still ends it)
 -- Events carry no track or instrument fields: the track owns them.
 -- ---------------------------------------------------------------------------
 
@@ -256,11 +259,14 @@ end
 -- does (staccato); it still ends early if a page takes the controls.
 -- opts.recLen = ticks: the length to record, if different (an arp note
 -- pressed a moment off its grid step still records the step's length).
+-- opts.manual = true: the button going up does not end the note; the
+-- instrument ends it with h:release().
 function Instruments:holdNote(track, ev, opts)
     defOf(self, track):noteOn(ev, track.state, track, false)
     local h = setmetatable({ ev = ev, track = track, held = true, elapsed = 0.0, lastTick = Looper.tick,
                              ageSec = 0.0, fixedLen = opts and opts.fixedLen or nil,
-                             recLen = opts and opts.recLen or nil }, Handle)
+                             recLen = opts and opts.recLen or nil,
+                             manual = opts and opts.manual or nil }, Handle)
     if Input:isRecording() then
         local rec = copyEvent(ev)
         rec.open = true                    -- not played back until released
@@ -345,7 +351,7 @@ function Instruments:update(dt, controlsBlocked)
             if h.fixedLen then
                 -- fixed length: by ticks, or by time when the clock is paused
                 done = h.elapsed >= h.fixedLen or h.ageSec >= h.fixedLen / Looper:getTicksPerSecond()
-            else
+            elseif not h.manual then
                 done = not Input.down[h.ev.action]
             end
             if done or controlsBlocked or s ~= Looper.activeTrack then
