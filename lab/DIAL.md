@@ -88,7 +88,19 @@ One per note, as on Bass: `action` (the button the note started on, or the clock
 
 ## Status
 
-Not started.
+DL1 to DL3 are built and tested (`pocketgroove/src/instruments/dial.lua`, `tests/test_dial.lua`, 12 tests). No shared file was touched. Left: the playtest above 📱.
+
+Decisions made while building (say if any is wrong):
+
+- **Shoulders set the octave outright, latched:** `L1` = octave -1, `R1` = octave +1, until all four, the other shoulder, or a roll across the seam changes it. While a note sounds, a shoulder slurs it to the new octave. (The Controls table says "octave down / up", the Decisions table "sets the octave outright"; this reads both as "go to -1 / +1".)
+- **Range:** the octave runs from -2 to +2 (degree 8 at +2 is +36, the top of the voices). At the top the carry stops: rolling on past `Y+B` wraps to degree 1 of the top octave (an octave drop). Same at the bottom.
+- **The seam by the shortest way round:** a roll carries whenever the shortest way between the two positions crosses the seam, not only `Y+B` ↔ `B`. So `Y` → `B` with the pair missed in a fast roll still climbs; an opposite jump (four steps) never carries.
+- **All four** is home (octave 0, degree 1) and has no position: the roll that follows it never carries.
+- **Corrections** inside the settle window (timed from the note's start) also move the note's `action` to the new position's button, so erase follows the corrected note; they never carry.
+- **Dynamics** (`↑` accent + vibrato, `↓` soft) are read at a note's start; slurs keep them. Flat / sharp follow the D-pad while the note sounds (recorded as bends).
+- **A page taking the controls** ends the note; it does not restart until the thumb lifts.
+- **`eventClass = "dial"`:** Dial is built on Bass but does not share notes with Bass / Lead on a swap, since they would re-pitch its degrees over chords and lose the accidentals.
+- **GLIDE** `INSTANT` is a very fast glide (rate 1000), not a jump in the voice code.
 
 ## Open (settle by playing)
 
