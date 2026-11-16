@@ -102,7 +102,17 @@ One per breath:
 
 ## Status
 
-Not started.
+VA1 to VA4 are built and tested (`tests/test_valves.lua`, 14 tests). No shared file was touched. Left: the playtest above 📱.
+
+- **Slur data sits beside the bend, not in it.** A recorded slur is an ordinary pitch keyframe in `bend` (`{ dt, semis, octave }`), plus `slur = { { dt, tone, steps }, ... }` on the event with the same `dt`s. Session load keeps only the known keyframe fields, so `tone` / `steps` inside a keyframe would be lost; an event field is saved as plain data. Playback re-harmonises from `slur` when following, and uses the bend's `semis` otherwise.
+- **A slur waits for the thumbs to stand still.** After the settle window, a change of valves or open note is played (and recorded) once tone and steps have held for `Input.FINGER_SETTLE`, so a pair landing a frame apart, or a diagonal passing through a straight direction, slurs once to where it lands. Costs 35 ms on a slur; say if it feels late.
+- **Glide rates:** a valve change 40 (the Bass's `FAST`), an open-note change 18 (`MEDIUM`), live and on playback (playback tells them apart by whether the tone changed). The Bass view's capsule reads `GLIDE FAST`.
+- **`SCALE` steps from a note outside the key** (a borrowed chord's tone) land on the scale note below it first.
+- **`REGISTER`** is stored in the event's `octave` (−1 / 0 / +1 over C4), so a recorded breath keeps the register it was played in.
+- **Tonguing the other way round:** if the newer shoulder lets go while the older one is still down, the note stops (the older breath already ended). Only the newest breath ever sounds.
+- **Both shoulders in one frame:** `R1` wins.
+- **`eventClass = "valves"`**, so a swap with Bass or Lead does not carry notes across (the fields differ).
+- **The chart on screen:** the face buttons show `-1 -2 -3 -5`; the line under the note shows the open note, the steps, the step kind and `A+X -4  ALL -6`.
 
 ## Open (settle by playing)
 
