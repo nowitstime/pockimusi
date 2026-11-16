@@ -100,7 +100,7 @@ The same layout on every instrument:
 | :-- | :-- |
 | `UP / DOWN` | Move the row cursor |
 | `LEFT / RIGHT` | Previous / next value for the selected row; holding repeats. A press previews a sound at once; held scrolling previews once it settles ✅ |
-| `L1 / R1` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release. The instruments are tabs across the top of the page ✅ |
+| `L1 / R1` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release. The instruments are a carousel across the top of the page: the selected one in the centre, the rest a ring that fades towards the edges, lab instruments dotted ✅ |
 | Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space. The cursor jumps to that effect's row ✅ |
 | `SELECT` tap (< 0.25 s, no combo) | Next track 1→4 |
 

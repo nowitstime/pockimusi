@@ -13,6 +13,10 @@ local Config = {
     MAX_BPM = 180,
     TWO_PI = math_pi * 2.0,
 
+    -- Lab instruments (lab/README.md): with this off, every instrument marked
+    -- `lab = true` is left out of the catalogue
+    LAB = true,
+
     COLORS = {
         BG         = { 0x09 / 255, 0x0A / 255, 0x0F / 255, 1.0 }, -- #090A0F (Obsidian Space)
         PANEL      = { 0x0F / 255, 0x12 / 255, 0x1B / 255, 1.0 }, -- #0F121B (Deep Space Panel)

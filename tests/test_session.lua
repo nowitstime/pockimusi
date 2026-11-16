@@ -144,7 +144,7 @@ return {
             format = 1, bpm = 9999, bars = 3, clickOn = "yes", activeTrack = 7,
             rootIndex = -4, scaleIndex = 99, masterVolume = 5,
             tracks = {
-                { instrumentId = "kazoo", swing = 2, volume = -1, gridIndex = 42,
+                { instrumentId = 7, swing = 2, volume = -1, gridIndex = 42,
                   fx = { tone = 9, on = { tone = "true" } },
                   events = { { tick = 960, action = "B", vel = 7 },          -- kept, vel clamped
                              { tick = 999999, action = "B" },                -- outside the loop
@@ -166,7 +166,7 @@ return {
         H.eq(M.Theory.scaleIndex, #M.Theory.SCALES, "scale clamped")
         H.eq(M.Synth.masterVolume, 1.0, "master clamped")
         local t1 = L.tracks[1]
-        H.eq(t1.instrumentId, "drums", "unknown instrument -> slot default")
+        H.eq(t1.instrumentId, "drums", "no instrument -> slot default")
         H.eq(t1.swing, 0.75, "swing clamped")
         H.eq(t1.volume, 0.0, "volume clamped")
         H.eq(t1.gridIndex, #L.GRID_MODES, "grid clamped")

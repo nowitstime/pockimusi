@@ -2,6 +2,7 @@
 -- src/instruments/init.lua — Pluggable Instrument Registry & Track Router
 -- ============================================================================
 
+local Config = require("src.config")
 local Input  = require("src.input")
 local Looper = require("src.looper")
 
@@ -12,20 +13,47 @@ local Pad   = require("src.instruments.pad")
 local Lead  = require("src.instruments.lead")
 
 local Instruments = {
-    -- Ordered catalog of available instruments (add new instruments here!)
-    catalog = {
-        Drums,
-        Harp,
-        Bass,
-        Pad,
-        Lead,
-    },
+    -- The library: always in the catalogue, in this order
+    LIBRARY = { Drums, Harp, Bass, Pad, Lead },
+    -- Lab instruments (lab/README.md), in tab order. Each is the module
+    -- src/instruments/<id>.lua, marked `lab = true`. An id whose module isn't
+    -- there yet is skipped, so a lab instrument is added by adding its file.
+    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" },
+    catalog = {},
     byId = {},
 }
 
-for _, inst in ipairs(Instruments.catalog) do
-    Instruments.byId[inst.id] = inst
+-- A lab instrument's module, or nil if there is no such file. A module that
+-- is there but fails to load is an error, not a missing instrument.
+local function loadLab(id)
+    local name = "src.instruments." .. id
+    local ok, mod = pcall(require, name)
+    if ok then return mod end
+    if type(mod) == "string" and mod:find("module '" .. name .. "' not found", 1, true) then
+        return nil
+    end
+    error(mod, 0)
 end
+
+-- (Re)build the catalogue: the library, then the lab instruments that exist
+-- (none while Config.LAB is off)
+function Instruments:buildCatalog()
+    self.catalog, self.byId = {}, {}
+    for _, inst in ipairs(self.LIBRARY) do
+        self.catalog[#self.catalog + 1] = inst
+    end
+    if Config.LAB then
+        for _, id in ipairs(self.LAB_IDS) do
+            local inst = loadLab(id)
+            if inst then self.catalog[#self.catalog + 1] = inst end
+        end
+    end
+    for _, inst in ipairs(self.catalog) do
+        self.byId[inst.id] = inst
+    end
+end
+
+Instruments:buildCatalog()
 
 function Instruments:getDefinition(instrumentId)
     return self.byId[instrumentId] or Drums
@@ -146,6 +174,9 @@ end
 --       hold(ev)  a held note: sounds now, released automatically when
 --                 ev.action's button goes up (or a page takes the controls);
 --                 recorded with the held length
+--       hold(ev, { manual = true })  a held note that no button ends: the
+--                 instrument calls h:release() (a page taking the controls
+--                 or a change of track still ends it)
 -- Events carry no track or instrument fields: the track owns them.
 -- ---------------------------------------------------------------------------
 
@@ -228,11 +259,14 @@ end
 -- does (staccato); it still ends early if a page takes the controls.
 -- opts.recLen = ticks: the length to record, if different (an arp note
 -- pressed a moment off its grid step still records the step's length).
+-- opts.manual = true: the button going up does not end the note; the
+-- instrument ends it with h:release().
 function Instruments:holdNote(track, ev, opts)
     defOf(self, track):noteOn(ev, track.state, track, false)
     local h = setmetatable({ ev = ev, track = track, held = true, elapsed = 0.0, lastTick = Looper.tick,
                              ageSec = 0.0, fixedLen = opts and opts.fixedLen or nil,
-                             recLen = opts and opts.recLen or nil }, Handle)
+                             recLen = opts and opts.recLen or nil,
+                             manual = opts and opts.manual or nil }, Handle)
     if Input:isRecording() then
         local rec = copyEvent(ev)
         rec.open = true                    -- not played back until released
@@ -317,7 +351,7 @@ function Instruments:update(dt, controlsBlocked)
             if h.fixedLen then
                 -- fixed length: by ticks, or by time when the clock is paused
                 done = h.elapsed >= h.fixedLen or h.ageSec >= h.fixedLen / Looper:getTicksPerSecond()
-            else
+            elseif not h.manual then
                 done = not Input.down[h.ev.action]
             end
             if done or controlsBlocked or s ~= Looper.activeTrack then
