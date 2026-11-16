@@ -2,7 +2,7 @@
 
 A loop is built from a few **parts**, each with its own job. This file asks, for each part, what players actually do in it: the moves, the decorations, the timing. Then it asks what that means for our instruments. The aim is to judge an instrument by **the part it plays**, not by how clever its controls are.
 
-Companion to [SPEC.md](SPEC.md) (what is built), [FEEDBACK.md](FEEDBACK.md) (how it feels) and [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md) (ideas).
+Companion to [SPEC.md](SPEC.md) (what is built), [feedback/](feedback/README.md) (how it feels, one file per instrument) and [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md) (ideas).
 
 Legend in the coverage tables: ✅ easy, a natural move · ◐ possible but awkward or partial · — missing
 
@@ -20,7 +20,7 @@ Legend in the coverage tables: ✅ easy, a natural move · ◐ possible but awkw
 
 Two observations straight away:
 
-1. **Four instruments play lead.** That is fine for a lab, but only if each owns a *different slice* of what a lead does (§6.1). Otherwise they compete and the weakest go.
+1. **Four instruments play lead, on purpose.** Different ways of playing suit different styles and inspire different ideas, so each lead is a different *feel* for the part (§7.1). With four tracks, a loop usually takes one or two leads and leaves room for rhythm and texture.
 2. **Only one instrument sets chords.** The Chord Harp is the chord source. Strum *follows* chords; it doesn't set them (§3.4).
 
 ---
@@ -69,7 +69,7 @@ Most tunes, in most styles, are made from a short list of moves:
 | Level | **Swell** | A long note that grows louder |
 | | **Decay** | A long note that fades away (plucked sounds do this on their own) |
 
-**Slur against re-strike is a per-note choice.** A real player decides it note by note: slur the run, tongue the repeated notes, accent the last one. An instrument that fixes it for the whole track (or the whole patch) loses most of the phrasing. This is the root of the Dial note in FEEDBACK.md: with a patch whose loudness fades after the attack, a roll of slurs fades away, because nothing is ever re-struck.
+**Slur against re-strike is a per-note choice.** A real player decides it note by note: slur the run, tongue the repeated notes, accent the last one. An instrument that fixes it for the whole track (or the whole patch) loses most of the phrasing. This is the root of the Dial note in [feedback/dial.md](feedback/dial.md): with a patch whose loudness fades after the attack, a roll of slurs fades away, because nothing is ever re-struck.
 
 ### 2.3 Timing
 
@@ -113,7 +113,7 @@ In order of how much it matters:
 | Big leap | ◐ D-pad across, or shoulder | ◐ a jump across the dial slurs | ◐ octave on a shoulder | ✅ open note on the D-pad |
 | Run | ◐ arp `SCALE` pattern (not aimed) | ✅ fast roll | ◐ hold `↑/↓` (a glide, not notes) | ◐ |
 | Trill | — | ✅ rock between a button and its pair | — | ◐ rock a valve |
-| Slur vs re-strike, per note | ◐ held `B` glides; a new press strikes | — slurs only (the FEEDBACK note) | ◐ `B` holds and slides | ✅ shoulder strikes, valves slur |
+| Slur vs re-strike, per note | ◐ held `B` glides; a new press strikes | — slurs only (the feedback note) | ◐ `B` holds and slides | ✅ shoulder strikes, valves slur |
 | Bend into a note | — | — | ✅ press, then slide | — |
 | Glide | ✅ hold and move | ◐ the `GLIDE` row, every move | ✅ its whole idea | ◐ slurs glide |
 | Vibrato | — | ◐ with accent only | ◐ with `X` only | — |
@@ -237,18 +237,18 @@ Not part of the original question, but it bridges rhythm and chords, so the same
 
 ## 7. How this shapes the direction
 
-### 7.1 Give each lead instrument its slice
+### 7.1 Give each lead instrument its feel
 
-Four lead instruments only make sense if each is the best at something different:
+Four leads are there on purpose: different ways of playing suit different styles, and a different feel under the thumbs leads to different ideas. Each needs a musical purpose **and** to be fun to play. The table gives each one a home ground, so refinement sharpens what makes it different rather than making them all alike:
 
-| Instrument | Slice of lead playing | Sounds it wants | Its key feature to get right |
+| Instrument | Home ground (feel and style) | Sounds it wants | Its key feature to get right |
 | :-- | :-- | :-- | :-- |
 | **Dial** | Stepwise melody, runs, trills: scale fluency | Sustaining leads that keep their level; plucks that strike | Slur vs re-strike per note |
 | **Valves** | Horn phrasing: tongued riffs, slurs, swells, falls | Brass: trumpet, horn section, muted horn | Fall-offs and swells; brass patches |
 | **Slide** | Voice-like expression: bends, glides, vibrato, blue notes | Theremin, slide guitar, singing synth lead | Bending *into* notes; delayed vibrato |
 | **Lead / Arp** | Machine patterns: arpeggios and sequences | Square, saw, plucks | Pattern variety; latch |
 
-If two instruments end up doing the same slice, that's the moment to pick one.
+With four tracks, a loop usually takes **one or two** of these, so rhythm and texture have room. A lead doesn't need to cover every move in §2; it needs to be the one you want for this loop. If two leads start to feel the same in playing, that's the moment to push them apart (or let one go).
 
 ### 7.2 A shared expression toolkit
 
@@ -290,7 +290,7 @@ Each patch could also carry a **default articulation** (plucky sounds re-strike 
 
 ## 8. Questions to ask while playing
 
-Use these during an instrument pass; write the answers in FEEDBACK.md.
+Use these during an instrument pass; write the answers in the instrument's file in [feedback/](feedback/README.md), which carries these questions and its own.
 
 - **Lead:** Can I play a phrase I can hum? Can I choose, note by note, whether it slurs or strikes? Can I leave a rest cleanly? Is there one expressive move that feels great?
 - **Chords:** Can I change chord on time without thinking? Do the changes sound smooth? Can I play a rhythm, not just a chord?

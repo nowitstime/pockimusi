@@ -161,14 +161,14 @@ Five instruments built at the same time on a shared foundation. After the first 
 
 - [x] L0 Foundation: lab switch, carousel tabs, views from data, erase map, held notes, fingering reader ([lab/L0_FOUNDATION.md](lab/L0_FOUNDATION.md))
 - [x] Hand Drums · Strum · Slide · Dial · Valves built, tests green
-- [x] First look on the device: Dial most fun, Hand Drums nice, Valves needs brass, Strum and Slide promising ([FEEDBACK.md](FEEDBACK.md))
+- [x] First look on the device: Dial most fun, Hand Drums nice, Valves needs brass, Strum and Slide promising ([feedback/](feedback/README.md))
 - [ ] Device check: tabs, fingerings, settle window
 
 ---
 
 ## Up next · Instrument passes
 
-The whole app is in testing, so **every** instrument gets a pass, one at a time: play it, write the feedback in [FEEDBACK.md](FEEDBACK.md), refine it. Judge each by the part it plays: [MUSICAL_PARTS.md](MUSICAL_PARTS.md) lists what lead, chord, texture, rhythm and bass parts need and what each instrument covers today.
+The whole app is in testing, so **every** instrument gets a pass, one at a time: play it, write the feedback in its file in [feedback/](feedback/README.md) (each file has the questions to answer for that instrument), refine it. Judge each by the part it plays: [MUSICAL_PARTS.md](MUSICAL_PARTS.md) lists what lead, chord, texture, rhythm and bass parts need and what each instrument covers today.
 
 - [ ] Decide the open questions from MUSICAL_PARTS §7.4 (chord source, Dial slur vs re-strike, Pad latch, first shared expression piece, default slots)
 - [ ] Patch wave by part, brass first (MUSICAL_PARTS §7.3)

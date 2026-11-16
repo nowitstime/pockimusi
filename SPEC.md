@@ -289,7 +289,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 ### 7.6 From lab wave 1 ✅ (plans in [lab/](lab/README.md))
 
-Ordinary instruments while the app is in testing; each gets a pass ([FEEDBACK.md](FEEDBACK.md)). The part each plays and what it still needs: [MUSICAL_PARTS.md](MUSICAL_PARTS.md).
+Ordinary instruments while the app is in testing; each gets a pass ([feedback/](feedback/README.md)). The part each plays and what it still needs: [MUSICAL_PARTS.md](MUSICAL_PARTS.md).
 
 | Instrument | Part | Way of playing | Plan |
 | :-- | :-- | :-- | :-- |
