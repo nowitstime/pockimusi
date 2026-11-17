@@ -29,7 +29,7 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | [Strum](strum.md) | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
 | [Bass](bass.md) | Bass | — | — | [ ] |
 | [Pad](pad.md) | Texture | — | — | [ ] |
-| [Lead / Arp](lead.md) | Lead | — | — | [ ] |
+| [Lead / Arp](lead.md) | Lead | Fun; easiest to get going, most fully featured | Slower rate (`1/4`); loops get sloppy; everything sounds like boss music | [x] |
 | [Dial](dial.md) | Lead | ★ Most fun | Moving round is too quiet: wants a re-strike, not only a glide | [ ] |
 | [Slide](slide.md) | Lead | Could be good, unsure | Play more before deciding | [ ] |
 | [Valves](valves.md) | Lead | Liked the idea | Needs brass sounds | [ ] |
@@ -97,6 +97,7 @@ Newest first. One line each; the details go in the screens' files.
 
 | # | Date | Focus | Screens | Headline |
 | :-- | :-- | :-- | :-- | :-- |
+| 2 | 2026-11-16 📱 | Lead / Arp first pass | Lead / Arp | Fun and easy; `B` + arps mix well; ×2 on both shoulders is the move. Wants `1/4` rate, gate row, MiniFreak-style chaos + double, per-button pattern sets; no latch. Worries: loop slop, everything sounds like boss music |
 | 1 | 2026-11-16 📱 | First look at the five new instruments | Hand Drums, Strum, Slide, Dial, Valves | Dial most fun; Hand Drums nice; Valves needs brass; Strum and Slide promising. All ten stay in as ordinary instruments |
 
 ---

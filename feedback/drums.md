@@ -47,7 +47,9 @@ Closed hats cut an open hat. Ghost hits recorded with `VARIATION` on sound about
 
 ## Feedback
 
-*No pass yet.*
+### Note — 2026-11-16 📱 (during the Lead / Arp session)
+
+- **Not yet:** note repeat (`L1` / `R1` / both) doesn't repeat while the transport is stopped. Just playing with the music paused, holding a shoulder should still repeat (e.g. at the tempo, from the press). The Lead/Arp already does this: its arp keeps running while stopped on its own timer (`state.arpTimer` in `lead.lua`), so the drums can copy that (today `drums.lua` skips the repeat when `not Looper.playing`).
 
 ---
 
@@ -61,3 +63,4 @@ Closed hats cut an open hat. Ghost hits recorded with `VARIATION` on sound about
 ## Next
 
 - [ ] First pass.
+- [ ] Note repeat works while stopped.
