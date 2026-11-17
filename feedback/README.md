@@ -26,6 +26,7 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | [Drums](drums.md) | Rhythm | — | — | [ ] |
 | [Hand Drums](hands.md) | Rhythm | Felt nice | Nothing specific yet | [ ] |
 | [Chord Harp](harp.md) | Chords | — | — | [ ] |
+| [Chord Track](chords.md) | Chords | New: the Harp's chord-picker job as its own instrument | First pass | [ ] |
 | [Strum](strum.md) | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
 | [Bass](bass.md) | Bass | — | — | [ ] |
 | [Pad](pad.md) | Texture | — | — | [ ] |
@@ -79,7 +80,7 @@ The newer instruments need sounds made for how they play. Dial, Slide and Valves
 Today the Chord Harp is the track the others follow. Two routes, maybe both:
 
 1. **Strum as a chord source.** It follows chords today, so it would need to *choose* them: the Harp's chord map on the D-pad (MUSICAL_PARTS §3.4).
-2. **A separate chord track.** The Harp on its `SILENT (CHORDS ONLY)` patch already is one, without sound.
+2. **A separate chord track.** The Harp on its `SILENT (CHORDS ONLY)` patch already is one, without sound. Now built as its own instrument, [Chord Track](chords.md): progressions, snap to the bar, stamp. Playing will decide whether it stays an instrument or becomes a hidden fifth track.
 
 ### Decisions waiting (MUSICAL_PARTS §7.4)
 

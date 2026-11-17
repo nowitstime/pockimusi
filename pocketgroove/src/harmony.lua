@@ -1,12 +1,12 @@
 -- ============================================================================
 -- src/harmony.lua — The current chord at any point in the loop (SPEC §5)
 --
--- 1. The chord source is the lowest-numbered Chord Harp track that has
---    recorded chords. The current chord is the latest one at or before the
---    position, wrapping (before the loop's first chord, the last carries over).
+-- 1. The chord source is the lowest-numbered chord track (Chord Harp or
+--    Chord Track: SOURCES) that has recorded chords. The current chord is
+--    the latest one at or before the position, wrapping (before the loop's first chord, the last carries over).
 --    Muting that track doesn't change harmony.
--- 2. No recorded chords: the chord last played live on the lowest harp track.
--- 3. No harp, or nothing played yet: the tonic (I of the key and scale).
+-- 2. No recorded chords: the chord last played live on the lowest chord track.
+-- 3. No chord track, or nothing played yet: the tonic (I of the key and scale).
 --
 -- Chords are key-relative data ({ root, third, fifth, seventh, suffix,
 -- roman, borrowed }), so they follow a key change. Followers turn a D-pad
@@ -22,10 +22,12 @@ local Harmony = {
     -- note on the beat should still get the new chord.
     LOOKAHEAD = 120,
     cache = nil,     -- { events, count, last, loop, list = { { tick, chord }, ... } }
+    -- Instruments that set the chords (they record `chord` data)
+    SOURCES = { harp = true, chords = true },
 }
 
 local function hasChords(track)
-    if track.instrumentId ~= "harp" then return false end
+    if not Harmony.SOURCES[track.instrumentId] then return false end
     for _, ev in ipairs(track.events) do
         if ev.chord and ev.chord.root and not ev.open then return true end
     end
@@ -41,11 +43,11 @@ function Harmony:source()
     return nil
 end
 
--- The chord last played live on the lowest harp track, or nil
+-- The chord last played live on the lowest chord track, or nil
 function Harmony:liveChord()
     for slot = 1, 4 do
         local track = Looper.tracks[slot]
-        if track and track.instrumentId == "harp" then
+        if track and self.SOURCES[track.instrumentId] then
             return track.state.liveChord
         end
     end
