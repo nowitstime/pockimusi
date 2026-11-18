@@ -255,7 +255,7 @@ return {
         H.eq(st.currentChord.name, "Cmaj7", "chord is maj7")
         H.eq(st.currentChord.notes[4], 11, "string 4 = major 7th")
         H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("LEFT"); H.tap("LEFT")
-        H.eq(st.colour, "ADD9", "LEFT twice wraps back to ADD9")
+        H.eq(st.colour, "DIM", "LEFT twice wraps back to the last colour (DIM)")
         H.release("SELECT"); H.play(0.1)
     end },
 

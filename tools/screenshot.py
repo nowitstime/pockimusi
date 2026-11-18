@@ -87,7 +87,8 @@ SCENES = {
                    ' H.hold("B"); H.play(0.02); H.hold("A"); H.play(0.2); H.release("B", "A"); H.play(0.1);'
                    ' H.hold("X", "Y"); H.play(0.3)',
     "chords-play": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.tap("X"); H.hold("DOWN"); H.play(0.6)',
-    "track-chords": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("DOWN")',
+    "chords-colour": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.tap("X"); H.play(0.6); H.hold("A", "UP"); H.play(0.1)',
+    "track-chords": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("DOWN") end',
     "tabs-lab": 'H.hold("SELECT"); H.play(0.3); H.tap("L1"); H.play(0.3)',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'
                   ' H.play(0.6); H.hold("Y"); H.play(0.4); H.release("Y"); H.play(1.6); H.hold("X"); H.play(1.2);'

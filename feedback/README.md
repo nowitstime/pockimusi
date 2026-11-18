@@ -26,7 +26,7 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | [Drums](drums.md) | Rhythm | — | — | [ ] |
 | [Hand Drums](hands.md) | Rhythm | Felt nice | Nothing specific yet | [ ] |
 | [Chord Harp](harp.md) | Chords | — | — | [ ] |
-| [Chord Track](chords.md) | Chords | New: the Harp's chord-picker job as its own instrument | First pass | [ ] |
+| [Chord Track](chords.md) | Chords | Stamp makes it easy; was confusing | Second pass on the new buttons (write / colour / delete / stamp) | [ ] |
 | [Strum](strum.md) | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
 | [Bass](bass.md) | Bass | — | — | [ ] |
 | [Pad](pad.md) | Texture | — | — | [ ] |
@@ -98,6 +98,7 @@ Newest first. One line each; the details go in the screens' files.
 
 | # | Date | Focus | Screens | Headline |
 | :-- | :-- | :-- | :-- | :-- |
+| 3 | 2026-11-18 📱 | Chord Track | Chord Track | Likes stamp and names on the timeline; wants numerals in the middle, clearer buttons, a delete, single-chord colours (aug), random colours |
 | 2 | 2026-11-16 📱 | Lead / Arp first pass | Lead / Arp | Fun and easy; `B` + arps mix well; ×2 on both shoulders is the move. Wants `1/4` rate, gate row, MiniFreak-style chaos + double, per-button pattern sets; no latch. Worries: loop slop, everything sounds like boss music |
 | 1 | 2026-11-16 📱 | First look at the five new instruments | Hand Drums, Strum, Slide, Dial, Valves | Dial most fun; Hand Drums nice; Valves needs brass; Strum and Slide promising. All ten stay in as ordinary instruments |
 

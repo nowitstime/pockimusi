@@ -42,6 +42,24 @@ return {
         end
     end },
 
+    { "new colours: aug, dim, sus2, 6th (names, strings, and the chord itself)", function()
+        local M = H.fresh()
+        local T = M.Theory
+        local function check(dir, colour, name, notes, third, fifth)
+            local c = T:getChordForDirection(dir, false, false, colour)
+            H.eq(c.name, name, colour .. " name")
+            H.eq(table.concat(c.notes, " "), notes, colour .. " strings")
+            if third then H.eq(c.third, third, colour .. " third"); H.eq(c.fifth, fifth, colour .. " fifth") end
+        end
+        check("NEUTRAL", "AUG", "Caug", "0 4 8 12", 4, 8)
+        check("NEUTRAL", "DIM", "Cdim", "0 3 6 12", 3, 6)
+        check("NEUTRAL", "SUS2", "Csus2", "0 2 7 12")
+        check("NEUTRAL", "6TH", "C6", "0 4 7 9")
+        check("DOWN", "6TH", "Am6", "9 12 16 18")
+        H.eq(table.concat(T:getPadVoicing(T:getChordForDirection("NEUTRAL", false, false, "6TH"), "FULL", 0), " "),
+            "0 4 7 9", "pad: 6th on top")
+    end },
+
     { "B plays the D-pad's chord live; followers follow it", function()
         local M, L, st = boot()
         H.hold("DOWN"); H.play(0.05); H.tap("B"); H.release("DOWN"); H.play(0.05)
@@ -72,30 +90,71 @@ return {
         H.eq(chordsOf(M, track), "1920:F", "written at bar 2's start")
     end },
 
-    { "A walks the progression, Y goes back to the top", function()
+    { "the progression is shown as numerals; the D-pad marks the one for this point", function()
         local M, L, st, def = boot()
         H.eq(def:progressionOf(st).name, "POP", "opens on POP")
-        local names = {}
-        for i = 1, 5 do
-            H.tap("A")
-            names[i] = M.Theory:chordName(st.lastPlaced.chord)
-        end
-        H.eq(table.concat(names, " "), "C G Am F C", "I V vi IV, round again")
-        H.tap("Y")
-        H.eq(M.Theory:chordName(st.lastPlaced.chord), "C", "top")
-        H.tap("A")
-        H.eq(M.Theory:chordName(st.lastPlaced.chord), "G", "then the second")
+        L:setPlaying(false); L:seek(0.55); H.play(0.05)          -- third quarter of the loop
+        H.eq(def:guideIndex(st), 3, "FIT over 2 bars: vi's half bar")
+        H.eq(def.VIEW.dpad.DOWN, "> vi", "marked on the star")
+        local _, _, lines = def:getReadout(st)
+        H.eq(lines[1], "POP:   I  V  [vi]  IV", "numerals in the readout")
     end },
 
-    { "holding A + R1 records the progression a half bar per chord", function()
+    { "hold A + D-pad colours the chord under the playhead; one undo per press", function()
         local M, L, st, def, track = boot()
-        H.tap("L2")
-        at(L, 0.0)
-        H.hold("R1", "A")
-        H.play(L:getLoopDuration() * 0.97)
-        H.release("R1", "A")
-        H.tap("L2")
-        H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "one chord on every half bar")
+        H.tap("X")
+        L:setPlaying(false); L:seek(0.3); H.play(0.05)           -- on G
+        H.hold("A"); H.play(0.05)
+        H.hold("DOWN", "RIGHT"); H.play(0.05)
+        H.eq(chordsOf(M, track), "0:C 960:Gaug 1920:Am 2880:F", "down-right = aug")
+        H.release("DOWN", "RIGHT"); H.hold("UP"); H.play(0.05)
+        H.eq(chordsOf(M, track), "0:C 960:G7 1920:Am 2880:F", "up = 7")
+        H.release("UP"); H.play(0.05)
+        H.eq(chordsOf(M, track), "0:C 960:G7 1920:Am 2880:F", "letting the D-pad go keeps it")
+        H.release("A"); H.play(0.05)
+        local _, _, lines = def:getReadout(st)
+        H.eq(lines[2], "LOOP:   I V7 | vi IV", "numerals with colour")
+        H.eq(M.Theory:chordName(M.Harmony:chordAt(1000)), "G7", "followers get it")
+        L:undo()
+        H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "one undo for the press")
+    end },
+
+    { "A with no chord under the playhead sets the colour new chords get", function()
+        local M, L, st = boot()
+        H.hold("A", "UP"); H.play(0.05); H.release("A", "UP"); H.play(0.05)
+        H.eq(st.colour, "7TH", "new chords: 7TH")
+    end },
+
+    { "Y deletes the chord under the playhead; held, every chord it reaches", function()
+        local M, L, st, def, track = boot()
+        H.tap("X")
+        L:setPlaying(false); L:seek(0.55); H.play(0.05)
+        H.tap("Y")
+        H.eq(chordsOf(M, track), "0:C 960:G 2880:F", "Am gone")
+        L:undo()
+        H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "undo")
+        L:setPlaying(true); at(L, 0.01)
+        H.hold("Y"); H.play(L:getLoopDuration() * 0.95); H.release("Y"); H.play(0.05)
+        H.eq(chordsOf(M, track), "", "held through the loop: all gone")
+        L:undo()
+        H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "one undo for the whole hold")
+    end },
+
+    { "SPICE colours plain chords on playback, for followers too, never recorded", function()
+        local M, L, st, def, track = boot()
+        H.tap("X")
+        def.random = function() return 0 end                     -- always spice, first option
+        def:cycleSetting(st, "SPICE", 1)
+        H.eq(st.spiceLevel, "LIGHT", "LIGHT")
+        H.play(0.05)
+        H.eq(M.Theory:chordName(M.Harmony:chordAt(100)), "Cmaj7", "I becomes maj7 this pass")
+        H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "the recording is unchanged")
+        def.random = function() return 0.99 end
+        st.spiceTick = nil; H.play(0.05)
+        H.eq(M.Theory:chordName(M.Harmony:chordAt(100)), "C", "no spice this pass")
+        def:cycleSetting(st, "SPICE", -1)
+        H.play(0.05)
+        H.falsy(next(st.spice), "OFF clears it")
     end },
 
     { "holding B + L1 writes the D-pad's chord on each bar line", function()
@@ -121,6 +180,7 @@ return {
         H.eq(chordsOf(M, track), "0:C 1920:G", "1 BAR: the first two fit")
         L:undo(); L:undo()
         H.eq(track.events, old, "both stamps undone")
+        H.eq(L.toastText, "UNDO STAMP ON TRACK 1", "says what it undid")
         H.eq(L.tracks[1].instrumentId, "chords", "still the chord track")
     end },
 
@@ -129,6 +189,7 @@ return {
         def:cycleSetting(st, "PROGRESSION", 3)     -- ROCK
         def:cycleSetting(st, "LENGTH", 1)          -- 2 BARS
         def:cycleSetting(st, "COLOUR", 1)          -- 7TH
+        def:cycleSetting(st, "SPICE", 2)           -- WILD
         local saved = def:saveState(st)
         H.eq(saved.progression, "ROCK", "by name")
         local fresh = def:newState()
@@ -137,5 +198,6 @@ return {
         H.eq(fresh.length, st.length, "length")
         H.eq(fresh.colour, "7TH", "colour")
         H.eq(fresh.patch, "silent", "patch")
+        H.eq(fresh.spiceLevel, "WILD", "spice")
     end },
 }

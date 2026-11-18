@@ -8,6 +8,9 @@
 -- 2. No recorded chords: the chord last played live on the lowest chord track.
 -- 3. No chord track, or nothing played yet: the tonic (I of the key and scale).
 --
+-- A source track's state may carry `spice` = { [event] = chord }: chords
+-- coloured differently for this pass of the loop (Chord Track SPICE row).
+--
 -- Chords are key-relative data ({ root, third, fifth, seventh, suffix,
 -- roman, borrowed }), so they follow a key change. Followers turn a D-pad
 -- degree into a pitch with Theory:getChordDegreeSemis(chord, degree).
@@ -69,7 +72,7 @@ function Harmony:changes(track)
     local list = {}
     for _, ev in ipairs(events) do
         if ev.chord and ev.chord.root and not ev.open then
-            list[#list + 1] = { tick = ev.tick, chord = ev.chord }
+            list[#list + 1] = { tick = ev.tick, chord = ev.chord, ev = ev }
         end
     end
     table.sort(list, function(a, b) return a.tick < b.tick end)
@@ -89,7 +92,11 @@ function Harmony:chordAt(tick, lookahead)
         for i = 1, #list do
             if list[i].tick <= pos then found = list[i] else break end
         end
-        if found then return found.chord, "recorded" end
+        if found then
+            -- a chord track may colour a chord differently on this pass (Chord Track SPICE)
+            local spice = track.state and track.state.spice
+            return (spice and spice[found.ev]) or found.chord, "recorded"
+        end
     end
     local live = self:liveChord()
     if live then return live, "live" end

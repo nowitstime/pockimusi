@@ -10,22 +10,23 @@ Built after noticing the Chord Harp was mostly used on `SILENT` as a chord picke
 
 | Control | Job |
 | :-- | :-- |
-| D-pad | The Harp's nine chords (same map). The progression's next chord is marked `>` |
-| `B` PLACE | Write the D-pad's chord |
-| `A` NEXT | Write the progression's next chord, no D-pad needed |
-| `Y` TOP | Back to the progression's first chord, and write it |
-| `X` STAMP | Fill the whole loop with the progression. Works without recording; undo brings the old chords back |
-| `L1` / `R1` / both | Snap to the bar / half bar / beat. Hold `B` or `A` with a shoulder and it writes again on every line |
-| Rows | `PATCH` (opens on `SILENT`), `COLOUR`, `PROGRESSION`, `LENGTH` (chord length for STAMP: `FIT`, 2 bars, 1 bar, 1/2 bar, 1 beat) |
+| D-pad | The Harp's nine chords (same map). The progression's chord for this point in the loop is marked `>`, so you enter a progression by following the numerals |
+| `B` WRITE | Write the D-pad's chord (while recording; otherwise the others follow it live) |
+| `A` COLOUR | Hold `A` and point the D-pad: the chord under the playhead takes that colour. ↑ 7 · ↗ 9 · → add9 · ↖ 6 · ← sus4 · ↙ sus2 · ↓ dim · ↘ aug · neutral = plain. No chord there: sets the colour new chords get |
+| `Y` DELETE | Delete the chord under the playhead; keep holding to delete each chord the playhead reaches |
+| `X` STAMP | Fill the whole loop with the progression |
+| `L1` / `R1` / both | `B` snaps to the bar / half bar / beat. Hold `B` with a shoulder and it writes again on every line |
+| Rows | `PATCH` (opens on `SILENT`), `COLOUR` (for new chords), `PROGRESSION`, `LENGTH` (chord length for STAMP and the `>` guide), `SPICE` |
 
-Grid opens on `1/4`, so a plain press lands on a beat. Every chord is recorded on `B`, so a new one on a line replaces the old, and `CLR B` on the Erase page clears them.
+COLOUR, DELETE and STAMP are edits: they work without recording, and each press is one undo. The middle of the screen shows numerals (the progression, and this track's loop as `I V7 | vi IV`); the tape deck shows chord names.
+
+**SPICE** (`OFF` / `LIGHT` / `WILD`): on playback, some plain chords get a random colour, new each pass. Followers play the coloured chord too; the recording doesn't change. `LIGHT` picks from 7, add9, sus4 (minor: 7, add9); `WILD` adds 9, 6, sus2, and aug on V.
 
 **Ways to lay down chords:**
 
-1. **Stamp:** pick a progression on the Track page, press `X`. Done.
-2. **Step:** record, hold `L1`, tap `A` once a bar (anywhere in the first half of the bar lands on its start).
-3. **Auto:** record, hold `A + L1`: one progression chord per bar, hands off.
-4. **Steer:** record, hold `B + L1`, move the D-pad to the next chord before each bar line.
+1. **Stamp:** pick a progression on the Track page, press `X`, then colour or delete single chords.
+2. **Follow the guide:** record, hold `L1`, and press `B` with the D-pad on the `>` numeral each bar.
+3. **Steer:** record, hold `B + L1`, move the D-pad to the next chord before each bar line.
 
 **Chord source:** the top-most chord track with recorded chords sets the chords (Chord Track or Chord Harp). The readout says whether this track is the one.
 
@@ -54,7 +55,9 @@ Not possible with the nine chords yet: anything with a major III or II (secondar
 
 ## Questions to answer
 
-- [ ] Which way of laying chords did I use: stamp, step, auto, steer?
+- [ ] Which way of laying chords did I use: stamp, follow the guide, steer?
+- [ ] Is the colour wheel layout (up richer, down tense, sides sus) easy to remember?
+- [ ] SPICE: musical, or just random? Should LIGHT and WILD pick differently?
 - [ ] Is the bar / half bar / beat snap the right set? Is "nearest line" right, or should a press always wait for the next line?
 - [ ] Which progressions got used? Which one was missing?
 - [ ] Did I want to hear the chords (a patch), or is silent right?
@@ -67,14 +70,18 @@ Not possible with the nine chords yet: anything with a major III or II (secondar
 
 ## Feedback
 
-*No pass yet.*
+### Session 3 — 2026-11-18 📱
+
+- **Good:** stamp makes it easy; chord names on the tape deck.
+- **Not yet:** the progression showed chord names, but the D-pad is in numerals, so numerals are how you'd enter it. Wording and buttons confusing (NEXT / TOP). Wants a delete button.
+- **Ideas:** a single augmented chord; random colours ("randomly augmented"). Leaning towards it staying a slot; maybe a track later.
+- **Changed:** numerals in the readout and a `>` guide on the D-pad; buttons now WRITE / COLOUR / DELETE / STAMP (NEXT and TOP gone); hold `A` + D-pad colours one chord (aug, dim, sus2, 6 added to the colours); SPICE row for random colours.
 
 ---
 
 ## Ideas
 
 - **Hidden fifth track:** chords drawn as a thin strip along the top of the tape deck, always there; any instrument could edit it from a held combo.
-- **Progression → D-pad:** while a progression is picked, `A` NEXT could also show the next two chords, so you can learn the shape and then play it by hand.
 - **More chords for progressions:** a progression could name chords outside the nine (III, II7), written only by STAMP / NEXT.
 - **Section variations:** verse / chorus progressions per scene, once song building lands (FUTURE_PLANS §8).
 - **Voice leading** for the strum when a patch is on.

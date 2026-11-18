@@ -5,21 +5,27 @@
 -- (Harmony, SPEC §5). It opens on the SILENT patch, so it is a chord track
 -- you see but don't hear; pick any patch to hear the chords as a light strum.
 --
---   D-pad          one of the Harp's nine chords (same map: neutral I,
---                  ↑ ♭VI, ↖ ii, ↗ iii, ← IV, → V, ↓ vi, ↙ ♭VII, ↘ iv)
---   B  PLACE       write the D-pad's chord
---   A  NEXT        write the progression's next chord (no D-pad needed)
---   Y  TOP         back to the progression's first chord, and write it
---   X  STAMP       fill the whole loop with the progression (undoable)
---   L1 / R1 / both snap to the bar / half bar / beat. Holding B or A with a
---                  shoulder writes again on every line: hold B + L1 and
---                  steer the D-pad, or hold A + L1 to play the progression
---                  a bar per chord.
--- Track page rows: PATCH, COLOUR, PROGRESSION, LENGTH (chord length for STAMP).
+--   D-pad            one of the Harp's nine chords (same map: neutral I,
+--                    ↑ ♭VI, ↖ ii, ↗ iii, ← IV, → V, ↓ vi, ↙ ♭VII, ↘ iv).
+--                    The progression's chord for this point in the loop is
+--                    marked `>`, so a progression is entered by following it.
+--   B  WRITE         write the D-pad's chord (recording) / play it live
+--   A  COLOUR        hold A and point the D-pad: the chord under the
+--                    playhead takes that colour (7, 9, add9, aug, dim, sus2,
+--                    sus4, 6; neutral = plain). No chord there: sets the
+--                    colour new chords get.
+--   Y  DELETE        delete the chord under the playhead; keep holding to
+--                    delete each chord the playhead reaches
+--   X  STAMP         fill the whole loop with the progression
+--   L1 / R1 / both   B snaps to the bar / half bar / beat; hold B with a
+--                    shoulder and it writes again on every line
+-- COLOUR, DELETE and STAMP are edits: they work without recording, and each
+-- press is one undo. Track page rows: PATCH, COLOUR (for new chords),
+-- PROGRESSION, LENGTH (chord length for STAMP), SPICE (random colours on
+-- playback, never recorded; followers hear them too).
 --
--- Every chord is recorded under action "B", whichever button wrote it, so a
--- new chord on a line replaces the old one there, and the Erase page's CLR B
--- clears them all.
+-- Every chord is recorded under action "B", so a new chord on a line
+-- replaces the old one there, and the Erase page's CLR B clears them all.
 -- ============================================================================
 
 local Theory  = require("src.theory")
@@ -31,10 +37,10 @@ local Patches = require("src.instruments.patches")
 local math_floor = math.floor
 local math_max   = math.max
 
--- D-pad directions by roman numeral (the Harp's chord map)
+-- D-pad directions by roman numeral (the Harp's chord map; Theory calls iv "IVm")
 local DIR = {
     I = "NEUTRAL", ii = "UP_LEFT", iii = "UP_RIGHT", IV = "LEFT", V = "RIGHT",
-    vi = "DOWN", bVI = "UP", bVII = "DOWN_LEFT", iv = "DOWN_RIGHT",
+    vi = "DOWN", bVI = "UP", bVII = "DOWN_LEFT", iv = "DOWN_RIGHT", IVm = "DOWN_RIGHT",
 }
 
 local function prog(name, romans, about)
@@ -59,6 +65,7 @@ local Chords = {
     VOICES = 8,
     GATE = 0.6,                  -- a sustaining patch is held this long
     STRUM_GAP = 0.018,           -- seconds between the strings of the strum
+    LOOKAHEAD = 120,             -- a chord this close ahead already counts as under the playhead (as Harmony)
 
     -- Common progressions, built only from the nine D-pad chords, so every
     -- one can also be played by hand. Romans are in a major key; in a minor
@@ -78,8 +85,8 @@ local Chords = {
         prog("BLUES 8",     { "I", "V", "IV", "IV", "I", "V", "I", "V" },    "eight-bar blues"),
     },
 
-    -- LENGTH row: how long each chord is when STAMP fills the loop.
-    -- FIT spreads the progression over the whole loop.
+    -- LENGTH row: how long each chord is when STAMP fills the loop (and how
+    -- the `>` guide moves). FIT spreads the progression over the whole loop.
     LENGTHS = {
         { label = "FIT" },
         { label = "2 BARS",  beats = 8 },
@@ -88,32 +95,48 @@ local Chords = {
         { label = "1 BEAT",  beats = 1 },
     },
 
+    -- Hold A: the D-pad picks a colour. Up = richer, down = tense, sides = sus.
+    COLOUR_WHEEL = {
+        NEUTRAL = "TRIAD", UP = "7TH", UP_RIGHT = "9TH", RIGHT = "ADD9", UP_LEFT = "6TH",
+        LEFT = "SUS4", DOWN_LEFT = "SUS2", DOWN = "DIM", DOWN_RIGHT = "AUG",
+    },
+    -- Short tags after a roman numeral ("V7", "IVsus4")
+    COLOUR_TAG = { TRIAD = "", ["7TH"] = "7", ["9TH"] = "9", SUS4 = "sus4", ADD9 = "add9",
+                   SUS2 = "sus2", ["6TH"] = "6", AUG = "+", DIM = "dim" },
+
+    -- SPICE row: on playback some plain chords get a colour, new each pass
+    SPICES = { "OFF", "LIGHT", "WILD" },
+    SPICE_CHANCE = { LIGHT = 0.3, WILD = 0.55 },
+
     ERASE = { B = { actions = { "B" }, label = "CHORDS" } },
 
     VIEW = {
-        dpad = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V",
-                 UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" },
-        face = { B = "PLACE", A = "NEXT", Y = "TOP", X = "STAMP" },
+        dpad = {},               -- filled every frame (chords, or colours while A is held)
+        face = { B = "WRITE", A = "COLOUR", Y = "DELETE", X = "STAMP" },
         l1 = "SNAP BAR", r1 = "SNAP 1/2", both = "SNAP BEAT",
     },
 }
 
--- The D-pad labels again, kept to mark the progression's next chord
-local BASE_DPAD = {}
-for k, v in pairs(Chords.VIEW.dpad) do BASE_DPAD[k] = v end
+local ROMAN_LABELS = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V",
+                       UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "iv" }
+local WHEEL_LABELS = { NEUTRAL = "PLAIN", UP = "7", UP_RIGHT = "9", RIGHT = "ADD9", UP_LEFT = "6",
+                       LEFT = "SUS4", DOWN_LEFT = "SUS2", DOWN = "DIM", DOWN_RIGHT = "AUG" }
+for k, v in pairs(ROMAN_LABELS) do Chords.VIEW.dpad[k] = v end
 
 function Chords:newState()
     return {
         patch = self.DEFAULT_PATCH,
-        colour = "TRIAD",
+        colour = "TRIAD",          -- colour new chords get
         progression = 1,           -- index into PROGRESSIONS
         length = 1,                -- index into LENGTHS
-        step = 1,                  -- the progression's next chord
+        spiceLevel = "OFF",        -- SPICE row
+        spice = {},                -- [event] = coloured chord, this pass (read by Harmony)
         currentChord = nil,        -- the D-pad's chord
-        liveChord = nil,           -- the chord last written live (Harmony)
+        liveChord = nil,           -- the chord last played live (Harmony)
         lastPlaced = nil,          -- { chord, via } for the readout
         flash = { B = 0, A = 0, Y = 0, X = 0 },
         lastLine = nil,            -- the snap line last written (repeat)
+        colourDir = nil,           -- the direction last applied while A is held
     }
 end
 
@@ -121,31 +144,92 @@ function Chords:progressionOf(state)
     return self.PROGRESSIONS[state.progression] or self.PROGRESSIONS[1]
 end
 
-function Chords:chordFor(state, dirKey)
-    return Theory:getChordForDirection(dirKey, false, false, state.colour)
+function Chords:chordFor(state, dirKey, colour)
+    return Theory:getChordForDirection(dirKey, false, false, colour or state.colour)
 end
 
--- Same chord data as the Harp records (Harmony and followers read it)
+-- Same chord data as the Harp records (Harmony and followers read it), plus
+-- the D-pad direction, so the chord can be rebuilt in another colour
 function Chords:chordData(chord)
     return { name = chord.name, roman = chord.roman, colour = chord.colour, suffix = chord.suffix,
              root = chord.root, third = chord.third, fifth = chord.fifth, seventh = chord.seventh,
-             borrowed = chord.borrowed or nil, key = Theory:getRootSemis() }
+             borrowed = chord.borrowed or nil, key = Theory:getRootSemis(), dirKey = chord.dirKey }
+end
+
+-- The same chord in another colour (nil if it can't be rebuilt)
+function Chords:recolour(chord, colour)
+    local dir = chord.dirKey or DIR[chord.roman]
+    if not dir then return nil end
+    local data = self:chordData(Theory:getChordForDirection(dir, false, false, colour))
+    data.key = chord.key
+    return data
+end
+
+-- "V7", "vi", "IV+": a chord as a numeral with its colour
+function Chords:numeral(chord)
+    local dir = chord.dirKey or DIR[chord.roman]
+    local roman = (dir and ROMAN_LABELS[dir]) or chord.roman or "?"
+    return roman .. (self.COLOUR_TAG[chord.colour or "TRIAD"] or "")
+end
+
+local function trackOf(state)
+    for slot = 1, 4 do
+        local t = Looper.tracks[slot]
+        if t and t.state == state then return t end
+    end
+    return nil
 end
 
 -- ---------------------------------------------------------------------------
--- Visuals: the D-pad's chord, and the next progression chord marked on the star
+-- Where we are in the loop
+-- ---------------------------------------------------------------------------
+-- Ticks per chord for STAMP and the guide
+function Chords:stampLength(state, count)
+    local beats = self.LENGTHS[state.length].beats
+    if not beats then return Looper:getLoopTicks() / count end
+    return beats * Looper.PPQN
+end
+
+-- The progression's slot for the playhead (what STAMP would put here)
+function Chords:guideIndex(state)
+    local p = self:progressionOf(state)
+    local len = self:stampLength(state, #p.dirs)
+    return (math_floor(Looper.tick / len) % #p.dirs) + 1
+end
+
+-- The chord event under the playhead on this track, and its index
+function Chords:chordUnder(track)
+    if not track then return nil end
+    local loop = Looper:getLoopTicks()
+    local pos = (Looper.tick + self.LOOKAHEAD) % loop
+    local best, bestI, bestD
+    for i, ev in ipairs(track.events) do
+        if ev.chord and not ev.open then
+            local d = (pos - ev.tick) % loop          -- how far back it starts
+            if not bestD or d < bestD then best, bestI, bestD = ev, i, d end
+        end
+    end
+    return best, bestI
+end
+
+-- ---------------------------------------------------------------------------
+-- Visuals: the D-pad's chord; on the star, the guide (or colours while A is held)
 -- ---------------------------------------------------------------------------
 function Chords:updateVisuals(dt, state, controlsBlocked, isActive)
     for k, v in pairs(state.flash) do state.flash[k] = math_max(0.0, v - dt * 4.0) end
-    if isActive or not state.currentChord then
+    local colouring = isActive and not controlsBlocked and Input.down.A
+    if (isActive and not colouring) or not state.currentChord then
         local dirKey = controlsBlocked and "NEUTRAL" or Input:get8WayDirection()
         state.currentChord = self:chordFor(state, dirKey)
     end
     if isActive then
-        local p = self:progressionOf(state)
-        local nextDir = p.dirs[state.step] or p.dirs[1]
-        for k, v in pairs(BASE_DPAD) do
-            self.VIEW.dpad[k] = (k == nextDir) and ("> " .. v) or v
+        local dpad = self.VIEW.dpad
+        if colouring then
+            for k, v in pairs(WHEEL_LABELS) do dpad[k] = v end
+        else
+            local p = self:progressionOf(state)
+            local guide = p.dirs[self:guideIndex(state)]
+            for k, v in pairs(ROMAN_LABELS) do dpad[k] = (k == guide) and ("> " .. v) or v end
         end
     end
 end
@@ -168,44 +252,132 @@ function Chords:previewRowSound(state, rowIdx)
     self:strum(state, nil, self:chordData(self:chordFor(state, "NEUTRAL")), 0.7)
 end
 
-local function listRow(key, label, list, index, field)
-    local items = {}
-    for i, it in ipairs(list) do items[i] = { label = it[field or "label"] } end
-    return { key = key, label = label, kind = "setting", value = items[index].label, items = items, index = index }
-end
-
 local function indexOf(list, value)
     for i, v in ipairs(list) do if v == value then return i end end
     return 1
 end
 
+local function listRow(key, label, labels, index)
+    local items = {}
+    for i, l in ipairs(labels) do items[i] = { label = l } end
+    return { key = key, label = label, kind = "setting", value = labels[index], items = items, index = index }
+end
+
 function Chords:getSoundRows(state)
-    local colours = {}
-    for i, c in ipairs(Theory.COLOURS) do colours[i] = { label = c } end
+    local progs, lengths = {}, {}
+    for i, p in ipairs(self.PROGRESSIONS) do progs[i] = p.name end
+    for i, l in ipairs(self.LENGTHS) do lengths[i] = l.label end
     return {
         Patches.row(self, state),
-        listRow("COLOUR", "COLOUR", colours, indexOf(Theory.COLOURS, state.colour)),
-        listRow("PROGRESSION", "PROGRESSION", self.PROGRESSIONS, state.progression, "name"),
-        listRow("LENGTH", "LENGTH", self.LENGTHS, state.length),
+        listRow("COLOUR", "COLOUR", Theory.COLOURS, indexOf(Theory.COLOURS, state.colour)),
+        listRow("PROGRESSION", "PROGRESSION", progs, state.progression),
+        listRow("LENGTH", "LENGTH", lengths, state.length),
+        listRow("SPICE", "SPICE", self.SPICES, indexOf(self.SPICES, state.spiceLevel)),
     }
+end
+
+local function step(list, value, delta)
+    local n = #list
+    return list[((indexOf(list, value) - 1 + delta) % n) + 1]
 end
 
 function Chords:cycleSetting(state, key, delta)
     if key == "COLOUR" then
-        local n = #Theory.COLOURS
-        state.colour = Theory.COLOURS[((indexOf(Theory.COLOURS, state.colour) - 1 + delta) % n) + 1]
-        Looper:showToast("CHORD COLOUR: " .. state.colour)
+        state.colour = step(Theory.COLOURS, state.colour, delta)
+        Looper:showToast("NEW CHORDS: " .. state.colour)
     elseif key == "PROGRESSION" then
         local n = #self.PROGRESSIONS
         state.progression = ((state.progression - 1 + delta) % n) + 1
-        state.step = 1
         local p = self:progressionOf(state)
         Looper:showToast(p.name .. ": " .. table.concat(p.romans, " - "))
     elseif key == "LENGTH" then
         local n = #self.LENGTHS
         state.length = ((state.length - 1 + delta) % n) + 1
-        Looper:showToast("STAMP LENGTH: " .. self.LENGTHS[state.length].label)
+        Looper:showToast("CHORD LENGTH: " .. self.LENGTHS[state.length].label)
+    elseif key == "SPICE" then
+        state.spiceLevel = step(self.SPICES, state.spiceLevel, delta)
+        state.spice, state.spiceTick = {}, nil
+        Looper:showToast("SPICE: " .. state.spiceLevel .. (state.spiceLevel ~= "OFF" and " - RANDOM COLOURS ON PLAYBACK" or ""))
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Edits (COLOUR, DELETE, STAMP): replace the track's event list, so Harmony
+-- sees the change; the first change of a press pushes one undo entry
+-- ---------------------------------------------------------------------------
+local function copyList(list)
+    local out = {}
+    for i, ev in ipairs(list) do out[i] = ev end
+    return out
+end
+
+function Chords:edit(track, label, fresh)
+    if fresh then
+        Looper:pushUndo({ kind = "events", trackSlot = track.slot, events = track.events, label = label })
+    end
+    track.events = copyList(track.events)
+    return track.events
+end
+
+-- Hold A + D-pad: colour the chord under the playhead (or set the new-chord colour)
+function Chords:applyColour(state, track, colour, fresh)
+    local ev, i = self:chordUnder(track)
+    if not ev then
+        state.colour = colour
+        Looper:showToast("NO CHORD HERE - NEW CHORDS: " .. colour)
+        return
+    end
+    local chord = self:recolour(ev.chord, colour)
+    if not chord then return end
+    local before = Theory:chordName(ev.chord)
+    local list = self:edit(track, "COLOUR", fresh)
+    local copy = {}
+    for k, v in pairs(ev) do copy[k] = v end
+    copy.chord = chord
+    list[i] = copy
+    state.spice[ev] = nil
+    state.flash.A = 1.0
+    state.lastPlaced = { chord = chord, via = "A" }
+    self:strum(state, track, chord, 0.7)
+    Looper:showToast(string.format("%s -> %s (%s)", before, Theory:chordName(chord), self:numeral(chord)))
+end
+
+-- Y: delete one chord event
+function Chords:deleteAt(state, track, i, fresh)
+    local list = self:edit(track, "DELETE", fresh)
+    local ev = table.remove(list, i)
+    state.flash.Y = 1.0
+    Looper:showToast(string.format("DELETED %s (%s)", Theory:chordName(ev.chord), self:numeral(ev.chord)))
+end
+
+-- Is tick `t` in (a, b] going round the loop? (a short forward window)
+local function inWindow(t, a, b, loop)
+    local span = (b - a) % loop
+    local d = (t - a) % loop
+    return span < loop * 0.5 and d > 0 and d <= span
+end
+
+-- X: replace this track's chords with the progression, over the whole loop
+function Chords:stamp(state, track)
+    local p = self:progressionOf(state)
+    local loop = Looper:getLoopTicks()
+    local len = self:stampLength(state, #p.dirs)
+
+    Looper:silenceTrack(track.slot)
+    Looper:pushUndo({ kind = "events", trackSlot = track.slot, events = track.events, label = "STAMP" })
+    Looper:beginRecordingTake()
+    local events, i = {}, 0
+    while i * len < loop - 0.5 do
+        local chord = self:chordFor(state, p.dirs[(i % #p.dirs) + 1])
+        events[#events + 1] = { tick = math_floor(i * len + 0.5), len = 0, action = "B", via = "X",
+                                chord = self:chordData(chord), vel = 0.75, takeId = Looper.currentTakeId }
+        i = i + 1
+    end
+    track.events = events
+    state.spice, state.spiceTick = {}, nil
+    state.flash.X = 1.0
+    local fits = (i % #p.dirs == 0) and "" or string.format(" (%d OF %d FIT)", math.min(i, #p.dirs), #p.dirs)
+    Looper:showToast(string.format("STAMPED %s: %d CHORDS%s - UNDO BRINGS BACK THE OLD", p.name, i, fits))
 end
 
 -- ---------------------------------------------------------------------------
@@ -223,30 +395,17 @@ end
 -- The snap line nearest the playhead (what Looper:recordEvent snaps to),
 -- counted over the whole loop (`total` lines)
 local function nearestLine(total)
-    local step = Looper:getLoopTicks() / total
-    return math_floor(Looper.tick / step + 0.5) % total
+    local stepTicks = Looper:getLoopTicks() / total
+    return math_floor(Looper.tick / stepTicks + 0.5) % total
 end
 
--- The chord a button writes now (A and Y move through the progression)
-function Chords:chordForButton(state, btn)
-    if btn == "B" then
-        return state.currentChord or self:chordFor(state, "NEUTRAL")
-    end
-    local p = self:progressionOf(state)
-    if btn == "Y" then state.step = 1 end
-    local chord = self:chordFor(state, p.dirs[state.step] or p.dirs[1])
-    state.step = (state.step % #p.dirs) + 1
-    return chord
-end
-
-function Chords:write(state, btn, lines, emit)
-    local chord = self:chordForButton(state, btn)
-    local data = self:chordData(chord)
+function Chords:write(state, lines, emit)
+    local chord = state.currentChord or self:chordFor(state, "NEUTRAL")
     state.lastLine = lines and nearestLine(lines * Looper.bars) or nil
     emit({
-        action = "B",            -- every chord on one action: a new one replaces the old on its line
-        via = btn,
-        chord = data,
+        action = "B",
+        via = "B",
+        chord = self:chordData(chord),
         vel = 0.75,
         overrideGridSteps = lines and lines * Looper.bars or nil,
     })
@@ -255,66 +414,116 @@ end
 function Chords:updateInput(dt, state, track, emit)
     local lines, label = self:getSnap()
     state.snapLabel = label
+    local loop = Looper:getLoopTicks()
 
-    for _, btn in ipairs({ "B", "A", "Y" }) do
-        if Input.pressed[btn] then self:write(state, btn, lines, emit) end
+    -- A: colour. The D-pad is the colour wheel while A is held.
+    if Input.down.A then
+        local dir = Input:get8WayDirection()
+        if Input.pressed.A then
+            self:applyColour(state, track, self.COLOUR_WHEEL[dir], true)
+            state.colourDir = dir
+        elseif dir ~= "NEUTRAL" and dir ~= state.colourDir then
+            self:applyColour(state, track, self.COLOUR_WHEEL[dir], false)
+            state.colourDir = dir
+        end
+    else
+        state.colourDir = nil
+        if Input.pressed.B then self:write(state, lines, emit) end
     end
+
+    -- Y: delete the chord under the playhead, then each one reached while held
+    if Input.pressed.Y then
+        local _, i = self:chordUnder(track)
+        if i then self:deleteAt(state, track, i, true) else Looper:showToast("NO CHORD TO DELETE") end
+        state.deleting = true
+    elseif Input.down.Y and state.deleting and Looper.playing then
+        local a = Looper.prevTick + self.LOOKAHEAD
+        local b = Looper.tick + self.LOOKAHEAD
+        for i = #track.events, 1, -1 do
+            local ev = track.events[i]
+            if ev.chord and not ev.open and inWindow(ev.tick, a, b, loop) then
+                self:deleteAt(state, track, i, false)
+            end
+        end
+    elseif not Input.down.Y then
+        state.deleting = nil
+    end
+
     if Input.pressed.X then self:stamp(state, track) end
 
-    -- Held B or A with a shoulder: write again on every new line
-    if lines and Looper.playing then
+    -- Held B with a shoulder: write again on every new line
+    if lines and Looper.playing and Input.down.B and not Input.pressed.B and not Input.down.A then
         local total = lines * Looper.bars
         local u, uPrev = Looper.phase * total, Looper.prevPhase * total
         if math_floor(u) ~= math_floor(uPrev) then
-            local line = math_floor(u) % total
-            if line ~= state.lastLine then
-                for _, btn in ipairs({ "B", "A" }) do
-                    if Input.down[btn] and not Input.pressed[btn] then
-                        self:write(state, btn, lines, emit)
-                        break
-                    end
-                end
-            end
+            if math_floor(u) % total ~= state.lastLine then self:write(state, lines, emit) end
             state.lastLine = nil
         end
     end
 end
 
--- STAMP: replace this track's chords with the progression, over the whole loop
-function Chords:stampLength(state, count)
-    local loop = Looper:getLoopTicks()
-    local beats = self.LENGTHS[state.length].beats
-    if not beats then return loop / count end
-    return beats * Looper.PPQN
+-- ---------------------------------------------------------------------------
+-- SPICE: each pass of the loop, some plain chords get a colour. Harmony reads
+-- state.spice, so followers play the coloured chord too. Never recorded.
+-- ---------------------------------------------------------------------------
+function Chords.random()
+    return love.math.random()
 end
 
-function Chords:stamp(state, track)
-    local p = self:progressionOf(state)
-    local loop = Looper:getLoopTicks()
-    local len = self:stampLength(state, #p.dirs)
-
-    -- one undo entry brings the old chords back
-    Looper:silenceTrack(track.slot)
-    Looper:pushUndo({
-        kind = "swap", trackSlot = track.slot, instrumentId = track.instrumentId,
-        name = track.name, shortName = track.shortName, gridIndex = track.gridIndex,
-        state = track.state, events = track.events,
-    })
-    Looper:beginRecordingTake()
-    local events, i = {}, 0
-    while i * len < loop - 0.5 do
-        local chord = self:chordFor(state, p.dirs[(i % #p.dirs) + 1])
-        events[#events + 1] = { tick = math_floor(i * len + 0.5), len = 0, action = "B", via = "X",
-                                chord = self:chordData(chord), vel = 0.75, takeId = Looper.currentTakeId }
-        i = i + 1
+function Chords:spiceOptions(chord, level)
+    local minor = (chord.third == 3)
+    local opts
+    if minor then
+        opts = { "7TH", "ADD9" }
+        if level == "WILD" then opts[#opts + 1] = "9TH" end
+    else
+        opts = { "7TH", "ADD9", "SUS4" }
+        if level == "WILD" then
+            opts[#opts + 1] = "9TH"
+            opts[#opts + 1] = "6TH"
+            opts[#opts + 1] = "SUS2"
+            if chord.roman == "V" then opts[#opts + 1] = "AUG" end
+        end
     end
-    track.events = events
-    state.step = 1
-    state.flash.X = 1.0
-    local fits = (i % #p.dirs == 0) and "" or string.format(" (%d OF %d FIT)", math.min(i, #p.dirs), #p.dirs)
-    Looper:showToast(string.format("STAMPED %s: %d CHORDS%s - UNDO BRINGS BACK THE OLD", p.name, i, fits))
+    return opts
 end
 
+function Chords:rollSpice(state, track)
+    state.spice = {}
+    local chance = self.SPICE_CHANCE[state.spiceLevel]
+    if not chance then return end
+    for _, ev in ipairs(track.events) do
+        local c = ev.chord
+        if c and not ev.open and (c.colour or "TRIAD") == "TRIAD" and self.random() < chance then
+            local opts = self:spiceOptions(c, state.spiceLevel)
+            local pick = opts[math.min(#opts, math_floor(self.random() * #opts) + 1)]
+            state.spice[ev] = self:recolour(c, pick)
+        end
+    end
+end
+
+-- A new pass (the playhead wrapped) or new chords: roll again
+function Chords:checkPass(state, track)
+    if state.spiceLevel == "OFF" then
+        if next(state.spice) then state.spice = {} end
+        state.spiceTick = nil
+        return
+    end
+    local tick = Looper.tick
+    if state.spiceTick == nil or tick < state.spiceTick - 1 or state.spiceEvents ~= track.events then
+        self:rollSpice(state, track)
+        state.spiceEvents = track.events
+    end
+    state.spiceTick = tick
+end
+
+function Chords:updateVoices(dt, state, track)
+    self:checkPass(state, track)
+end
+
+-- ---------------------------------------------------------------------------
+-- Sound
+-- ---------------------------------------------------------------------------
 -- A light strum of the chord, unless the patch is SILENT
 function Chords:strum(state, track, chord, vel)
     local patch = self:getPatch(state)
@@ -330,17 +539,23 @@ end
 
 function Chords:noteOn(ev, state, track, isPlayback)
     if not ev.chord then return end
-    if not isPlayback then state.liveChord = ev.chord end
-    state.lastPlaced = { chord = ev.chord, via = ev.via }
+    local chord = ev.chord
+    if isPlayback then
+        self:checkPass(state, track)
+        chord = state.spice[ev] or chord
+    else
+        state.liveChord = chord
+    end
+    state.lastPlaced = { chord = chord, via = ev.via }
     state.flash[ev.via or "B"] = 1.0
-    self:strum(state, track, ev.chord, ev.vel or 0.75)
+    self:strum(state, track, chord, ev.vel or 0.75)
 end
 
 -- ---------------------------------------------------------------------------
--- Readout (the plain lab view)
+-- Readout (the plain lab view): numerals here, chord names on the tape deck
 -- ---------------------------------------------------------------------------
--- The chords written on a track, bar by bar: "C G | Am F"
-local function barLine(track)
+-- This track's chords as numerals, bar by bar: "I V | vi IV"
+function Chords:barLine(track)
     if not track then return "" end
     local barTicks = Looper.PPQN * 4
     local bars = {}
@@ -352,47 +567,51 @@ local function barLine(track)
     table.sort(list, function(a, b) return a.tick < b.tick end)
     for _, ev in ipairs(list) do
         local b = math_floor(ev.tick / barTicks) + 1
-        if bars[b] then table.insert(bars[b], Theory:chordName(ev.chord)) end
+        local chord = track.state.spice and track.state.spice[ev] or ev.chord
+        if bars[b] then table.insert(bars[b], self:numeral(chord)) end
     end
     local out = {}
     for b = 1, Looper.bars do out[b] = (#bars[b] > 0) and table.concat(bars[b], " ") or "-" end
-    return "| " .. table.concat(out, " | ") .. " |"
+    return table.concat(out, " | ")
 end
 
 -- Is this track the one setting the chords? (lazy: harmony requires looper)
 local function sourceLine(track)
     local Harmony = require("src.harmony")
     local src = Harmony:source()
-    if not src then return "CHORDS: NONE RECORDED YET - FOLLOWING LIVE" end
+    if not src then return "NO CHORDS RECORDED - OTHERS FOLLOW LIVE" end
     if track and src == track then return "THIS TRACK SETS THE CHORDS" end
     return string.format("CHORDS COME FROM TRACK %d (%s)", src.slot, src.shortName or "")
 end
 
 function Chords:getReadout(state)
-    local chord = state.currentChord or self:chordFor(state, "NEUTRAL")
+    local track = trackOf(state)
     local p = self:progressionOf(state)
+    local guide = self:guideIndex(state)
+    local nums = {}
+    for i, r in ipairs(p.romans) do nums[i] = (i == guide) and ("[" .. r .. "]") or r end
 
-    local names = {}
-    for i, dir in ipairs(p.dirs) do
-        local n = Theory:chordName(self:chordFor(state, dir))
-        names[i] = (i == state.step) and ("[" .. n .. "]") or n
+    local big, small
+    if Input.down.A then
+        local colour = self.COLOUR_WHEEL[Input:get8WayDirection()]
+        local ev = self:chordUnder(track)
+        big = ev and Theory:chordName(self:recolour(ev.chord, colour) or ev.chord) or colour
+        small = "COLOUR: " .. colour .. (ev and "" or " FOR NEW CHORDS")
+    else
+        local chord = state.currentChord or self:chordFor(state, "NEUTRAL")
+        big = chord.name
+        small = self:numeral(chord) .. "  -  " .. (state.snapLabel and ("SNAP " .. state.snapLabel) or "ON THE BEAT")
+            .. (Input:isRecording() and "  -  REC" or "")
     end
 
-    local track
-    for slot = 1, 4 do
-        local t = Looper.tracks[slot]
-        if t and t.state == state then track = t end
-    end
-
-    local small = chord.roman .. "  -  " .. (state.snapLabel and ("SNAP " .. state.snapLabel) or "ON THE BEAT")
-    return chord.name, small, {
-        p.name .. ":  " .. table.concat(names, " "),
-        "LOOP  " .. barLine(track),
-        sourceLine(track),
+    return big, small, {
+        p.name .. ":   " .. table.concat(nums, "  "),
+        "LOOP:   " .. self:barLine(track),
+        sourceLine(track) .. ((state.spiceLevel ~= "OFF") and ("  - SPICE " .. state.spiceLevel) or ""),
         "",
-        "B PLACE   A NEXT   Y FROM TOP",
-        "X STAMP WHOLE LOOP (" .. self.LENGTHS[state.length].label .. ")",
-        "HOLD B/A + L1 BAR  R1 HALF  BOTH BEAT",
+        "B WRITE    Y DELETE    X STAMP",
+        "HOLD A + D-PAD: COLOUR (7, 9, AUG, DIM...)",
+        "L1 BAR    R1 HALF BAR    BOTH BEAT",
     }
 end
 
@@ -400,7 +619,7 @@ end
 -- Save / load
 -- ---------------------------------------------------------------------------
 function Chords:saveState(state)
-    return { patch = state.patch, colour = state.colour,
+    return { patch = state.patch, colour = state.colour, spice = state.spiceLevel,
              progression = self:progressionOf(state).name, length = self.LENGTHS[state.length].label }
 end
 
@@ -409,6 +628,9 @@ function Chords:loadState(state, data)
     Patches.load(self, state, data.patch)
     for _, c in ipairs(Theory.COLOURS) do
         if data.colour == c then state.colour = c end
+    end
+    for _, s in ipairs(self.SPICES) do
+        if data.spice == s then state.spiceLevel = s end
     end
     for i, p in ipairs(self.PROGRESSIONS) do
         if data.progression == p.name then state.progression = i end
