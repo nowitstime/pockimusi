@@ -183,7 +183,7 @@ function Chrome:readToast(text, instCol)
         kind, col = "track", self:trackColor(tonumber(track))
     elseif up:find("^TEMPO") or up:find("^KEY") or up:find("^SCALE") or up:find("^CLOCK") or up:find("^CLICK")
         or up:find("^LOOP LENGTH") or up:find("^PLAYHEAD") or up:find("SWING") or up:find("QUANTIZE") then
-        kind, col = "clock", C.AMBER
+        kind, col = "clock", C.MOON
     elseif up:find("^MASTER") or up:find("MUTED") then
         kind, col = "mix", C.SILVER
     end

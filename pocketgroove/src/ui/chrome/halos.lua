@@ -23,7 +23,7 @@ Chrome.HALOS = {
     drums = "starburst", hands = "starburst",
     lead = "northstar", slide = "comets", strum = "garland",
     harp = "constellation", chords = "tiara",
-    dial = "bezel",
+    dial = "bezel", valves = "corona",
     bass = "crescent",
     pad = "clouds",
 }
@@ -283,6 +283,33 @@ function H.clouds(self, cx, cy, col, shade)
     end
 end
 
+-- BRIGHT, BRASSY: an eclipse's corona, flame tongues curling round the zone,
+-- long and short, with beads of light between
+function H.corona(self, cx, cy, col, shade)
+    self:setColor(shade(col, 0.55))
+    love.graphics.setLineWidth(2)
+    love.graphics.circle("line", cx, cy, 76)
+    love.graphics.setLineWidth(1)
+    for i = 0, 15 do
+        local a = 11.25 + i * 22.5
+        local long = (i % 2 == 0)
+        local r1 = long and 102 or 90
+        local bl = { pol(cx, cy, a - 6, 77) }
+        local ml = { pol(cx, cy, a - 1, (77 + r1) * 0.5) }
+        local tip = { pol(cx, cy, a + 7, r1) }
+        local mr = { pol(cx, cy, a + 5, (77 + r1) * 0.5) }
+        local br = { pol(cx, cy, a + 4, 77) }
+        self:setColor(long and col or shade(col, 0.55))
+        love.graphics.polygon("fill", bl[1], bl[2], ml[1], ml[2], mr[1], mr[2], br[1], br[2])
+        love.graphics.polygon("fill", ml[1], ml[2], tip[1], tip[2], mr[1], mr[2])
+        if not long then
+            local x, y = pol(cx, cy, a - 11.25, 96)
+            self:setColor(shade(col, 0.7))
+            love.graphics.circle("fill", x, y, 1.6)
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- SKY: one big, flat shape behind the whole stage
 -- ---------------------------------------------------------------------------
@@ -334,6 +361,16 @@ function SKY.bezel(self, col, k1, k2)
     love.graphics.setLineWidth(14)
     ellipseLine(320, 220, 200, 40, -14)
     love.graphics.setLineWidth(1)
+end
+
+function SKY.corona(self, col, k1, k2, stage)
+    -- an eclipse: a bright ring, the dark moon across it
+    self:setColor(k1)
+    love.graphics.circle("fill", 320, 200, 138)
+    self:setColor(k2)
+    love.graphics.circle("fill", 320, 200, 126)
+    self:setColor(Config.shade(col, 0.07))
+    love.graphics.circle("fill", 320, 200, 116)
 end
 
 function SKY.crescent(self, col, k1, k2, stage)
