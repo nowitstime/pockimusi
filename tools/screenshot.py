@@ -88,6 +88,9 @@ SCENES = {
                    ' H.hold("X", "Y"); H.play(0.3)',
     "chords-play": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.tap("X"); H.hold("DOWN"); H.play(0.6)',
     "chords-colour": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.tap("X"); H.play(0.6); H.hold("A", "UP"); H.play(0.1)',
+    "chords-empty": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.play(0.3)',
+    "chords-4bar": 'require("src.looper"):toggleBars(); require("src.instruments"):swapTrackInstrument(1, "chords"); local st = require("src.looper").tracks[1].state;'
+                   ' st.progression = 11; H.tap("X"); H.play(0.6)',
     "track-chords": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("DOWN") end',
     "tabs-lab": 'H.hold("SELECT"); H.play(0.3); H.tap("L1"); H.play(0.3)',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'

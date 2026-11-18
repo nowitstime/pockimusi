@@ -8,7 +8,7 @@
 --   D-pad            one of the Harp's nine chords (same map: neutral I,
 --                    ↑ ♭VI, ↖ ii, ↗ iii, ← IV, → V, ↓ vi, ↙ ♭VII, ↘ iv).
 --                    The progression's chord for this point in the loop is
---                    marked `>`, so a progression is entered by following it.
+--                    lit on the star, so a progression is entered by following it.
 --   B  WRITE         write the D-pad's chord (recording) / play it live
 --   A  COLOUR        hold A and point the D-pad: the chord under the
 --                    playhead takes that colour (7, 9, add9, aug, dim, sus2,
@@ -54,7 +54,7 @@ local Chords = {
     name = "CHORD TRACK",
     shortName = "CHRD",
     title = "CHORD TRACK",
-    viewKind = "lab",
+    viewKind = "chords",         -- its own stage view (Chrome:drawChordTrackView)
     defaultGridIndex = 1,        -- 1/4: a chord lands on a beat
     chordSource = true,          -- Harmony takes chords from this track (src/harmony.lua)
 
@@ -111,7 +111,7 @@ local Chords = {
     ERASE = { B = { actions = { "B" }, label = "CHORDS" } },
 
     VIEW = {
-        dpad = {},               -- filled every frame (chords, or colours while A is held)
+        dpad = {},               -- numerals, or colours while A is held (set every frame)
         face = { B = "WRITE", A = "COLOUR", Y = "DELETE", X = "STAMP" },
         l1 = "SNAP BAR", r1 = "SNAP 1/2", both = "SNAP BEAT",
     },
@@ -213,7 +213,7 @@ function Chords:chordUnder(track)
 end
 
 -- ---------------------------------------------------------------------------
--- Visuals: the D-pad's chord; on the star, the guide (or colours while A is held)
+-- Visuals: the D-pad's chord; the star's labels (numerals, or colours while A is held)
 -- ---------------------------------------------------------------------------
 function Chords:updateVisuals(dt, state, controlsBlocked, isActive)
     for k, v in pairs(state.flash) do state.flash[k] = math_max(0.0, v - dt * 4.0) end
@@ -224,13 +224,7 @@ function Chords:updateVisuals(dt, state, controlsBlocked, isActive)
     end
     if isActive then
         local dpad = self.VIEW.dpad
-        if colouring then
-            for k, v in pairs(WHEEL_LABELS) do dpad[k] = v end
-        else
-            local p = self:progressionOf(state)
-            local guide = p.dirs[self:guideIndex(state)]
-            for k, v in pairs(ROMAN_LABELS) do dpad[k] = (k == guide) and ("> " .. v) or v end
-        end
+        for k, v in pairs(colouring and WHEEL_LABELS or ROMAN_LABELS) do dpad[k] = v end
     end
 end
 
@@ -552,67 +546,108 @@ function Chords:noteOn(ev, state, track, isPlayback)
 end
 
 -- ---------------------------------------------------------------------------
--- Readout (the plain lab view): numerals here, chord names on the tape deck
+-- The stage view (Chrome:drawChordTrackView): numerals here, chord names on
+-- the tape deck
 -- ---------------------------------------------------------------------------
--- This track's chords as numerals, bar by bar: "I V | vi IV"
-function Chords:barLine(track)
-    if not track then return "" end
-    local barTicks = Looper.PPQN * 4
-    local bars = {}
-    for b = 1, Looper.bars do bars[b] = {} end
+-- The direction the star suggests: the progression's chord for this point
+-- in the loop (none while A makes the D-pad a colour wheel)
+function Chords:getGuideDir(state)
+    if Input.down.A then return nil end
+    local p = self:progressionOf(state)
+    return p.dirs[self:guideIndex(state)]
+end
+
+function Chords:getDpadSubtitle(state)
+    return Input.down.A and "D-PAD: COLOUR" or "D-PAD: CHORD"
+end
+
+-- The chord as the view and tests see it on this pass (spice included)
+local function shown(state, ev)
+    return (state.spice and state.spice[ev]) or ev.chord
+end
+
+-- This track's chords as spans of the loop, in order: { from, to (0..1),
+-- level (root above the key, 0..1), label, now, carry }. Before the first
+-- chord the last one carries over (`carry`: no dot there).
+function Chords:loopSpans(state, track, preview)
+    local loop = Looper:getLoopTicks()
     local list = {}
-    for _, ev in ipairs(track.events) do
+    for _, ev in ipairs(track and track.events or {}) do
         if ev.chord and not ev.open then list[#list + 1] = ev end
     end
     table.sort(list, function(a, b) return a.tick < b.tick end)
-    for _, ev in ipairs(list) do
-        local b = math_floor(ev.tick / barTicks) + 1
-        local chord = track.state.spice and track.state.spice[ev] or ev.chord
-        if bars[b] then table.insert(bars[b], self:numeral(chord)) end
+    local under = self:chordUnder(track)
+    local spans = {}
+    local function level(chord) return ((chord.root or 0) % 12) / 11 end
+    if #list > 0 and list[1].tick > 0 then
+        local last = list[#list]
+        spans[#spans + 1] = { from = 0, to = list[1].tick / loop, level = level(shown(state, last)),
+                              label = self:numeral(shown(state, last)), now = false, carry = true, ev = last }
     end
-    local out = {}
-    for b = 1, Looper.bars do out[b] = (#bars[b] > 0) and table.concat(bars[b], " ") or "-" end
-    return table.concat(out, " | ")
+    for i, ev in ipairs(list) do
+        local chord = shown(state, ev)
+        local now = (ev == under)
+        local label = self:numeral(chord)
+        if now and preview then label = self:numeral(self:recolour(ev.chord, preview) or chord) end
+        spans[#spans + 1] = { from = ev.tick / loop, to = (list[i + 1] and list[i + 1].tick or loop) / loop,
+                              level = level(chord), label = label, now = now, ev = ev }
+    end
+    -- the carried span is "now" when the playhead sits before the first chord
+    if spans[1] and spans[1].carry and spans[1].ev == under then
+        local pos = ((Looper.tick + self.LOOKAHEAD) % loop) / loop
+        if pos < spans[1].to then spans[1].now = true; spans[#spans].now = false end
+    end
+    return spans
 end
 
--- Is this track the one setting the chords? (lazy: harmony requires looper)
-local function sourceLine(track)
-    local Harmony = require("src.harmony")
-    local src = Harmony:source()
-    if not src then return "NO CHORDS RECORDED - OTHERS FOLLOW LIVE" end
-    if track and src == track then return "THIS TRACK SETS THE CHORDS" end
-    return string.format("CHORDS COME FROM TRACK %d (%s)", src.slot, src.shortName or "")
-end
-
-function Chords:getReadout(state)
-    local track = trackOf(state)
+function Chords:getView(state, track)
+    track = track or trackOf(state)
     local p = self:progressionOf(state)
-    local guide = self:guideIndex(state)
-    local nums = {}
-    for i, r in ipairs(p.romans) do nums[i] = (i == guide) and ("[" .. r .. "]") or r end
+    local colouring = Input.down.A
+    local colour = colouring and self.COLOUR_WHEEL[Input:get8WayDirection()] or nil
+    local under = self:chordUnder(track)
 
-    local big, small
-    if Input.down.A then
-        local colour = self.COLOUR_WHEEL[Input:get8WayDirection()]
-        local ev = self:chordUnder(track)
-        big = ev and Theory:chordName(self:recolour(ev.chord, colour) or ev.chord) or colour
-        small = "COLOUR: " .. colour .. (ev and "" or " FOR NEW CHORDS")
+    local v = {}
+    if colouring then
+        local chord = under and (self:recolour(under.chord, colour) or under.chord)
+        v.name = chord and Theory:chordName(chord) or colour
+        v.sub = string.format("%s  -  %s  -  %s", chord and self:numeral(chord) or "NEW CHORDS", colour,
+            under and "LET GO OF A TO KEEP" or "FOR NEW CHORDS")
+        v.middle = "COLOUR " .. colour
     else
         local chord = state.currentChord or self:chordFor(state, "NEUTRAL")
-        big = chord.name
-        small = self:numeral(chord) .. "  -  " .. (state.snapLabel and ("SNAP " .. state.snapLabel) or "ON THE BEAT")
-            .. (Input:isRecording() and "  -  REC" or "")
+        v.name = chord.name
+        v.sub = string.format("%s  -  %s  -  %s", self:numeral(chord), chord.colour or "TRIAD",
+            state.snapLabel and ("SNAP " .. state.snapLabel) or "ON THE BEAT")
+        v.middle = p.name
+    end
+    v.colouring = colouring and true or false
+    local patch = self:getPatch(state)
+    v.patch = patch and patch.label or "?"
+
+    local Harmony = require("src.harmony")         -- lazy: harmony requires looper
+    local src = Harmony:source()
+    if src and track and src == track then
+        v.source, v.sourceLabel = "this", "SETS CHORDS"
+    elseif src then
+        v.source, v.sourceLabel = "other", "TRACK " .. src.slot .. " SETS CHORDS"
+    else
+        v.source, v.sourceLabel = nil, "NO CHORDS YET"
     end
 
-    return big, small, {
-        p.name .. ":   " .. table.concat(nums, "  "),
-        "LOOP:   " .. self:barLine(track),
-        sourceLine(track) .. ((state.spiceLevel ~= "OFF") and ("  - SPICE " .. state.spiceLevel) or ""),
-        "",
-        "B WRITE    Y DELETE    X STAMP",
-        "HOLD A + D-PAD: COLOUR (7, 9, AUG, DIM...)",
-        "L1 BAR    R1 HALF BAR    BOTH BEAT",
-    }
+    v.spans = self:loopSpans(state, track, colour)
+    v.loopLabel = "LOOP " .. Looper.bars .. " BAR" .. ((state.spiceLevel ~= "OFF") and ("  -  SPICE " .. state.spiceLevel) or "")
+    v.emptyLabel = "X STAMPS " .. p.name .. "  -  B WRITES"
+    local loop = Looper:getLoopTicks()
+    for _, sp in ipairs(v.spans) do
+        if sp.now then v.playhead = { frac = (Looper.tick % loop) / loop, level = sp.level } end
+    end
+
+    v.progName = p.name
+    v.progRight = self.LENGTHS[state.length].label
+    v.romans = p.romans
+    v.guide = self:guideIndex(state)
+    return v
 end
 
 -- ---------------------------------------------------------------------------

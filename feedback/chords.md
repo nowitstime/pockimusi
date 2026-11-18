@@ -10,7 +10,7 @@ Built after noticing the Chord Harp was mostly used on `SILENT` as a chord picke
 
 | Control | Job |
 | :-- | :-- |
-| D-pad | The Harp's nine chords (same map). The progression's chord for this point in the loop is marked `>`, so you enter a progression by following the numerals |
+| D-pad | The Harp's nine chords (same map). The progression's chord for this point in the loop is lit on the star (orange, with a dot), so you enter a progression by following the numerals |
 | `B` WRITE | Write the D-pad's chord (while recording; otherwise the others follow it live) |
 | `A` COLOUR | Hold `A` and point the D-pad: the chord under the playhead takes that colour. ↑ 7 · ↗ 9 · → add9 · ↖ 6 · ← sus4 · ↙ sus2 · ↓ dim · ↘ aug · neutral = plain. No chord there: sets the colour new chords get |
 | `Y` DELETE | Delete the chord under the playhead; keep holding to delete each chord the playhead reaches |
@@ -18,7 +18,7 @@ Built after noticing the Chord Harp was mostly used on `SILENT` as a chord picke
 | `L1` / `R1` / both | `B` snaps to the bar / half bar / beat. Hold `B` with a shoulder and it writes again on every line |
 | Rows | `PATCH` (opens on `SILENT`), `COLOUR` (for new chords), `PROGRESSION`, `LENGTH` (chord length for STAMP and the `>` guide), `SPICE` |
 
-COLOUR, DELETE and STAMP are edits: they work without recording, and each press is one undo. The middle of the screen shows numerals (the progression, and this track's loop as `I V7 | vi IV`); the tape deck shows chord names.
+COLOUR, DELETE and STAMP are edits: they work without recording, and each press is one undo. **The screen** (styled like the Lead and Bass): the D-pad's chord big, `vi - TRIAD - ON THE BEAT` under it, badges for the patch, the progression and whether this track sets the chords. Below, the loop as a stepped line (each chord a dot, its height its root above the key, a star riding it as the playhead), then the progression as a row of dots with a star on the chord for this point. Numerals there; chord names on the tape deck. Holding `A` turns the middle badge into `COLOUR 7TH` and shows the recoloured chord.
 
 **SPICE** (`OFF` / `LIGHT` / `WILD`): on playback, some plain chords get a random colour, new each pass. Followers play the coloured chord too; the recording doesn't change. `LIGHT` picks from 7, add9, sus4 (minor: 7, add9); `WILD` adds 9, 6, sus2, and aug on V.
 
@@ -75,6 +75,7 @@ Not possible with the nine chords yet: anything with a major III or II (secondar
 - **Good:** stamp makes it easy; chord names on the tape deck.
 - **Not yet:** the progression showed chord names, but the D-pad is in numerals, so numerals are how you'd enter it. Wording and buttons confusing (NEXT / TOP). Wants a delete button.
 - **Ideas:** a single augmented chord; random colours ("randomly augmented"). Leaning towards it staying a slot; maybe a track later.
+- **Then:** the screen redesigned to match the other instruments (option 2 of the mockups: the stepped line).
 - **Changed:** numerals in the readout and a `>` guide on the D-pad; buttons now WRITE / COLOUR / DELETE / STAMP (NEXT and TOP gone); hold `A` + D-pad colours one chord (aug, dim, sus2, 6 added to the colours); SPICE row for random colours.
 
 ---

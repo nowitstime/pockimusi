@@ -95,9 +95,13 @@ return {
         H.eq(def:progressionOf(st).name, "POP", "opens on POP")
         L:setPlaying(false); L:seek(0.55); H.play(0.05)          -- third quarter of the loop
         H.eq(def:guideIndex(st), 3, "FIT over 2 bars: vi's half bar")
-        H.eq(def.VIEW.dpad.DOWN, "> vi", "marked on the star")
-        local _, _, lines = def:getReadout(st)
-        H.eq(lines[1], "POP:   I  V  [vi]  IV", "numerals in the readout")
+        H.eq(def:getGuideDir(st), "DOWN", "the star suggests vi")
+        H.eq(def.VIEW.dpad.DOWN, "vi", "labels stay plain numerals")
+        local v = def:getView(st)
+        H.eq(table.concat(v.romans, " "), "I V vi IV", "numerals in the view")
+        H.eq(v.guide, 3, "the star on the third dot")
+        H.eq(v.progRight, "FIT", "length")
+        H.eq(v.emptyLabel, "X STAMPS POP  -  B WRITES", "an empty loop says how to fill it")
     end },
 
     { "hold A + D-pad colours the chord under the playhead; one undo per press", function()
@@ -112,8 +116,9 @@ return {
         H.release("UP"); H.play(0.05)
         H.eq(chordsOf(M, track), "0:C 960:G7 1920:Am 2880:F", "letting the D-pad go keeps it")
         H.release("A"); H.play(0.05)
-        local _, _, lines = def:getReadout(st)
-        H.eq(lines[2], "LOOP:   I V7 | vi IV", "numerals with colour")
+        local labels = {}
+        for i, sp in ipairs(def:getView(st).spans) do labels[i] = sp.label end
+        H.eq(table.concat(labels, " "), "I V7 vi IV", "numerals with colour")
         H.eq(M.Theory:chordName(M.Harmony:chordAt(1000)), "G7", "followers get it")
         L:undo()
         H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "one undo for the press")
@@ -138,6 +143,45 @@ return {
         H.eq(chordsOf(M, track), "", "held through the loop: all gone")
         L:undo()
         H.eq(chordsOf(M, track), "0:C 960:G 1920:Am 2880:F", "one undo for the whole hold")
+    end },
+
+    { "the view: spans of the loop, the playhead's chord, levels by root, the source", function()
+        local M, L, st, def, track = boot()
+        H.tap("X")
+        L:setPlaying(false); L:seek(0.55); H.play(0.05)
+        local v = def:getView(st, track)
+        H.eq(#v.spans, 4, "four spans")
+        H.near(v.spans[2].from, 0.25, "G from a quarter")
+        H.near(v.spans[2].to, 0.5, "to half way")
+        H.truthy(v.spans[3].now, "Am is now")
+        H.falsy(v.spans[1].now, "C isn't")
+        H.near(v.spans[1].level, 0, "I at the bottom")
+        H.near(v.spans[3].level, 9 / 11, "vi up at its root")
+        H.near(v.playhead.level, v.spans[3].level, "the star rides Am")
+        H.eq(v.sourceLabel, "SETS CHORDS", "this track sets the chords")
+        H.eq(v.sub, "I  -  TRIAD  -  ON THE BEAT", "the D-pad's chord (at rest: I)")
+        -- a chord that starts late: the last one carries over to it
+        track.events = { track.events[2], track.events[3] }      -- G at 960, Am at 1920
+        L:seek(0.1); H.play(0.05)
+        v = def:getView(st, track)
+        H.truthy(v.spans[1].carry, "a carried span first")
+        H.eq(v.spans[1].label, "vi", "Am carries over from the loop's end")
+        H.truthy(v.spans[1].now, "and is what's playing")
+        H.falsy(v.spans[3].now, "not twice")
+    end },
+
+    { "holding A: the view shows the colour, the star stops suggesting", function()
+        local M, L, st, def, track = boot()
+        H.tap("X")
+        L:setPlaying(false); L:seek(0.3); H.play(0.05)
+        H.hold("A", "DOWN", "RIGHT"); H.play(0.05)
+        local v = def:getView(st, track)
+        H.eq(v.name, "Gaug", "the chord under the playhead, recoloured")
+        H.eq(v.middle, "COLOUR AUG", "the colour badge")
+        H.truthy(v.colouring, "lit")
+        H.eq(def:getGuideDir(st), nil, "no guide while colouring")
+        H.eq(def:getDpadSubtitle(st), "D-PAD: COLOUR", "subtitle")
+        H.release("A", "DOWN", "RIGHT"); H.play(0.05)
     end },
 
     { "SPICE colours plain chords on playback, for followers too, never recorded", function()
