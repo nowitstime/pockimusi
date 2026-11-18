@@ -63,5 +63,6 @@ The lowest-numbered harp track with chords sets the chord every follower plays o
 ## Decided
 
 ## Next
+- [ ] Try the new `FOLLOW` row (off by default): the harp plays the chord source's chords (a Chord Track) instead of choosing; the D-pad has no job then. Is that the harp's job once the Chord Track exists?
 
 - [ ] First pass.

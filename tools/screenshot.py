@@ -91,6 +91,9 @@ SCENES = {
     "chords-empty": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.play(0.3)',
     "chords-4bar": 'require("src.looper"):toggleBars(); require("src.instruments"):swapTrackInstrument(1, "chords"); local st = require("src.looper").tracks[1].state;'
                    ' st.progression = 11; H.tap("X"); H.play(0.6)',
+    "harp-follow": 'local I = require("src.instruments"); local L = require("src.looper"); I:swapTrackInstrument(1, "chords");'
+                   ' I.byId.chords:stamp(L.tracks[1].state, L.tracks[1]); I.byId.harp:cycleSetting(L.tracks[2].state, "FOLLOW", 1);'
+                   ' H.tap("SELECT"); H.play(1.3); H.tap("B")',
     "track-chords": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("DOWN") end',
     "tabs-lab": 'H.hold("SELECT"); H.play(0.3); H.tap("L1"); H.play(0.3)',
     "held-notes": 'for _ = 1, 3 do H.tap("SELECT") end; H.tap("L2"); H.play(0.5); H.hold("B"); H.play(0.9); H.release("B");'

@@ -16,11 +16,16 @@
 --   D-pad UP accent + vibrato · DOWN soft (at the note's start)
 --   D-pad LEFT / RIGHT flat / sharp by a semitone (while held)
 --   L1 / R1 set the octave to -1 / +1 outright
+-- FOLLOW row (off by default): the positions are degrees over the current
+-- chord, as on the Bass (1 root, 3 third, 5 fifth, 7 seventh, 8 octave; 2, 4,
+-- 6 walk the scale from the chord root). Read when a note starts; a roll
+-- stays over that chord. Recorded notes re-fit when the chords change.
 -- Built on the Bass for the voice, bends, playback and the stage view.
 -- ============================================================================
 
 local Theory  = require("src.theory")
 local Input   = require("src.input")
+local Harmony = require("src.harmony")
 local Looper  = require("src.looper")
 local Bass    = require("src.instruments.bass")
 local Patches = require("src.instruments.patches")
@@ -74,7 +79,8 @@ function Dial:newState()
     local state = Bass.newState(self)
     state.patch = self.DEFAULT_PATCH
     state.glide = "INSTANT"
-    state.follow = false           -- degrees are scale degrees (no chord-follow)
+    state.follow = false           -- FOLLOW row: off = scale degrees, on = over the chord
+    state.chord = nil              -- the chord the sounding note follows
     state.lastArticulation = "PLAIN"
     state.octave = 0               -- the carried octave
     state.pos = nil                -- the sounding note's position (nil: home / none)
@@ -87,7 +93,7 @@ function Dial:newState()
 end
 
 -- ---------------------------------------------------------------------------
--- Track page rows: PATCH (sound) and GLIDE (setting)
+-- Track page rows: PATCH (sound), GLIDE and FOLLOW (settings)
 -- ---------------------------------------------------------------------------
 local function indexOf(list, value)
     for i, v in ipairs(list) do
@@ -111,10 +117,17 @@ function Dial:getSoundRows(state)
         Patches.row(self, state),
         { key = "GLIDE", label = "GLIDE", value = state.glide, kind = "setting",
           items = itemsOf(self.GLIDES), index = indexOf(self.GLIDES, state.glide) },
+        { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
+          items = itemsOf({ "OFF", "ON" }), index = state.follow and 2 or 1 },
     }
 end
 
 function Dial:cycleSetting(state, key, delta)
+    if key == "FOLLOW" then
+        state.follow = not state.follow
+        Looper:showToast("DIAL FOLLOWS CHORDS: " .. (state.follow and "ON" or "OFF"))
+        return
+    end
     if key ~= "GLIDE" then return end
     local n = #self.GLIDES
     state.glide = self.GLIDES[((indexOf(self.GLIDES, state.glide) - 1 + delta) % n) + 1]
@@ -128,8 +141,12 @@ function Dial:clampOctave(o)
     return math.max(self.OCTAVE_MIN, math.min(self.OCTAVE_MAX, o))
 end
 
--- Scale degree 1..8 in an octave, plus a semitone accidental
-function Dial:semisFor(degree, octave, acc)
+-- Degree 1..8 in an octave, plus a semitone accidental: a scale degree, or
+-- over `chord` when following (the Bass's rule)
+function Dial:semisFor(degree, octave, acc, chord)
+    if chord then
+        return Theory:getChordDegreeSemis(chord, degree) + octave * 12 + (acc or 0)
+    end
     return Theory:getScaleDegreeSemis(degree) + octave * 12 + (acc or 0)
 end
 
@@ -192,7 +209,8 @@ function Dial:updateInput(dt, state, track, play, hold)
     if not state.h then
         -- A fresh press: a new note in the current octave
         local octave = state.octave
-        local semis = self:semisFor(degree, octave, state.acc)
+        state.chord = state.follow and Harmony:chordAt(Looper.tick) or nil
+        local semis = self:semisFor(degree, octave, state.acc, state.chord)
         local vel, accent = self.VEL_NORMAL, nil
         if Input.down.UP then
             vel, accent = self.VEL_ACCENT, true
@@ -204,7 +222,7 @@ function Dial:updateInput(dt, state, track, play, hold)
             state.lastArticulation = "PLAIN"
         end
         local ev = { action = self.POSITION_ACTION[pos or 1], degree = degree, octave = octave,
-                     semis = semis, vel = vel, accent = accent }
+                     semis = semis, vel = vel, accent = accent, acc = (state.acc ~= 0) and state.acc or nil }
         state.voices = {}            -- mono: the old note (released) is no longer followed
         local h = hold(ev, { manual = true })
         state.h, state.pos, state.age = h, pos, 0.0
@@ -230,7 +248,7 @@ function Dial:updateInput(dt, state, track, play, hold)
         end
     end
     state.pos = pos
-    local semis = self:semisFor(degree, octave, state.acc)
+    local semis = self:semisFor(degree, octave, state.acc, state.chord)
     if degree == state.cur.degree and octave == state.cur.octave and semis == state.cur.semis then
         return
     end
@@ -240,7 +258,7 @@ function Dial:updateInput(dt, state, track, play, hold)
     if fresh then
         self:correct(state, degree, octave, semis)
     else
-        state.h:bend({ degree = degree, octave = octave, semis = semis })
+        state.h:bend({ degree = degree, octave = octave, semis = semis, acc = state.acc })
     end
 end
 
@@ -252,6 +270,7 @@ function Dial:correct(state, degree, octave, semis)
     for _, ev in ipairs({ h.ev, h.rec }) do
         if ev then
             ev.degree, ev.octave, ev.semis, ev.action = degree, octave, semis, action
+            ev.acc = (state.acc ~= 0) and state.acc or nil
         end
     end
     local v = state.voices[h.ev]
@@ -284,9 +303,9 @@ function Dial:getReadout(state)
     return nil, string.format("DEG %d  -  OCT %s%d%s  -  %s", deg, oct > 0 and "+" or "", oct, acc, what)
 end
 
--- Save / load: patch and glide
+-- Save / load: patch, glide and follow
 function Dial:saveState(state)
-    return { patch = state.patch, glide = state.glide }
+    return { patch = state.patch, glide = state.glide, follow = state.follow }
 end
 
 function Dial:loadState(state, data)
@@ -295,6 +314,7 @@ function Dial:loadState(state, data)
     for _, g in ipairs(self.GLIDES) do
         if data.glide == g then state.glide = g end
     end
+    if type(data.follow) == "boolean" then state.follow = data.follow end
 end
 
 return Dial

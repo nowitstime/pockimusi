@@ -1,5 +1,11 @@
 -- ============================================================================
 -- src/instruments/harp.lua — "Pocket Omnichord" Strum Harp Instrument Module
+--
+-- FOLLOW row (off by default): the harp stops choosing chords and plays the
+-- chord the chord source sets (a Chord Track, say). The strings are that
+-- chord's root, 3rd, 5th and top note; L1 / R1 still move them an octave.
+-- What it records then is strings, not chords: it never becomes the chord
+-- source, and played back each string sounds over the chord at its tick.
 -- ============================================================================
 
 local Theory = require("src.theory")
@@ -7,6 +13,7 @@ local Input  = require("src.input")
 local Synth  = require("src.synth")
 local Looper = require("src.looper")
 local Patches = require("src.instruments.patches")
+local Harmony = require("src.harmony")
 
 local math_max   = math.max
 
@@ -34,6 +41,7 @@ function Harp:newState()
         currentChord = nil,
         patch = "harp",            -- Track page PATCH row
         colour = "TRIAD",          -- Track page COLOUR row (Theory.COLOURS)
+        follow = false,            -- Track page FOLLOW row: play the chord source's chords
         strings = {
             { button = "B", label = "STR 1 (ROOT)", energy = 0.0, phase = 0.0, lastSemis = 0 },
             { button = "A", label = "STR 2 (3RD)",  energy = 0.0, phase = 0.0, lastSemis = 4 },
@@ -52,6 +60,13 @@ function Harp:updateVisuals(dt, state, controlsBlocked, isActive)
         end
     end
 
+    if state.follow then
+        local l1 = isActive and not controlsBlocked and Input.down.L1
+        local r1 = isActive and not controlsBlocked and Input.down.R1
+        state.currentChord = self:followedChord(state, Harmony:current(), l1, r1)
+        return
+    end
+
     -- The D-pad chooses this harp's chord only while its track is the active one
     if isActive or not state.currentChord then
         local dirKey = controlsBlocked and "NEUTRAL" or Input:get8WayDirection()
@@ -60,7 +75,17 @@ function Harp:updateVisuals(dt, state, controlsBlocked, isActive)
 end
 
 -- ---------------------------------------------------------------------------
--- Track page rows: one sound row (PATCH) and the COLOUR setting
+-- Following: the chord source's chord as a harp chord (name, roman, strings)
+function Harp:followedChord(state, chord, l1, r1)
+    local oct = (l1 and not r1) and -12 or ((r1 and not l1) and 12 or 0)
+    local notes = Theory:getPadVoicing(chord, "FULL", 0)
+    for i = 1, #notes do notes[i] = notes[i] + oct end
+    while #notes < 4 do notes[#notes + 1] = notes[#notes - 2] + 12 end
+    return { name = Theory:chordName(chord), roman = chord.roman or "?", colour = chord.colour or "TRIAD",
+             notes = notes, octShift = oct, isWide = false, followed = true }
+end
+
+-- Track page rows: one sound row (PATCH), the COLOUR and FOLLOW settings
 -- ---------------------------------------------------------------------------
 function Harp:getPatch(state)
     return Patches.get(self, state)
@@ -84,6 +109,8 @@ function Harp:getSoundRows(state)
         Patches.row(self, state),
         { key = "COLOUR", label = "COLOUR", value = state.colour, kind = "setting",
           items = colours, index = self:colourIndex(state) },
+        { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
+          items = { { label = "OFF" }, { label = "ON" } }, index = state.follow and 2 or 1 },
     }
 end
 
@@ -95,14 +122,37 @@ function Harp:colourIndex(state)
 end
 
 function Harp:cycleSetting(state, key, delta)
+    if key == "FOLLOW" then
+        state.follow = not state.follow
+        if state.follow then state.liveChord = nil end      -- it no longer chooses
+        Looper:showToast("HARP FOLLOWS CHORDS: " .. (state.follow and "ON - PLAYS THE CHORD TRACK'S CHORDS" or "OFF"))
+        return
+    end
     if key ~= "COLOUR" then return end
     local n = #Theory.COLOURS
     state.colour = Theory.COLOURS[((self:colourIndex(state) - 1 + delta) % n) + 1]
     Looper:showToast("CHORD COLOUR: " .. state.colour)
 end
 
+function Harp:getDpadSubtitle(state)
+    if state.follow then return "D-PAD: - (FOLLOWING)" end
+    return nil
+end
+
 function Harp:updateInput(dt, state, track, emitEvent)
     local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
+
+    if state.follow and chord.followed then
+        -- strings of the followed chord: recorded as strings, not chords
+        for _, btn in ipairs({ "B", "A", "Y", "X" }) do
+            if Input.pressed[btn] then
+                local idx = self.BUTTON_TO_INDEX[btn]
+                emitEvent({ action = btn, semis = chord.notes[idx] or 0, vel = 0.82, decay = 1.0,
+                            follow = true, string = idx, octShift = chord.octShift })
+            end
+        end
+        return
+    end
 
     for _, btn in ipairs({ "B", "A", "Y", "X" }) do
         if Input.pressed[btn] then
@@ -140,9 +190,14 @@ function Harp:pluck(state, track, semis, vel, decay)
     return v
 end
 
-function Harp:noteOn(ev, state, track)
+function Harp:noteOn(ev, state, track, isPlayback)
     -- recorded in another key: play it in this one
     local semis = (ev.semis or 0) + Theory:keyShift(ev.chord and ev.chord.key)
+    if ev.follow and isPlayback then
+        -- a followed string: over the chord at its tick
+        local chord = self:followedChord(state, (Harmony:chordAt(ev.tick or 0)), false, false)
+        semis = (chord.notes[ev.string or 1] or 0) + (ev.octShift or 0)
+    end
     self:pluck(state, track, semis, ev.vel or 0.85, ev.decay or 1.0)
     local str = state.strings[self.BUTTON_TO_INDEX[ev.action] or 1]
     if str then
@@ -153,7 +208,7 @@ end
 
 -- Save / load (Phase C)
 function Harp:saveState(state)
-    return { colour = state.colour, patch = state.patch }
+    return { colour = state.colour, patch = state.patch, follow = state.follow }
 end
 
 function Harp:loadState(state, data)
@@ -162,6 +217,7 @@ function Harp:loadState(state, data)
     for _, c in ipairs(Theory.COLOURS) do
         if data.colour == c then state.colour = c end
     end
+    if type(data.follow) == "boolean" then state.follow = data.follow end
 end
 
 return Harp

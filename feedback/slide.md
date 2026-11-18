@@ -70,5 +70,6 @@
 - Stays in as an ordinary instrument (session 1).
 
 ## Next
+- [ ] Try the new `FOLLOW` row (off by default): steps and snapping land on the current chord's notes; the pitch stays free.
 
 - [ ] A session focused on `SNAP` and bending into notes.

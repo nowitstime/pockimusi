@@ -130,12 +130,13 @@ function Bass:previewRowSound(state, rowIdx)
     Patches.preview(self, state, Theory:getRootSemis(), 0.85)
 end
 
--- The pitch of a D-pad degree: over `chord` when following, else in the key
-function Bass:pitchFor(state, degree, octave, chord)
+-- The pitch of a D-pad degree: over `chord` when following, else in the key.
+-- `acc`: a semitone accidental (Dial's flat / sharp; Bass notes have none).
+function Bass:pitchFor(state, degree, octave, chord, acc)
     if state.follow and chord then
-        return Theory:getChordDegreeSemis(chord, degree) + (octave or 0) * 12
+        return Theory:getChordDegreeSemis(chord, degree) + (octave or 0) * 12 + (acc or 0)
     end
-    return Theory:getScaleDegreeSemis(degree) + (octave or 0) * 12
+    return Theory:getScaleDegreeSemis(degree) + (octave or 0) * 12 + (acc or 0)
 end
 
 function Bass:cycleSetting(state, key, delta)
@@ -303,7 +304,7 @@ function Bass:noteOn(ev, state, track, isPlayback)
         local chord, glideFrom
         if state.follow and ev.degree then
             chord = Harmony:chordAt(ev.tick, self.CHORD_LOOKAHEAD)   -- nil = the default 1/16
-            semis = self:pitchFor(state, ev.degree, ev.octave, chord)
+            semis = self:pitchFor(state, ev.degree, ev.octave, chord, ev.acc)
             if ev.glideFromDegree then
                 glideFrom = self:pitchFor(state, ev.glideFromDegree, ev.glideFromOctave, chord)
             end
@@ -413,7 +414,7 @@ function Bass:updateVoices(dt, state, track)
             local target = p.base or ev.semis
             if kf then
                 if p.chord and kf.degree then
-                    target = self:pitchFor(state, kf.degree, kf.octave, p.chord)
+                    target = self:pitchFor(state, kf.degree, kf.octave, p.chord, kf.acc)
                 else
                     target = kf.semis
                 end

@@ -12,11 +12,16 @@
 --   X  accent with vibrato
 --   L1 / R1       octave down / up; held while sliding = four times faster
 --   L1 + R1       back to the root
+-- FOLLOW row (off by default): the notes steps and snapping land on are the
+-- current chord's (root, third, fifth, and its colour's 6th / 7th / 9th)
+-- instead of the scale's. The pitch itself stays free, and recordings play
+-- as recorded.
 -- Built on the Bass: voices, bends, the pitch trace and the stage view.
 -- ============================================================================
 
 local Theory  = require("src.theory")
 local Input   = require("src.input")
+local Harmony = require("src.harmony")
 local Looper  = require("src.looper")
 local Bass    = require("src.instruments.bass")
 local Patches = require("src.instruments.patches")
@@ -67,7 +72,7 @@ function Slide:newState()
     local state = Bass.newState(self)
     state.patch = self.DEFAULT_PATCH
     state.glide = "FAST"           -- shown on the stage's capsule; the rate is GLIDE_RATE
-    state.follow = false           -- the Bass's chord-follow: not used here
+    state.follow = false           -- FOLLOW row: steps and snapping land on chord notes
     state.lastArticulation = "NOTE"
     state.speed = "MEDIUM"         -- Track page SPEED row
     state.snap = "SOFT"            -- Track page SNAP row
@@ -83,32 +88,50 @@ end
 -- Scale notes (semitones from the root)
 -- ---------------------------------------------------------------------------
 
--- Every scale note within an octave beyond the range, low to high
-function Slide:scaleNotes()
+-- The current chord's notes as semitones above its root, one octave
+function Slide:chordIntervals(chord)
+    local colour = chord.colour or "TRIAD"
+    local second = (colour == "SUS4") and 5 or (colour == "SUS2") and 2 or (chord.third or 4)
+    local out = { 0, second, chord.fifth or 7 }
+    if colour == "7TH" or colour == "9TH" then out[#out + 1] = chord.seventh or 10 end
+    if colour == "9TH" or colour == "ADD9" then out[#out + 1] = 2 end
+    if colour == "6TH" then out[#out + 1] = 9 end
+    return out
+end
+
+-- The notes steps and snapping land on, within an octave beyond the range,
+-- low to high: the scale's, or the current chord's when following
+function Slide:scaleNotes(state)
     local intervals = Theory.SCALES[Theory.scaleIndex].intervals
+    if state and state.follow then
+        local chord = Harmony:current()
+        intervals = {}
+        for i, iv in ipairs(self:chordIntervals(chord)) do intervals[i] = ((chord.root or 0) + iv) % 12 end
+    end
     local out = {}
     local lo, hi = -self.RANGE - 12, self.RANGE + 12
     for oct = math_floor(lo / 12), math_floor(hi / 12) do
-        for i = 1, 7 do
+        for i = 1, #intervals do
             local s = oct * 12 + intervals[i]
             if s >= lo and s <= hi then out[#out + 1] = s end
         end
     end
+    table.sort(out)
     return out
 end
 
 -- The scale note nearest `p` (the lower one when exactly between)
-function Slide:nearestNote(p)
+function Slide:nearestNote(p, state)
     local best
-    for _, s in ipairs(self:scaleNotes()) do
+    for _, s in ipairs(self:scaleNotes(state)) do
         if not best or math_abs(s - p) < math_abs(best - p) - 1e-9 then best = s end
     end
     return best
 end
 
 -- The next scale note above (dir = 1) or below (dir = -1) `p`
-function Slide:neighbourNote(p, dir)
-    local notes = self:scaleNotes()
+function Slide:neighbourNote(p, dir, state)
+    local notes = self:scaleNotes(state)
     if dir > 0 then
         for i = 1, #notes do
             if notes[i] > p + 1e-6 then return notes[i] end
@@ -131,7 +154,7 @@ function Slide:currentSemis(state)
 end
 
 -- ---------------------------------------------------------------------------
--- Track page rows: PATCH (sound), SPEED and SNAP (settings)
+-- Track page rows: PATCH (sound), SPEED, SNAP and FOLLOW (settings)
 -- ---------------------------------------------------------------------------
 local function indexOf(list, value)
     for i, v in ipairs(list) do
@@ -161,16 +184,23 @@ function Slide:getSoundRows(state)
           items = itemsOf(self.SPEEDS), index = indexOf(self.SPEEDS, state.speed) },
         { key = "SNAP", label = "SNAP", value = state.snap, kind = "setting",
           items = itemsOf(self.SNAPS), index = indexOf(self.SNAPS, state.snap) },
+        { key = "FOLLOW", label = "FOLLOW", value = state.follow and "ON" or "OFF", kind = "setting",
+          items = itemsOf({ "OFF", "ON" }), index = state.follow and 2 or 1 },
     }
 end
 
 function Slide:cycleSetting(state, key, delta)
+    if key == "FOLLOW" then
+        state.follow = not state.follow
+        Looper:showToast("SLIDE FOLLOWS CHORDS: " .. (state.follow and "ON - STEPS AND SNAP LAND ON CHORD NOTES" or "OFF"))
+        return
+    end
     local list = (key == "SPEED" and self.SPEEDS) or (key == "SNAP" and self.SNAPS) or nil
     if not list then return end
     local field = key:lower()
     state[field] = list[((indexOf(list, state[field]) - 1 + delta) % #list) + 1]
     if key == "SNAP" and state.snap == "HARD" then
-        state.pitch = self:nearestNote(state.pitch)      -- HARD never rests between notes
+        state.pitch = self:nearestNote(state.pitch, state)      -- HARD never rests between notes
         state.travel, state.settle = state.pitch, nil
     end
     Looper:showToast("SLIDE " .. key .. ": " .. state[field])
@@ -182,7 +212,7 @@ end
 
 -- Ease onto the nearest scale note (SNAP SOFT, and A notes)
 local function startSettle(self, state)
-    local to = self:nearestNote(state.pitch)
+    local to = self:nearestNote(state.pitch, state)
     if math_abs(to - state.pitch) < 1e-9 then
         state.pitch, state.settle = to, nil
         return
@@ -215,7 +245,7 @@ function Slide:steer(dt, state)
 
     -- LEFT / RIGHT: the neighbouring scale note
     if Input.pressed.LEFT or Input.pressed.RIGHT then
-        local q = self:neighbourNote(p, Input.pressed.RIGHT and 1 or -1)
+        local q = self:neighbourNote(p, Input.pressed.RIGHT and 1 or -1, state)
         p, state.settle = self:clampPitch(q), nil
     end
 
@@ -225,7 +255,7 @@ function Slide:steer(dt, state)
         local speed = self:getSpeed(state) * ((d.L1 or d.R1) and self.SHOULDER_BOOST or 1.0)
         state.travel = self:clampPitch(state.travel + (up and 1 or -1) * speed * dt)
         if state.snap == "HARD" then
-            p = self:clampPitch(self:nearestNote(state.travel))
+            p = self:clampPitch(self:nearestNote(state.travel, state))
         else
             p = state.travel
         end
@@ -285,7 +315,7 @@ function Slide:updateInput(dt, state, track, play, hold)
         if Input.pressed[btn] then
             -- an A note is a safe note: off the scale, it eases onto it
             if btn == "A" and not state.sliding and not state.settle
-               and math_abs(state.pitch - self:nearestNote(state.pitch)) > 1e-9 then
+               and math_abs(state.pitch - self:nearestNote(state.pitch, state)) > 1e-9 then
                 startSettle(self, state)
             end
             local prev = state.handles[#state.handles]
@@ -411,7 +441,7 @@ end
 -- ---------------------------------------------------------------------------
 function Slide:getReadout(state)
     local p = state.pitch
-    local near = self:nearestNote(p)
+    local near = self:nearestNote(p, state)
     local off = p - near
     local sign = (off > self.OFF_SCALE and "+") or (off < -self.OFF_SCALE and "-") or ""
     local name = Theory.NOTE_NAMES[((Theory:getRootSemis() + near) % 12) + 1]
@@ -432,7 +462,7 @@ end
 -- Save / load
 -- ---------------------------------------------------------------------------
 function Slide:saveState(state)
-    return { patch = state.patch, speed = state.speed, snap = state.snap, pitch = state.pitch }
+    return { patch = state.patch, speed = state.speed, snap = state.snap, pitch = state.pitch, follow = state.follow }
 end
 
 function Slide:loadState(state, data)
@@ -444,6 +474,7 @@ function Slide:loadState(state, data)
     for _, s in ipairs(self.SNAPS) do
         if data.snap == s then state.snap = s end
     end
+    if type(data.follow) == "boolean" then state.follow = data.follow end
     if type(data.pitch) == "number" and data.pitch == data.pitch then
         state.pitch = self:clampPitch(data.pitch)
         state.travel = state.pitch

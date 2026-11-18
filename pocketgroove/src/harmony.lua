@@ -46,11 +46,12 @@ function Harmony:source()
     return nil
 end
 
--- The chord last played live on the lowest chord track, or nil
+-- The chord last played live on the lowest chord track that has played
+-- one (a Harp that follows never chooses one), or nil
 function Harmony:liveChord()
     for slot = 1, 4 do
         local track = Looper.tracks[slot]
-        if track and self.SOURCES[track.instrumentId] then
+        if track and self.SOURCES[track.instrumentId] and track.state.liveChord then
             return track.state.liveChord
         end
     end

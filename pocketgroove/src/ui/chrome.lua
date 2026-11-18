@@ -879,6 +879,7 @@ function Chrome:getInstrumentLabels(def, state)
         flashMap = state.padFlash
     elseif kind == "harp" then
         dpadLabels = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
+        if state.follow then dpadLabels = { NEUTRAL = "FOLLOW" } end
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         local n = chord.notes
         faceLabels = {
@@ -932,6 +933,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         self:setColor(col)
         local octStr = chord.isWide and "WIDE OPEN" or (chord.octShift < 0 and "OCT -1" or (chord.octShift > 0 and "OCT +1" or "OCT 0"))
         local sub = string.format("%s  -  %s  -  %s", chord.roman, octStr, chord.colour or "TRIAD")
+        if state.follow then sub = sub .. "  -  FOLLOW" end
         local patch = def:getPatch(state)
         if patch and patch.id ~= def.DEFAULT_PATCH then sub = sub .. "  -  " .. patch.label end
         local sw = self.fontSmall:getWidth(sub)

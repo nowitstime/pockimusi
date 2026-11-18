@@ -228,6 +228,34 @@ return {
         H.eq(L.tracks[1].instrumentId, "chords", "still the chord track")
     end },
 
+    { "a Harp that follows plays the Chord Track's chords and never becomes the source", function()
+        local M, L, st, def, track = boot()
+        def:stamp(st, track)                                  -- C G Am F on track 1
+        local harpTrack = L.tracks[2]
+        local Harp = M.Instruments.byId.harp
+        local hs = harpTrack.state
+        Harp:cycleSetting(hs, "FOLLOW", 1)
+        H.truthy(hs.follow, "following")
+        L.activeTrack = 2
+        L:setPlaying(false); L:seek(0.55); H.play(0.05)      -- under Am
+        H.eq(hs.currentChord.name, "Am", "the harp shows the Chord Track's chord")
+        H.eq(table.concat(hs.currentChord.notes, " "), "-3 0 4 9", "its strings: A C E A")
+        H.tap("L2"); H.tap("B"); H.tap("L2")
+        H.eq(hs.strings[1].lastSemis, -3, "B plucks A")
+        local ev = harpTrack.events[1]
+        H.truthy(ev and ev.follow, "recorded as a followed string")
+        H.eq(ev.chord, nil, "no chord on it")
+        H.eq(M.Harmony:source(), track, "the Chord Track still sets the chords")
+        H.eq(hs.liveChord, nil, "it chose nothing live")
+        -- played back over a different chord: re-fits
+        Harp:noteOn({ action = "B", follow = true, string = 1, octShift = 0, tick = 1000, semis = 99 }, hs, harpTrack, true)
+        H.eq(hs.strings[1].lastSemis, -5, "over G: G")
+        H.eq(Harp:getDpadSubtitle(hs), "D-PAD: - (FOLLOWING)", "the D-pad has no job")
+        local fresh = Harp:newState()
+        Harp:loadState(fresh, Harp:saveState(hs))
+        H.truthy(fresh.follow, "follow saves")
+    end },
+
     { "settings save and load by name", function()
         local M, L, st, def = boot()
         def:cycleSetting(st, "PROGRESSION", 3)     -- ROCK

@@ -79,5 +79,6 @@
 - Stays in as an ordinary instrument (session 1).
 
 ## Next
+- [ ] Try the new `FOLLOW` row (off by default): positions become degrees over the current chord, as on the Bass; flat / sharp still apply.
 
 - [ ] Add the re-strike choice; try it with each sound; pick defaults.

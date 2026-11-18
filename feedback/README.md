@@ -82,6 +82,16 @@ Today the Chord Harp is the track the others follow. Two routes, maybe both:
 1. **Strum as a chord source.** It follows chords today, so it would need to *choose* them: the Harp's chord map on the D-pad (MUSICAL_PARTS §3.4).
 2. **A separate chord track.** The Harp on its `SILENT (CHORDS ONLY)` patch already is one, without sound. Now built as its own instrument, [Chord Track](chords.md): progressions, snap to the bar, stamp. Playing will decide whether it stays an instrument or becomes a hidden fifth track.
 
+### Following the chords
+
+Every instrument that plays pitches can follow the chords now, with a `FOLLOW` row on the Track page. Bass, Lead, Pad, Strum and Valves had it; **Dial**, **Slide** and the **Chord Harp** have it now (off by default, so they play as before):
+
+- **Dial:** the eight positions are degrees over the current chord, the Bass's rule (1 root, 3 third, 5 fifth, 7 seventh, 8 octave; 2, 4, 6 walk the scale). Recorded notes re-fit when the chords change.
+- **Slide:** steps and snapping land on the chord's notes instead of the scale's.
+- **Chord Harp:** plays the chord source's chords instead of choosing them; it records strings, so it never becomes the chord source.
+
+Not Drums or Hand Drums (no pitch), and not the Chord Track (it sets the chords).
+
 ### Decisions waiting (MUSICAL_PARTS §7.4)
 
 - [ ] Chord source: Strum `CHORDS` mode, a chord track, or both
