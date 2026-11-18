@@ -28,6 +28,7 @@ local FILES = {
     "test_autosave",
     "test_lab",
     "test_display",
+    "test_regressions",
     "test_smoke",
 }
 

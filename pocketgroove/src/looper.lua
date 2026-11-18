@@ -36,7 +36,9 @@ local Looper = {
     currentStep = 1,
     activeTrack = 1,   -- Active track slot (1..4)
     currentTakeId = 0,
-    undoStack = {},    -- { kind = "take", takeId, trackSlot }, { kind = "swap", ... } or { kind = "events", trackSlot, events, label }
+    undoStack = {},    -- { kind = "take", takeId, trackSlot }, { kind = "swap", ... }, { kind = "events", trackSlot, events, label },
+                       -- { kind = "fresh", tracks } or { kind = "bars", tracks, takeId }
+    UNDO_LIMIT = 64,   -- oldest entries are dropped past this (swaps and fresh starts hold whole tracks)
     tracks = {},
     -- Click (Transport X cycles off -> on -> count-in -> on + count-in)
     clickOn = false,   -- metronome click on every beat
@@ -76,12 +78,29 @@ function Looper:init(Instruments)
                    on = { tone = false, drive = false, echo = false, space = false } },
             muted = false,
             events = {},
+            rev = 0,           -- bumped whenever the events change (Looper:touch; Harmony's cache)
             sounding = {},     -- events whose playback note-on has fired and note-off not yet
             state = instDef:newState(),
         }
         Synth:configureTrackFx(self.tracks[slot])
     end
 end
+
+-- Mark a track's events as changed (anything that adds, removes or edits
+-- events in place calls this; replacing track.events with a new table is
+-- seen without it)
+function Looper:touch(track)
+    track.rev = (track.rev or 0) + 1
+end
+
+-- A deep copy of an event: its keyframe lists and chord are its own
+local function copyValue(v)
+    if type(v) ~= "table" then return v end
+    local out = {}
+    for k, x in pairs(v) do out[k] = copyValue(x) end
+    return out
+end
+Looper.copyEvent = copyValue
 
 -- Reassign any track slot (1..4) to any registered instrumentId
 function Looper:setTrackInstrument(trackIdx, instrumentId, Instruments)
@@ -175,6 +194,7 @@ end
 -- Remove one event, releasing it first if it is sounding
 function Looper:removeEventAt(track, i)
     local ev = table.remove(track.events, i)
+    if ev then self:touch(track) end
     if ev and track.sounding[ev] then
         track.sounding[ev] = nil
         if self.noteHandler then self.noteHandler("off", ev, track) end
@@ -289,18 +309,21 @@ function Looper:recordEvent(trackIdx, ev)
     ev.tick = snapped
     ev.grid = step
 
-    -- Snapped ahead of the playhead: the live press already played it
-    local ahead = (snapped - now) % loop
+    -- Plays ahead of the playhead (where swing puts it, too): the live press
+    -- already played it
+    local ahead = (snapped + self:getSwingOffset(ev, track) - now) % loop
     if ahead > 0 and ahead < loop * 0.05 then
         ev.skipOnce = true
     end
 
     table.insert(track.events, ev)
+    self:touch(track)
     return ev
 end
 
 function Looper:pushUndo(entry)
     table.insert(self.undoStack, entry)
+    while #self.undoStack > self.UNDO_LIMIT do table.remove(self.undoStack, 1) end
 end
 
 -- Undo the most recent take or instrument swap. Takes whose events are all
@@ -309,7 +332,24 @@ function Looper:undo()
     while #self.undoStack > 0 do
         local entry = table.remove(self.undoStack)
         local track = self.tracks[entry.trackSlot]
-        if entry.kind == "fresh" then
+        if entry.kind == "bars" then
+            -- 4 -> 2 bars: back to 4 bars with bars 3-4 as they were; notes
+            -- recorded since (later takes) stay
+            self:silenceAll()
+            self.bars = entry.bars
+            for slot = 1, 4 do
+                local t = self.tracks[slot]
+                local events = entry.tracks[slot]
+                for _, ev in ipairs(t.events) do
+                    if (ev.takeId or 0) > entry.takeId then table.insert(events, ev) end
+                end
+                t.events = events
+            end
+            self.prevTick = self.tick
+            self:syncPhase()
+            self:showToast(string.format("UNDO: LOOP LENGTH BACK TO %d BARS", entry.bars))
+            return
+        elseif entry.kind == "fresh" then
             self:silenceAll()
             local total = 0
             for slot = 1, 4 do
@@ -344,7 +384,7 @@ function Looper:undo()
             local removed = 0
             for i = #track.events, 1, -1 do
                 if track.events[i].takeId == entry.takeId then
-                    self:removeEventAt(track, i)
+                    self:removeEventAt(track, i)       -- (touches the track)
                     removed = removed + 1
                 end
             end
@@ -430,25 +470,28 @@ function Looper:toggleBars()
         for tIdx = 1, 4 do
             local track = self.tracks[tIdx]
             for i = 1, #track.events do
-                local copy = {}
-                for k, v in pairs(track.events[i]) do copy[k] = v end
-                copy.tick = copy.tick + oldLoop
-                copy.skipOnce = nil
-                if copy.bend then                      -- own keyframe list, not shared
-                    local kfs = {}
-                    for k = 1, #copy.bend do
-                        local kf = copy.bend[k]
-                        kfs[k] = { dt = kf.dt, degree = kf.degree, octave = kf.octave, semis = kf.semis,
-                                   bright = kf.bright, move = kf.move }
-                    end
-                    copy.bend = kfs
+                local ev = track.events[i]
+                if not ev.open then                    -- a note still held has no length yet
+                    local copy = copyValue(ev)         -- own keyframes and chord, not shared
+                    copy.tick = copy.tick + oldLoop
+                    copy.skipOnce = nil
+                    table.insert(track.events, copy)
                 end
-                table.insert(track.events, copy)
             end
+            self:touch(track)
         end
         self:showToast("LOOP LENGTH: 4 BARS (AUTO-DOUBLED BARS 1-2 -> 3-4)")
     else
-        -- 4 -> 2 bars: keep bars 1-2
+        -- 4 -> 2 bars: keep bars 1-2. Bars 3-4 (and the lengths cut at the
+        -- new end) go on the undo stack.
+        local saved = {}
+        for tIdx = 1, 4 do
+            local list = {}
+            for i, ev in ipairs(self.tracks[tIdx].events) do list[i] = copyValue(ev) end
+            saved[tIdx] = list
+        end
+        self:pushUndo({ kind = "bars", bars = 4, tracks = saved, takeId = self.currentTakeId })
+        self:beginRecordingTake()            -- notes from here on are newer than the saved ones
         self.bars = 2
         local loop = self:getLoopTicks()
         for tIdx = 1, 4 do
@@ -468,9 +511,10 @@ function Looper:toggleBars()
                     end
                 end
             end
+            self:touch(track)
         end
         self.tick = self.tick % loop
-        self:showToast("LOOP LENGTH: 2 BARS")
+        self:showToast("LOOP LENGTH: 2 BARS (UNDO BRINGS BARS 3-4 BACK)")
     end
     self.prevTick = self.tick
     self:syncPhase()
@@ -576,6 +620,15 @@ function Looper:update(dt, handler)
                     if ev.skipOnce and crossedAt(t) then ev.skipOnce = nil end
                 else
 
+                    -- The end of the last pass first: a note nearly a loop
+                    -- long ends just before it starts again, and must not
+                    -- end the moment it starts
+                    local offT = (t + math.min(ev.len, loop - 1)) % loop
+                    if ev.len > 0 and track.sounding[ev] and crossedAt(offT) then
+                        track.sounding[ev] = nil
+                        handler("off", ev, track)
+                    end
+
                     -- Flam grace note sounds just before the main hit
                     if ev.orn == "flam" and not ev.skipOnce and crossedAt((t - graceTicks) % loop) then
                         handler("grace", ev, track)
@@ -585,14 +638,21 @@ function Looper:update(dt, handler)
                         if ev.skipOnce then
                             ev.skipOnce = nil     -- the live press already played this pass
                         else
+                            -- Still sounding from before (stutter replays its
+                            -- start before its end): end it first, or the
+                            -- instrument loses that voice and it rings forever
+                            if track.sounding[ev] then
+                                track.sounding[ev] = nil
+                                handler("off", ev, track)
+                            end
                             if ev.len > 0 then track.sounding[ev] = true end
                             handler("on", ev, track)
+                            -- shorter than this frame: it ends in it too
+                            if ev.len > 0 and ev.len <= (cur - t) % loop then
+                                track.sounding[ev] = nil
+                                handler("off", ev, track)
+                            end
                         end
-                    end
-
-                    if ev.len > 0 and track.sounding[ev] and crossedAt((t + math.min(ev.len, loop - 1)) % loop) then
-                        track.sounding[ev] = nil
-                        handler("off", ev, track)
                     end
                 end
             end

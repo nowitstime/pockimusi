@@ -142,7 +142,7 @@ The list shows six rows at a time and scrolls with the cursor (marks show when t
 | `A` | Grid for the active track (1/4 → 1/8 → 1/16 → 1/12T → FREE) |
 | `Y` + `UP / DOWN` | Swing for the active track, 50–75 % in 2 % steps |
 | `X` | Metronome click on / off |
-| `START` tap | Play / pause; double tap = reset playhead to 1.1 |
+| `START` tap | Play / pause; double tap = reset playhead to 1.1 and silence everything still ringing (stuck notes, echo and reverb tails) |
 
 BPM, key, scale and bars are global. Grid and swing belong to the active track and are drawn in its colour. 
 

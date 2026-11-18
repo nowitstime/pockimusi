@@ -227,7 +227,8 @@ return {
     { "a swung event plays late by the swing offset", function()
         local _, L = setup(GRID.S)
         L.tracks[1].swing = 0.60
-        H.record(L, 1, "B", 1 / 32 + 0.001)
+        local ev = H.record(L, 1, "B", 1 / 32 + 0.001)
+        ev.skipOnce = nil   -- (pressed before its swung time, so the press counts as this pass; timing only here)
         startAt(L, 0.5)
         local fired = H.run(L, H.loopSeconds(L), 1000)
         local due = 1 / 32 + 0.1 * 2 / 32

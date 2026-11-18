@@ -83,9 +83,14 @@ function Autosave:load()
     end
     table.sort(found, function(a, b) return a.data.seq > b.data.seq end)
 
-    -- Newest first; fall back to the older one if it won't restore
+    -- The fresh boot state, to come back to if a save breaks halfway in
+    local defaults = (#found > 0) and Session.snapshot() or nil
+
+    -- Newest first; fall back to the older one if it won't restore. An error
+    -- inside restore counts as "won't restore", never as a crash on boot.
     for _, f in ipairs(found) do
-        local ok, err = Session.restore(f.data.session)
+        local called, ok, err = pcall(Session.restore, f.data.session)
+        if not called then ok, err = false, ok end
         if ok then
             self.seq = f.data.seq
             self.nextSlot = (f.slot % #self.SLOTS) + 1
@@ -98,6 +103,11 @@ function Autosave:load()
         if f.data.seq > self.seq then self.seq = f.data.seq end
     end
 
+    if defaults then
+        -- a restore may have stopped partway: back to a clean start
+        local called, okDefaults = pcall(Session.restore, defaults)
+        if not (called and okDefaults) then log("couldn't reset to the default session") end
+    end
     if existed then
         Looper:showToast("SAVE COULDN'T BE READ - FRESH SESSION")
     end

@@ -216,6 +216,7 @@ function handlers.ERASE(ctx)
         end
     end
     if Input.pressed.LEFT or Input.pressed.L1 then
+        Instruments:releaseAll()      -- held notes end on the instrument that started them
         Looper:undo()
     end
     if Input.pressed.START then
@@ -416,9 +417,14 @@ local function updateStartTap()
     end
     local now = love.timer.getTime()
     if (now - Input.lastStartTapTime) < Modes.DOUBLE_TAP then
+        -- Back to bar 1.1 from silence: whatever is still ringing (a stuck
+        -- note, echo and reverb tails) stops
+        Instruments:releaseAll()
+        Looper:silenceAll()
+        Synth:panic()
         Looper:resetPlayhead()
         Looper.playing = true
-        Looper:showToast("PLAYHEAD RESET TO BAR 1.1")
+        Looper:showToast("PLAYHEAD RESET TO BAR 1.1 - ALL SOUND CLEARED")
     else
         Looper:setPlaying(not Looper.playing)
         Looper:showToast(Looper.playing and "CLOCK: PLAYING" or "CLOCK: PAUSED (2x TAP = RESET)")
