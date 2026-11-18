@@ -235,7 +235,12 @@ function Chrome:getInstrumentLabels(def, state)
 
     if kind == "drums" then
         dpadLabels = { UP = "ACCENT", DOWN = "GHOST", LEFT = "FLAM", RIGHT = "RATCHET" }
-        faceLabels = { B = "", A = "", Y = "", X = "" }
+        -- each pad shows the kind of sound on it (an icon for KICK, SNARE...)
+        faceLabels = {}
+        for _, btn in ipairs({ "B", "A", "Y", "X" }) do
+            local snd = def.getPadSound and def:getPadSound(state, btn)
+            faceLabels[btn] = snd and snd.cat or ""
+        end
         flashMap = state.padFlash
     elseif kind == "harp" then
         dpadLabels = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }

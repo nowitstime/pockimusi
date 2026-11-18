@@ -35,12 +35,14 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
     local diagR = 39
     local innerR = 17
 
+    local shade = Config.shade
+
     -- Outer astrolabe ring with 4 intercardinal diamond ticks
-    self:setColor(C.GRID, 0.7)
+    self:setColor(shade(col, 0.45))
     love.graphics.circle("line", cx, cy, 68)
     for i = 0, 3 do
         local a = (math_pi * 0.25) + i * (math_pi * 0.5)
-        self:drawDiamond(cx + math_cos(a) * 68, cy + math_sin(a) * 68, 2, C.DIM)
+        self:drawDiamond(cx + math_cos(a) * 68, cy + math_sin(a) * 68, 2.4, shade(col, 0.7))
     end
 
     local dirDefs = {
@@ -74,7 +76,7 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
     end
 
     -- Star fill rendered as 16 convex triangles from center to avoid triangulation overlap at vertex 1 (UP)
-    self:setColor(C.PANEL_HI, 0.38)
+    self:setColor(shade(col, 0.16))
     local nVerts = #ringVerts
     for i = 1, nVerts do
         local v1 = ringVerts[i]
@@ -83,11 +85,11 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
     end
 
     -- Clean single wireframe outline
-    self:setColor(C.GRID)
+    self:setColor(shade(col, 0.6))
     love.graphics.polygon("line", starPts)
 
     -- Internal axis lines
-    self:setColor(C.GRID, 0.45)
+    self:setColor(shade(col, 0.35))
     for _, d in ipairs(dirDefs) do
         local coord = tipCoords[d.k]
         love.graphics.line(cx, cy, coord.tx, coord.ty)
@@ -95,7 +97,7 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
 
     -- Center core sparkle
     local anyActive = (activeDirKey and activeDirKey ~= "NEUTRAL")
-    self:drawStarGlint(cx, cy, anyActive and 10 or 7, anyActive and col or C.MUTED, anyActive and 0.9 or 0.45)
+    self:drawStarGlint(cx, cy, anyActive and 10 or 7, anyActive and C.TEXT or shade(col, 0.8), 1.0)
 
     -- Optional label for the resting D-pad (e.g. the bass root), lit while neutral
     if labels and labels.NEUTRAL then
@@ -126,8 +128,8 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
             local vTip = ringVerts[tipIdx]
             local vRight = ringVerts[rightValleyIdx]
 
-            -- Soft subtle point fill glow
-            self:setColor(col, 0.22)
+            -- The held point fills solid
+            self:setColor(col)
             love.graphics.polygon("fill", cx, cy, vLeft.x, vLeft.y, vTip.x, vTip.y, vRight.x, vRight.y)
 
             -- Glowing star outline in the direction pressed
@@ -170,7 +172,12 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
             local tw = self.fontSmall:getWidth(text)
             local th = self.fontSmall:getHeight()
             local isGuide = (guideDirKey == d.k)
-            self:setColor(isActive and C.TEXT or (isGuide and col or C.MUTED))
+            if isActive then
+                -- the held label sits in a solid chip
+                self:setColor(col)
+                love.graphics.rectangle("fill", math_floor(lx - tw * 0.5) - 5, math_floor(ly - th * 0.5) - 1, tw + 10, th + 2, 3, 3)
+            end
+            self:setColor(isActive and C.BG or (isGuide and col or C.TEXT))
             love.graphics.print(text, math_floor(lx - tw * 0.5), math_floor(ly - th * 0.5))
             if isGuide then
                 self:setColor(col)

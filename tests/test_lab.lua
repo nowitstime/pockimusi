@@ -481,7 +481,7 @@ return {
             harp  = { "bVI", "IVm", "L1: OCT -", "R1: OCT +", "D-PAD: HARMONY" },
             bass  = { "L5", "LEGATO", "STAC", "L1: OCT -1", "PITCH TRACE", "GLIDE MEDIUM", "D-PAD: SCALE DEGREE" },
             pad   = { "BRIGHT +", "SWELL", "L1: OCT -1", "MOVE", "D-PAD: TONE" },
-            lead  = { "NOTE", "ARP", "L1: OCT -1", "PITCH TRACE", "D-PAD: SCALE DEGREE" },
+            lead  = { "NOTE", "UP-DN", "L1: OCT -1", "PITCH TRACE", "D-PAD: SCALE DEGREE" },
         }
         for id, labels in pairs(expect) do
             playOn(M, 3, id)
