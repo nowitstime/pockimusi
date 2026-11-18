@@ -27,6 +27,7 @@ local FILES = {
     "test_session",
     "test_autosave",
     "test_lab",
+    "test_display",
     "test_smoke",
 }
 

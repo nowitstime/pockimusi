@@ -14,6 +14,7 @@ local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Chrome      = require("src.ui.chrome")
+local Display     = require("src.ui.display")
 local Autosave    = require("src.autosave")
 
 local math_min = math.min
@@ -30,6 +31,7 @@ function love.load()
         Instruments:handleLooperNote(kind, ev, track)
     end)
     Chrome:init()
+    Display:init(Chrome)       -- remembered look (CRISP / PIXEL) and fullscreen
     Autosave:load()            -- the last session comes back
 end
 
@@ -67,6 +69,10 @@ local TEST_KEYS = { h = { patch = "bass_saw", track = 3, semis = 0 }, g = { patc
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
+    elseif key == "f9" then
+        Looper:showToast(Display:cycleStyle())
+    elseif key == "f11" then
+        Looper:showToast(Display:toggleFullscreen())
     end
     local t = TEST_KEYS[key]
     if t and not testVoices[key] then
