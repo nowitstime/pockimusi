@@ -109,7 +109,7 @@ function Chrome:drawTapeDeck()
 
         -- Left Track Header
         if isSel then
-            self:setColor(tColor, 0.14)
+            self:setColor(Config.shade(tColor, 0.24))
             love.graphics.rectangle("fill", 12, ry, 120, 22, 3, 3)
             self:drawStarGlint(19, cy, 4.5, tColor, 1.0)
         else
@@ -120,7 +120,7 @@ function Chrome:drawTapeDeck()
         love.graphics.setFont(self.fontSmall)
         love.graphics.print(string.format("%d %s", tIdx, track.shortName or "TRK"), 28, ry + 3)
 
-        self:setColor((grid.id ~= "FREE") and C.MINT or C.DIM)
+        self:setColor((grid.id ~= "FREE") and tColor or C.DIM)
         love.graphics.setFont(self.fontTiny)
         love.graphics.print(grid.label, 78, ry + 4)
 
@@ -134,14 +134,14 @@ function Chrome:drawTapeDeck()
 
         -- Constellation Thread Lane
         if isSel then
-            self:setColor(tColor, 0.07)
+            self:setColor(Config.shade(tColor, 0.12))
             love.graphics.rectangle("fill", lx - 2, ry + 2, lw + 4, 18, 3, 3)
         end
-        self:setColor(isSel and tColor or C.GRID, isSel and 0.55 or 0.8)
+        self:setColor(Config.shade(tColor, isSel and 0.5 or 0.3))
         love.graphics.line(lx, cy, lx + lw, cy)
 
-        self:drawDiamond(lx, cy, isSel and 2.8 or 1.8, isSel and tColor or C.DIM)
-        self:drawDiamond(lx + lw, cy, isSel and 2.8 or 1.8, isSel and tColor or C.DIM)
+        self:drawDiamond(lx, cy, isSel and 2.8 or 2.2, tColor)
+        self:drawDiamond(lx + lw, cy, isSel and 2.8 or 2.2, tColor)
 
         -- Chord names along the chord-source lane, at each change (when there's room)
         if Harmony:source() == track then

@@ -103,17 +103,40 @@ function Chrome:drawCenterStage()
             l1Label, r1Label = "L1+R1: " .. view.both, "L1+R1: " .. view.both
         end
     end
-    local function shoulder(x, label, on)
+    -- Shoulder tabs: the button as a keycap, then what it does; a held
+    -- shoulder fills solid and its word goes bold
+    local function shoulder(x, label, on, right)
+        local key, text = label:match("^(%S+):%s*(.*)$")
+        if not key then key, text = "", label end
+        local w, h, y = 112, 22, 58
         if on then
-            self:drawCapsule(x, 58, 112, 22, label, accent, accent, C.BG, self.fontTiny)
-        elseif playMode then
-            self:drawCapsule(x, 58, 112, 22, label, C.GRID, C.PANEL_HI, C.MUTED, self.fontTiny)
+            self:setColor(accent)
+            love.graphics.rectangle("fill", x, y, w, h, 11, 11)
         else
-            self:drawCapsule(x, 58, 112, 22, label, accent, accent, accent, self.fontTiny, 0.08)
+            self:setColor(playMode and C.BG or Config.shade(accent, 0.12))
+            love.graphics.rectangle("fill", x, y, w, h, 11, 11)
+            self:setColor(playMode and Config.shade(accent, 0.45) or accent)
+            love.graphics.rectangle("line", x, y, w, h, 11, 11)
         end
+        local ft = self.fontTiny
+        local kw = math_max(22, ft:getWidth(key) + 10)
+        local kx = right and (x + w - kw - 4) or (x + 4)
+        self:setColor(on and C.BG or Config.shade(accent, 0.3))
+        love.graphics.rectangle("fill", kx, y + 4, kw, 14, 7, 7)
+        love.graphics.setFont(ft)
+        self:setColor(accent)
+        love.graphics.print(key, math_floor(kx + (kw - ft:getWidth(key)) * 0.5), math_floor(y + 11 - ft:getHeight() * 0.5))
+        local room = w - kw - 16
+        local f = (self.fontSmall:getWidth(text) <= room) and self.fontSmall or ft
+        love.graphics.setFont(f)
+        local tw = f:getWidth(text)
+        local tx = right and (kx - 6 - tw) or (kx + kw + 6)
+        local ty = math_floor(y + 11 - f:getHeight() * 0.5)
+        self:setColor(on and C.BG or C.TEXT)
+        if on then self:printBold(text, math_floor(tx), ty) else love.graphics.print(text, math_floor(tx), ty) end
     end
     shoulder(18, l1Label, lOn)
-    shoulder(510, r1Label, rOn)
+    shoulder(510, r1Label, rOn, true)
 
     local titleStr = def.name
     if mode == "TRACK" then titleStr = string.format("TRACK %d - SOUND", sl)

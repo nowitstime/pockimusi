@@ -39,14 +39,15 @@ function Chrome:drawTopBar()
     self:drawFrame(8, 6, 624, 38, C.GRID, 1, instCol)
 
     -- Left Active Track Accent Block
-    self:setColor(instCol, 0.16)
+    self:setColor(Config.shade(instCol, 0.22))
     love.graphics.rectangle("fill", 12, 10, 126, 30, 4, 4)
     self:setColor(instCol)
     love.graphics.rectangle("fill", 12, 10, 3.5, 30, 1.5, 1.5)
+    self:drawStarGlint(26, 25, 5.5, instCol, 1.0)
 
     self:setColor(C.TEXT)
     love.graphics.setFont(self.fontSmall)
-    love.graphics.print(string.format("%d - %s", sl, track and track.name or "TRK"), 24, 17)
+    love.graphics.print(string.format("%d - %s", sl, track and track.name or "TRK"), 36, 17)
 
     -- Hairline dividers & Metadata
     self:setColor(C.GRID)
@@ -56,7 +57,7 @@ function Chrome:drawTopBar()
     self:setColor(C.MUTED)
     love.graphics.print("GRID", 156, 11)
     love.graphics.setFont(self.fontSmall)
-    self:setColor((grid.id ~= "FREE") and C.MINT or C.MUTED)
+    self:setColor((grid.id ~= "FREE") and instCol or C.MUTED)
     love.graphics.print(grid.label, 156, 21)
 
     self:setColor(C.GRID)
@@ -101,16 +102,16 @@ function Chrome:drawTopBar()
 
         if isCur then
             local mc = (mode == "REC_LATCH" or mode == "REC_HOLD") and C.RED or C.TEXT
-            self:drawStarGlint(bx, by, 6.5, mc, 1.0)
-            self:drawDiamond(bx, by, 2.5, C.TEXT)
+            self:drawStarGlint(bx, by, 7, mc, 1.0)
+            self:drawDiamond(bx, by, 2, C.BG)
         else
-            self:drawDiamond(bx, by, isBar and 2.5 or 1.6, isBar and C.MUTED or C.DIM)
+            self:drawDiamond(bx, by, isBar and 3 or 1.8, isBar and instCol or C.DIM)
         end
     end
 
     -- Right Mode Status Tag (rx=4) with vector icon + ASCII text
     local modeConfigs = {
-        NORMAL    = { label = "JAM SAFE",   icon = "STAR",    stroke = C.GRID,   fill = C.PANEL_HI, txt = C.MUTED,  iconCol = C.GRID },
+        NORMAL    = { label = "JAM SAFE",   icon = "GLINT",   stroke = C.GRID,   fill = C.PANEL_HI, txt = C.TEXT,   iconCol = C.AMBER },
         REC_LATCH = { label = "REC LATCH",   icon = "DOT",     stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         REC_HOLD  = { label = "REC HOLD",    icon = "DOT",     stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         TRACK     = { label = "TRACK SOUND", icon = "GLINT",   stroke = C.PINK,   fill = C.PINK,     txt = C.BG,     iconCol = C.BG },
