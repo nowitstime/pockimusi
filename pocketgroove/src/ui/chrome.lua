@@ -11,6 +11,7 @@ local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Harmony     = require("src.harmony")
+local Display     = require("src.ui.display")
 
 local clamp      = Config.clamp
 local math_floor = math.floor
@@ -29,13 +30,23 @@ local Chrome = {
     fontHuge  = nil,
 }
 
+Chrome.FONT_SIZES = { fontTiny = 9, fontSmall = 11, fontMed = 13, fontLarge = 16, fontHuge = 28 }
+
 function Chrome:init()
-    self.fontTiny  = love.graphics.newFont(9)
-    self.fontSmall = love.graphics.newFont(11)
-    self.fontMed   = love.graphics.newFont(13)
-    self.fontLarge = love.graphics.newFont(16)
-    self.fontHuge  = love.graphics.newFont(28)
+    self:makeFonts(1)
     love.graphics.setLineStyle("smooth")
+end
+
+-- (Re)build the fonts with `dpiScale` screen pixels per layout pixel
+-- (src/ui/display.lua). Widths and heights still come back in layout pixels.
+function Chrome:makeFonts(dpiScale)
+    for name, size in pairs(self.FONT_SIZES) do
+        if dpiScale and dpiScale ~= 1 then
+            self[name] = love.graphics.newFont(size, "normal", dpiScale)
+        else
+            self[name] = love.graphics.newFont(size)
+        end
+    end
 end
 
 function Chrome:setColor(c, alphaOverride)
@@ -2759,25 +2770,19 @@ function Chrome:drawTapeDeck()
     end
 end
 
-function Chrome:draw()
-    local C = Config.COLORS
-    love.graphics.clear(C.BG[1], C.BG[2], C.BG[3], 1.0)
-
-    local winW, winH = love.graphics.getDimensions()
-    local scale = math_min(winW / Config.SCREEN_W, winH / Config.SCREEN_H)
-    local offsetX = math_floor((winW - Config.SCREEN_W * scale) * 0.5)
-    local offsetY = math_floor((winH - Config.SCREEN_H * scale) * 0.5)
-
-    love.graphics.push()
-    love.graphics.translate(offsetX, offsetY)
-    love.graphics.scale(scale, scale)
-
+function Chrome:drawScreen()
     self:drawTopBar()
     self:drawCenterStage()
     self:drawTapeDeck()
     self:drawPickerShelf()
+end
 
-    love.graphics.pop()
+-- Fitted to the window, black bars around it (src/ui/display.lua)
+function Chrome:draw()
+    if not self.drawScreenFn then
+        self.drawScreenFn = function() self:drawScreen() end
+    end
+    Display:draw(self.drawScreenFn)
 end
 
 return Chrome
