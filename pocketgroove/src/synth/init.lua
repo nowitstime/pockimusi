@@ -185,6 +185,40 @@ function Synth:applyTrackFx(src, track)
     if #applied > 0 then self.sourceFx[src] = applied end
 end
 
+-- Silence everything at once (START double-tap): every one-shot and
+-- sustained voice, pending sub-hits, and the echo and reverb tails, which
+-- live in the effect units, not the voices.
+function Synth:panic()
+    self:killAllVoices()
+    for _, pool in pairs(self.pools) do
+        for _, src in ipairs(pool.voices) do src:stop() end
+    end
+    for _, pool in pairs(self.loopPools) do
+        for _, src in ipairs(pool.sources) do src:stop() end
+        pool.inUse = {}
+    end
+    for _, v in ipairs(self.activeVoices) do v.evicted = true end
+    self.activeVoices = {}
+    self.scheduled = {}
+    if love.audio.stop then love.audio.stop() end        -- anything not in a pool too
+
+    if self.fxSupported then
+        -- detach every send, then rebuild each effect unit empty
+        for src, names in pairs(self.sourceFx) do
+            for _, name in ipairs(names) do pcall(src.setEffect, src, name, false) end
+        end
+        self.sourceFx = setmetatable({}, { __mode = "k" })
+        local Looper = package.loaded["src.looper"]
+        for slot = 1, 4 do
+            for _, name in ipairs(self.FX_SEND_ORDER) do
+                pcall(love.audio.setEffect, self:fxName(slot, name), false)
+            end
+            local track = Looper and Looper.tracks and Looper.tracks[slot]
+            if track then self:configureTrackFx(track) end
+        end
+    end
+end
+
 -- Run fn after `delay` seconds (frame resolution).
 function Synth:schedule(delay, fn)
     table.insert(self.scheduled, { at = self.clock + delay, fn = fn })

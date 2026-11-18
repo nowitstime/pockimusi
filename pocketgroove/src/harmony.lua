@@ -24,7 +24,7 @@ local Harmony = {
     -- already counts there: chords are often played a touch late, and a bass
     -- note on the beat should still get the new chord.
     LOOKAHEAD = 120,
-    cache = nil,     -- { events, count, last, loop, list = { { tick, chord }, ... } }
+    cache = nil,     -- { track, events, rev, loop, list = { { tick, chord }, ... } }
     -- Instruments that set the chords (they record `chord` data)
     SOURCES = { harp = true, chords = true },
 }
@@ -62,12 +62,14 @@ function Harmony:tonic()
     return Theory:getChordForDirection("NEUTRAL", false, false)
 end
 
--- Chord changes of the source track, sorted by tick (cached until its events change)
+-- Chord changes of the source track, sorted by tick. Cached until its
+-- events change: a new event list, or a change in place (track.rev, bumped
+-- by Looper:touch).
 function Harmony:changes(track)
     local events = track.events
     local c = self.cache
     local loop = Looper:getLoopTicks()
-    if c and c.events == events and c.count == #events and c.last == events[#events] and c.loop == loop then
+    if c and c.track == track and c.events == events and c.rev == track.rev and c.loop == loop then
         return c.list
     end
     local list = {}
@@ -77,7 +79,7 @@ function Harmony:changes(track)
         end
     end
     table.sort(list, function(a, b) return a.tick < b.tick end)
-    self.cache = { events = events, count = #events, last = events[#events], loop = loop, list = list }
+    self.cache = { track = track, events = events, rev = track.rev, loop = loop, list = list }
     return list
 end
 

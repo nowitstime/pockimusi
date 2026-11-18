@@ -111,6 +111,49 @@ local function int(v, lo, hi, default)
     return math.floor(v + 0.5)
 end
 
+-- Fields instruments read as numbers, and the chord's numbers. A damaged
+-- file with something else there loses the event (better than an error on
+-- every pass of the loop).
+local NUMBER_FIELDS = {
+    degree = true, octave = true, acc = true, decay = true, ratchet = true, strum = true,
+    string = true, octShift = true, key = true, tone = true, steps = true,
+    glideFrom = true, glideFromDegree = true, glideFromOctave = true, bright = true, move = true,
+}
+local CHORD_NUMBERS = { root = true, third = true, fifth = true, seventh = true, key = true, octShift = true }
+
+local function finite(v)
+    return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
+end
+
+-- true if the instrument fields of `ev` are the types instruments expect
+local function fieldsOk(ev)
+    for k in pairs(NUMBER_FIELDS) do
+        if ev[k] ~= nil and not finite(ev[k]) then return false end
+    end
+    if ev.soundId ~= nil and type(ev.soundId) ~= "string" then return false end
+    if ev.orn ~= nil and type(ev.orn) ~= "string" then return false end
+    if ev.chord ~= nil then
+        if type(ev.chord) ~= "table" or not finite(ev.chord.root) then return false end
+        for k in pairs(CHORD_NUMBERS) do
+            if ev.chord[k] ~= nil and not finite(ev.chord[k]) then return false end
+        end
+        if ev.chord.notes ~= nil then
+            if type(ev.chord.notes) ~= "table" then return false end
+            for _, n in pairs(ev.chord.notes) do if not finite(n) then return false end end
+        end
+    end
+    for _, list in ipairs({ "notes", "stack" }) do
+        if ev[list] ~= nil and type(ev[list]) ~= "table" then return false end
+    end
+    if ev.slur ~= nil then
+        if type(ev.slur) ~= "table" then return false end
+        for _, kf in ipairs(ev.slur) do
+            if type(kf) ~= "table" or not finite(kf.dt) then return false end
+        end
+    end
+    return true
+end
+
 local function restoreEvent(raw, loop)
     if type(raw) ~= "table" or not ACTIONS[raw.action] then return nil end
     local tick = raw.tick
@@ -134,11 +177,12 @@ local function restoreEvent(raw, loop)
         if type(raw.bend) == "table" then
             for _, kf in ipairs(raw.bend) do
                 if type(kf) == "table" and type(kf.dt) == "number" and kf.dt >= 0 and kf.dt < loop
-                   and (type(kf.semis) == "number" or type(kf.bright) == "number" or type(kf.move) == "number") then
+                   and (finite(kf.semis) or finite(kf.bright) or finite(kf.move)) then
                     kfs[#kfs + 1] = { dt = math.floor(kf.dt),
                                       semis = kf.semis ~= nil and num(kf.semis, -48, 48, 0) or nil,
-                                      degree = type(kf.degree) == "number" and kf.degree or nil,
-                                      octave = type(kf.octave) == "number" and kf.octave or nil,
+                                      degree = finite(kf.degree) and kf.degree or nil,
+                                      octave = finite(kf.octave) and kf.octave or nil,
+                                      acc = finite(kf.acc) and kf.acc or nil,
                                       bright = kf.bright ~= nil and num(kf.bright, 0.0, 1.0, nil) or nil,
                                       move = kf.move ~= nil and num(kf.move, 0.0, 1.0, nil) or nil }
                 end
@@ -147,6 +191,7 @@ local function restoreEvent(raw, loop)
         end
         ev.bend = (#kfs > 0) and kfs or nil
     end
+    if not fieldsOk(ev) then return nil end
     return ev
 end
 

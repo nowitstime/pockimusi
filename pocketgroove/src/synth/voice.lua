@@ -30,6 +30,10 @@ Voice.DRIFT   = 0.09     -- semitones of slow pitch drift either way (9 cents)
 Voice.DETUNE  = 0.07     -- semitones the bright layer sits above the main one
 Voice.SHIMMER = 0.35     -- how far the bright layer's level dips
 
+-- A loop pool grows past its patch's voice count (tracks sharing the patch)
+-- up to this many sources
+Voice.MAX_LOOP_SOURCES = 24
+
 local Install = {}
 
 -- ---------------------------------------------------------------------------
@@ -172,17 +176,40 @@ function Install.noteOn(Synth, patchId, semis, vel, opts)
         for i, s in ipairs(pool.sources) do
             if not pool.inUse[s] then idx = i break end
         end
+        local brightPool = patch.bright and Synth.loopPools[patch.bright]
         if not idx then
-            local oldest
+            -- None free. Tracks sharing a patch share its pool, so a track
+            -- steals only from itself while it is within its own voice count;
+            -- past that (or with nothing of its own playing) the pool grows,
+            -- up to MAX_LOOP_SOURCES, before stealing from anyone.
+            local track, budget = opts.track, opts.voices or #pool.sources
+            local mine, oldestMine, oldest = 0, nil, nil
             for _, v in ipairs(Synth.sustainVoices) do
-                if v.patch == patch and (not oldest or v.age > oldest.age) then oldest = v end
+                if v.patch == patch and v.alive and v.loopSrc then
+                    if not oldest or v.age > oldest.age then oldest = v end
+                    if v.track == track then
+                        mine = mine + 1
+                        if not oldestMine or v.age > oldestMine.age then oldestMine = v end
+                    end
+                end
             end
-            oldest:kill()
-            idx = oldest.srcIndex
+            if oldestMine and mine >= budget then
+                oldest = oldestMine
+            elseif #pool.sources < Voice.MAX_LOOP_SOURCES then
+                local n = #pool.sources + 1
+                Synth:growLoopPool(patch.loop, n)
+                if brightPool then Synth:growLoopPool(patch.bright, n) end
+                idx, oldest = n, nil
+            end
+            if oldest then
+                oldest:kill()
+                idx = oldest.srcIndex
+            elseif not idx then
+                return nil                -- (can't happen: every busy source has a voice)
+            end
         end
         src = pool.sources[idx]
         pool.inUse[src] = true
-        local brightPool = patch.bright and Synth.loopPools[patch.bright]
         brightSrc = brightPool and brightPool.sources[idx] or nil
     end
 
