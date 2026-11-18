@@ -292,10 +292,11 @@ return {
         H.eq(L.toastText, "ERASED 1 + 2 (2 HITS)", "toast")
     end },
 
-    { "rows are PATCH and GLIDE; they save and load", function()
+    { "rows are PATCH, GLIDE and FOLLOW; they save and load", function()
         local M, track, def = boot()
         local rows = M.Instruments:getSoundRows(def, track.state)
-        H.eq(#rows, 2, "two rows")
+        H.eq(#rows, 3, "three rows")
+        H.eq(rows[3].label .. "=" .. rows[3].value, "FOLLOW=OFF", "follow, off by default")
         H.eq(rows[1].label .. "=" .. rows[1].value, "PATCH=SQUARE", "patch")
         H.eq(rows[2].label .. "=" .. rows[2].value, "GLIDE=INSTANT", "glide")
         M.Instruments:cycleRow(def, track.state, 2, 1, track)
@@ -309,9 +310,57 @@ return {
         def:loadState(fresh, data)
         H.eq(fresh.patch, patch, "patch loads")
         H.eq(fresh.glide, "FAST", "glide loads")
+        def:cycleSetting(track.state, "FOLLOW", 1)
+        def:loadState(fresh, def:saveState(track.state))
+        H.truthy(fresh.follow, "follow loads")
         def:loadState(fresh, { glide = "NOPE", patch = "no_such" })
         H.eq(fresh.glide, "FAST", "bad glide ignored")
         H.eq(fresh.patch, patch, "bad patch ignored")
+    end },
+
+    { "FOLLOW: positions are degrees over the chord; flat / sharp still apply", function()
+        local M, track, def = boot()
+        local L = M.Looper
+        M.Instruments:swapTrackInstrument(1, "chords")
+        local ct = L.tracks[1]
+        M.Instruments.byId.chords:stamp(ct.state, ct)        -- C G Am F, a half bar each
+        L.activeTrack = 2
+        L:setPlaying(false); L:seek(0.3); H.play(0.05)       -- under G
+        local s = track.state
+        finger(POS[1]); H.play(0.1)
+        H.eq(s.h.ev.semis, 0, "off: degree 1 is the key's C")
+        finger(nil); H.play(0.1)
+        def:cycleSetting(s, "FOLLOW", 1)
+        finger(POS[1]); H.play(0.1)
+        H.eq(s.h.ev.semis, -5, "on: degree 1 is G (below, the shortest way)")
+        finger(nil); H.play(0.1)
+        finger(POS[3]); H.play(0.1)
+        H.eq(s.h.ev.semis, -1, "degree 3 is B, G's third")
+        finger(nil); H.play(0.1)
+        H.hold("RIGHT"); finger(POS[1]); H.play(0.1)
+        H.eq(s.h.ev.semis, -4, "sharp: G#")
+        H.eq(s.h.ev.acc, 1, "the accidental is kept on the note")
+        finger(nil); H.release("RIGHT"); H.play(0.1)
+        local F = M.Theory:getChordForDirection("LEFT", false, false)
+        H.eq(def:pitchFor(s, 1, 0, F, 1), 6, "playback re-fits it: over F, a sharp root is F#")
+    end },
+
+    { "the panel: the thumb's position, the roll, the notes it walks", function()
+        local M, track, def = boot()
+        local s = track.state
+        local p = def:getPanel(s)
+        H.eq(table.concat(p.notes, " "), "C D E F G A B C", "the scale, idle")
+        H.eq(p.pos, nil, "no note: no needle")
+        finger(POS[1]); H.play(0.15); finger(POS[2]); H.play(0.1); finger(POS[3]); H.play(0.05)
+        p = def:getPanel(s)
+        H.eq(p.pos, 3, "the thumb on 3")
+        H.eq(p.lit, 3, "E lit")
+        H.eq(p.trailFrom, 2, "rolled from 2")
+        H.truthy(p.trailAlpha > 0.5, "lit just now")
+        H.play(1.0)
+        H.eq(def:getPanel(s).trailAlpha, 0, "the roll fades")
+        finger(nil); H.play(0.1)
+        H.eq(def:getPanel(s).pos, nil, "lifted")
     end },
 
     { "the stage words degree and octave; a page taking the note waits for a lift", function()

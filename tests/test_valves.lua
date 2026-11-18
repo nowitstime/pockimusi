@@ -44,6 +44,24 @@ local function releaseAll()
 end
 
 return {
+    { "the panel: pistons sink while pressed, the breath, the note's sum", function()
+        local M, state, def = boot()
+        local p = def:getPanel(state)
+        H.eq(p.breath, 0, "no breath")
+        H.eq(p.open .. " " .. p.openName .. " " .. p.steps .. " " .. p.note, "ROOT C 0 C", "open C")
+        H.hold("A"); H.play(0.05); H.hold("R1"); H.play(0.1)
+        p = def:getPanel(state)
+        H.truthy(p.keys[1].down, "A sunk")
+        H.falsy(p.keys[2].down, "B up")
+        H.eq(p.breath, 1, "a full breath")
+        H.eq(p.breathLabel, "R1 BLOW", "blowing")
+        H.eq(p.steps .. " " .. p.note, "1 B", "C, one valve down: B")
+        H.release("R1"); H.play(0.05); H.hold("L1"); H.play(0.1)
+        H.near(def:getPanel(state).breath, 0.75, "tongued: softer")
+        H.release("L1", "A"); H.play(0.05)
+        H.eq(def:getMiddleBadge(state), "VALVES SCALE", "the badge")
+    end },
+
     { "VALVES is an instrument on the Bass view, with its rows", function()
         local M, state, def, track = boot()
         H.truthy(def, "registered")

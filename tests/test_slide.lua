@@ -37,13 +37,50 @@ local function playEntry(st)
 end
 
 return {
+    { "the panel: pitch on the rail, the note it will settle on, how far off", function()
+        local M, st, def = boot()
+        setPitch(st, 4.4)
+        local p = def:getPanel(st)
+        H.near(p.pitch, 4.4, "the pitch")
+        H.eq(p.target, 4, "SNAP SOFT settles on E")
+        H.eq(p.cents, "+40c", "40 cents sharp")
+        H.eq(p.names[4], "E", "named")
+        H.eq(p.label, "SNAP SOFT", "snap shown")
+        H.eq(def:getMiddleBadge(st), "SPEED MEDIUM", "speed in the badge")
+        setPitch(st, 7)
+        H.eq(def:getPanel(st).cents, nil, "on a note: no cents")
+    end },
+
+    { "FOLLOW: steps and snapping land on the chord's notes; saves", function()
+        local M, st, def, track = boot()
+        local L = M.Looper
+        M.Instruments:swapTrackInstrument(1, "chords")
+        local ct = L.tracks[1]
+        M.Instruments.byId.chords:stamp(ct.state, ct)        -- C G Am F, a half bar each
+        L.activeTrack = 3
+        L:setPlaying(false); L:seek(0.3); H.play(0.05)       -- under G
+        H.eq(def:nearestNote(5, st), 5, "off: F is a scale note")
+        setPitch(st, 2); H.tap("RIGHT")
+        H.eq(st.pitch, 4, "off: D steps to E")
+        def:cycleSetting(st, "FOLLOW", 1)
+        H.eq(def:nearestNote(5, st), 7, "on: F snaps to G (G B D)")
+        setPitch(st, 2); H.tap("RIGHT")
+        H.eq(st.pitch, 7, "on: D steps to G")
+        H.tap("RIGHT")
+        H.eq(st.pitch, 11, "then B")
+        local fresh = def:newState()
+        def:loadState(fresh, def:saveState(st))
+        H.truthy(fresh.follow, "follow saves")
+    end },
+
     { "SLIDE is an instrument on the Bass view with PATCH, SPEED and SNAP rows", function()
         local M, st, def = boot()
         H.truthy(def, "registered")
         H.falsy(def.lab, "an ordinary instrument")
         H.eq(def.viewKind, "bass", "drawn by the Bass view")
         local rows = M.Instruments:getSoundRows(def, st)
-        H.eq(#rows, 3, "three rows")
+        H.eq(#rows, 4, "four rows")
+        H.eq(rows[4].label .. "=" .. rows[4].value, "FOLLOW=OFF", "follow, off by default")
         H.eq(rows[1].label .. "=" .. rows[1].value, "PATCH=SQUARE", "opens on SQUARE")
         H.eq(rows[2].label .. "=" .. rows[2].value, "SPEED=MEDIUM", "speed")
         H.eq(rows[3].label .. "=" .. rows[3].value, "SNAP=SOFT", "snap defaults to SOFT")

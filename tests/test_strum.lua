@@ -56,12 +56,38 @@ end
 table.unpack = table.unpack or unpack
 
 return {
+    { "the view: strings by name, held ones lit, a struck one rings, the pattern marks strokes", function()
+        local M, state, def, track = boot()
+        state.follow = false
+        H.tap("L2")
+        H.hold("UP", "B", "A"); H.play(0.05)        -- degree 5 (G) with the 3rd and 5th held
+        local v = def:getView(state, track)
+        H.eq(v.name, "G", "the root")
+        local labels, notes = {}, {}
+        for i, s in ipairs(v.strings) do labels[i] = s.label; notes[i] = s.note end
+        H.eq(table.concat(labels, " "), "8VE 7TH 5TH 3RD ROOT", "high to low")
+        H.eq(table.concat(notes, " "), "G F D B G", "their notes")
+        H.truthy(v.strings[4].held and v.strings[3].held, "3rd and 5th held")
+        H.falsy(v.strings[2].held, "7th not")
+        H.hold("R1"); H.play(0.05); H.release("R1"); H.play(0.05)
+        H.release("UP", "B", "A"); H.tap("L2")
+        v = def:getView(state, track)
+        H.truthy(v.strings[5].energy > 0.5, "the root rings")
+        H.truthy(v.strings[4].energy > 0.5, "the 3rd rings")
+        H.eq(v.strings[2].energy, 0, "the 7th wasn't struck")
+        H.truthy(v.pick and v.pick.down, "the pick swept down")
+        H.eq(#v.marks, 1, "one stroke in the pattern")
+        H.truthy(v.marks[1].down, "a downstroke")
+        H.play(2.0)
+        H.truthy(def:getView(state, track).strings[5].energy < 0.1, "and fades")
+    end },
+
     { "STRUM is a lab instrument on the plucked sounds, with lanes, erase map and view", function()
         local M = H.fresh()
         local def = M.Instruments.byId.strum
         H.truthy(def, "registered")
         H.falsy(def.lab, "an ordinary instrument")
-        H.eq(def.viewKind, "lab", "the plain lab view")
+        H.eq(def.viewKind, "strum", "its own view")
         H.eq(def.HOME_GROUP, "PLUCK", "plucked sounds first")
         H.eq(def.DEFAULT_PATCH, "pluck_nylon", "opens on NYLON")
         H.eq(def.VOICES, 10, "ten voices")

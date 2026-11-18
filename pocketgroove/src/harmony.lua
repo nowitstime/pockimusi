@@ -1,12 +1,15 @@
 -- ============================================================================
 -- src/harmony.lua — The current chord at any point in the loop (SPEC §5)
 --
--- 1. The chord source is the lowest-numbered Chord Harp track that has
---    recorded chords. The current chord is the latest one at or before the
---    position, wrapping (before the loop's first chord, the last carries over).
+-- 1. The chord source is the lowest-numbered chord track (Chord Harp or
+--    Chord Track: SOURCES) that has recorded chords. The current chord is
+--    the latest one at or before the position, wrapping (before the loop's first chord, the last carries over).
 --    Muting that track doesn't change harmony.
--- 2. No recorded chords: the chord last played live on the lowest harp track.
--- 3. No harp, or nothing played yet: the tonic (I of the key and scale).
+-- 2. No recorded chords: the chord last played live on the lowest chord track.
+-- 3. No chord track, or nothing played yet: the tonic (I of the key and scale).
+--
+-- A source track's state may carry `spice` = { [event] = chord }: chords
+-- coloured differently for this pass of the loop (Chord Track SPICE row).
 --
 -- Chords are key-relative data ({ root, third, fifth, seventh, suffix,
 -- roman, borrowed }), so they follow a key change. Followers turn a D-pad
@@ -22,10 +25,12 @@ local Harmony = {
     -- note on the beat should still get the new chord.
     LOOKAHEAD = 120,
     cache = nil,     -- { events, count, last, loop, list = { { tick, chord }, ... } }
+    -- Instruments that set the chords (they record `chord` data)
+    SOURCES = { harp = true, chords = true },
 }
 
 local function hasChords(track)
-    if track.instrumentId ~= "harp" then return false end
+    if not Harmony.SOURCES[track.instrumentId] then return false end
     for _, ev in ipairs(track.events) do
         if ev.chord and ev.chord.root and not ev.open then return true end
     end
@@ -41,11 +46,12 @@ function Harmony:source()
     return nil
 end
 
--- The chord last played live on the lowest harp track, or nil
+-- The chord last played live on the lowest chord track that has played
+-- one (a Harp that follows never chooses one), or nil
 function Harmony:liveChord()
     for slot = 1, 4 do
         local track = Looper.tracks[slot]
-        if track and track.instrumentId == "harp" then
+        if track and self.SOURCES[track.instrumentId] and track.state.liveChord then
             return track.state.liveChord
         end
     end
@@ -67,7 +73,7 @@ function Harmony:changes(track)
     local list = {}
     for _, ev in ipairs(events) do
         if ev.chord and ev.chord.root and not ev.open then
-            list[#list + 1] = { tick = ev.tick, chord = ev.chord }
+            list[#list + 1] = { tick = ev.tick, chord = ev.chord, ev = ev }
         end
     end
     table.sort(list, function(a, b) return a.tick < b.tick end)
@@ -87,7 +93,11 @@ function Harmony:chordAt(tick, lookahead)
         for i = 1, #list do
             if list[i].tick <= pos then found = list[i] else break end
         end
-        if found then return found.chord, "recorded" end
+        if found then
+            -- a chord track may colour a chord differently on this pass (Chord Track SPICE)
+            local spice = track.state and track.state.spice
+            return (spice and spice[found.ev]) or found.chord, "recorded"
+        end
     end
     local live = self:liveChord()
     if live then return live, "live" end

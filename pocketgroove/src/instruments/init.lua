@@ -20,7 +20,7 @@ local Instruments = {
     -- there is skipped, so an instrument is added by adding its file. Only a
     -- module marked `lab = true` (a test tool such as FINGERS) depends on
     -- Config.LAB.
-    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" },
+    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "chords", "fingers" },
     catalog = {},
     byId = {},
 }
@@ -200,7 +200,7 @@ end
 -- Held-note handles (returned by hold(ev))
 --   h:release()      end the note now (otherwise it ends on button-up)
 --   h:bend(fields)   a change while the note sounds: pitch { degree, octave,
---                    semis } and / or Pad tone { bright, move }. The live
+--                    semis, acc } and / or Pad tone { bright, move }. The live
 --                    voice follows (def:bendTo) and the recording gets a
 --                    keyframe { dt, ...fields }. Works after release too,
 --                    for as long as the instrument keeps bending the fading
@@ -247,7 +247,7 @@ function Handle:bend(fields)
     local dt = math.floor(e + 0.5)
     rec.bend = rec.bend or {}
     local kf = { dt = dt, degree = fields.degree, octave = fields.octave, semis = fields.semis,
-                 bright = fields.bright, move = fields.move }
+                 acc = fields.acc, bright = fields.bright, move = fields.move }
     local last = rec.bend[#rec.bend]
     if last and last.dt == dt then
         rec.bend[#rec.bend] = kf                 -- several changes in one tick: keep the latest

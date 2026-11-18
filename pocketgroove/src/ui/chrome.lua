@@ -160,7 +160,7 @@ end
 -- Which stage view draws an instrument: its `viewKind` ("drums", "bass",
 -- "lab"), or the view that goes with its id. An instrument with neither gets
 -- the plain lab view.
-Chrome.VIEW_KINDS = { drums = true, harp = true, bass = true, lead = true, pad = true, lab = true }
+Chrome.VIEW_KINDS = { drums = true, harp = true, bass = true, lead = true, pad = true, chords = true, strum = true, lab = true }
 
 function Chrome:viewKind(def)
     local kind = def.viewKind or def.id
@@ -180,7 +180,9 @@ end
 -- ============================================================================
 -- ZONE 1: 8-POINT WIREFRAME STAR D-PAD (cx=102, cy=188)
 -- ============================================================================
-function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
+-- `guideDirKey` (optional): a direction to suggest (the Chord Track's
+-- progression); its label is lit in the accent with a dot under it
+function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
     local C = Config.COLORS
     local cardR = 55
     local diagR = 39
@@ -252,8 +254,13 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
     if labels and labels.NEUTRAL then
         love.graphics.setFont(self.fontTiny)
         self:setColor(anyActive and C.MUTED or col, anyActive and 0.6 or 1.0)
+        if guideDirKey == "NEUTRAL" and anyActive then self:setColor(col) end
         local t = labels.NEUTRAL
         love.graphics.print(t, math_floor(cx - self.fontTiny:getWidth(t) * 0.5), cy + 12)
+        if guideDirKey == "NEUTRAL" then
+            self:setColor(col)
+            love.graphics.circle("fill", cx, cy + 12 + self.fontTiny:getHeight() + 2, 1.8)
+        end
     end
 
     -- Draw tips, labels, and active star point outlines
@@ -315,8 +322,13 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey)
 
             local tw = self.fontSmall:getWidth(text)
             local th = self.fontSmall:getHeight()
-            self:setColor(isActive and C.TEXT or C.MUTED)
+            local isGuide = (guideDirKey == d.k)
+            self:setColor(isActive and C.TEXT or (isGuide and col or C.MUTED))
             love.graphics.print(text, math_floor(lx - tw * 0.5), math_floor(ly - th * 0.5))
+            if isGuide then
+                self:setColor(col)
+                love.graphics.circle("fill", lx, math_floor(ly + th * 0.5) + 3, 1.8)
+            end
         end
     end
 end
@@ -765,7 +777,8 @@ function Chrome:drawCenterStage()
     -- Left: Star D-Pad & Right: Circle Face Buttons (drawn in the page accent)
     local dpadLabels, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, mode)
     local activeDir = Input:get8WayDirection()
-    self:drawStarDpad(102, 188, dpadLabels, accent, activeDir)
+    local guideDir = playMode and def.getGuideDir and def:getGuideDir(state) or nil
+    self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
     self:setColor(C.MUTED)
@@ -776,7 +789,8 @@ function Chrome:drawCenterStage()
     }
     local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
     local faceSub = { TRACK = "FACE: EFFECTS ON / OFF", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
-    local dpadSubtitle = dpadSub[mode] or instSub[def.id] or instSub[kind] or "D-PAD"
+    local dpadSubtitle = dpadSub[mode] or (def.getDpadSubtitle and def:getDpadSubtitle(state))
+        or instSub[def.id] or instSub[kind] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
@@ -865,6 +879,7 @@ function Chrome:getInstrumentLabels(def, state)
         flashMap = state.padFlash
     elseif kind == "harp" then
         dpadLabels = { NEUTRAL = "I", UP = "bVI", DOWN = "vi", LEFT = "IV", RIGHT = "V", UP_LEFT = "ii", UP_RIGHT = "iii", DOWN_LEFT = "bVII", DOWN_RIGHT = "IVm" }
+        if state.follow then dpadLabels = { NEUTRAL = "FOLLOW" } end
         local chord = state.currentChord or Theory:getChordForDirection("NEUTRAL", false, false, state.colour)
         local n = chord.notes
         faceLabels = {
@@ -918,6 +933,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
         self:setColor(col)
         local octStr = chord.isWide and "WIDE OPEN" or (chord.octShift < 0 and "OCT -1" or (chord.octShift > 0 and "OCT +1" or "OCT 0"))
         local sub = string.format("%s  -  %s  -  %s", chord.roman, octStr, chord.colour or "TRIAD")
+        if state.follow then sub = sub .. "  -  FOLLOW" end
         local patch = def:getPatch(state)
         if patch and patch.id ~= def.DEFAULT_PATCH then sub = sub .. "  -  " .. patch.label end
         local sw = self.fontSmall:getWidth(sub)
@@ -965,6 +981,12 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
 
     elseif kind == "pad" then
         self:drawPadView(def, state, track, col, t)
+
+    elseif kind == "chords" then
+        self:drawChordTrackView(def, state, track, col)
+
+    elseif kind == "strum" then
+        self:drawStrumView(def, state, track, col, t)
 
     else
         self:drawLabView(def, state, track, col)
@@ -1899,14 +1921,23 @@ function Chrome:drawBassView(def, state, track, col)
     local sw = self.fontSmall:getWidth(sub)
     love.graphics.print(sub, math_floor(320 - sw * 0.5), 148)
 
-    -- Patch and glide
+    -- Patch and glide (an instrument may name its own middle badge)
     local patch = def:getPatch(state)
+    local middle = def.getMiddleBadge and def:getMiddleBadge(state) or ("GLIDE " .. (state.glide or "MEDIUM"))
     self:drawCapsuleRow(320, 166, 16, {
         { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
-        { "GLIDE " .. (state.glide or "MEDIUM"), C.GRID, C.PANEL_HI, C.MUTED },
+        { middle, C.GRID, C.PANEL_HI, C.MUTED },
         { state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
           C.GRID, C.PANEL_HI, state.follow and C.CYAN or C.DIM },
     })
+
+    -- An instrument borrowing this view may draw its own top panel
+    -- (def.PANEL = "dial", "rail" or "valves"); the pitch trace stays
+    if def.PANEL and self["drawPanel_" .. def.PANEL] then
+        self["drawPanel_" .. def.PANEL](self, def, state, col, 212, 188, 216, 50)
+        self:drawPitchTrace(def, state, col, 244, 34)
+        return
+    end
 
     -- Oscilloscope: the live voice's real pitch and level
     local ox, oy, ow, oh = 212, 188, 216, 50
@@ -1928,6 +1959,298 @@ function Chrome:drawBassView(def, state, track, col)
     love.graphics.setLineWidth(1)
 
     self:drawPitchTrace(def, state, col, 244, 34)
+end
+
+-- A sunken panel, as under the Lead's arp and the Bass's trace
+function Chrome:drawSunkenPanel(x, y, w, h)
+    local C = Config.COLORS
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", x, y, w, h, 4, 4)
+end
+
+local function printRight(self, text, x, y)
+    love.graphics.print(text, math_floor(x - self.fontTiny:getWidth(text)), y)
+end
+
+local function printCentre(self, font, text, x, y)
+    love.graphics.print(text, math_floor(x - font:getWidth(text) * 0.5), y)
+end
+
+-- ---------------------------------------------------------------------------
+-- DIAL panel: the dial (its 8 positions where the buttons are: 1 bottom,
+-- 3 right, 5 top, 7 left), a needle to the thumb, a lit arc for the roll
+-- just made; beside it the 8 notes it walks, the sounding one lit.
+-- def:getPanel(state) -> { pos, trailFrom, trailAlpha, notes = { name x8 }, lit, octave }
+-- ---------------------------------------------------------------------------
+function Chrome:drawPanel_dial(def, state, col, ox, oy, ow, oh)
+    local C = Config.COLORS
+    local p = def:getPanel(state)
+    self:drawSunkenPanel(ox, oy, ow, oh)
+    local cx, cy, r = ox + 26, oy + oh * 0.5, 13
+    local function ang(i) return math_pi * 0.5 - (i - 1) * math_pi * 0.25 end
+    self:setColor(C.GRID)
+    love.graphics.circle("line", cx, cy, r)
+    if p.trailFrom and p.pos and p.trailAlpha > 0 then
+        -- the roll, the short way round
+        local a1, a2 = ang(p.trailFrom), ang(p.pos)
+        local d = (a2 - a1 + math_pi) % (2 * math_pi) - math_pi
+        self:setColor(col, 0.7 * p.trailAlpha)
+        love.graphics.setLineWidth(2)
+        love.graphics.arc("line", "open", cx, cy, r, a1, a1 + d, 12)
+        love.graphics.setLineWidth(1)
+    end
+    love.graphics.setFont(self.fontTiny)
+    for i = 1, 8 do
+        local a = ang(i)
+        local on = (p.pos == i)
+        self:setColor(on and C.TEXT or (p.trailFrom == i and p.trailAlpha > 0 and col or C.MUTED))
+        love.graphics.circle("fill", cx + math_cos(a) * r, cy + math_sin(a) * r, on and 3 or 1.6)
+        self:setColor(on and C.TEXT or C.DIM)
+        printCentre(self, self.fontTiny, tostring(i), cx + math_cos(a) * (r + 7), math_floor(cy + math_sin(a) * (r + 7) - 5))
+    end
+    if p.pos then
+        local a = ang(p.pos)
+        self:setColor(col)
+        love.graphics.setLineWidth(2)
+        love.graphics.line(cx, cy, cx + math_cos(a) * (r - 4), cy + math_sin(a) * (r - 4))
+        love.graphics.setLineWidth(1)
+    end
+    self:drawStarGlint(cx, cy, 4, col, p.home and 1.0 or 0.8)
+
+    -- the 8 notes the dial walks, as rising steps
+    local bx = ox + 62
+    for i = 1, 8 do
+        local x = bx + (i - 1) * 15
+        local h = 5 + i * 2.6
+        local on = (p.lit == i)
+        local base = oy + 34
+        self:setColor(on and col or C.PANEL_HI)
+        love.graphics.rectangle("fill", x, base - h, 10, h, 2, 2)
+        self:setColor(on and col or C.GRID)
+        love.graphics.rectangle("line", x, base - h, 10, h, 2, 2)
+        self:setColor(on and C.TEXT or C.MUTED)
+        printCentre(self, self.fontTiny, p.notes[i] or "", x + 5, base + 2)
+    end
+    self:setColor(C.DIM)
+    printRight(self, string.format("OCT %s%d", p.octave > 0 and "+" or "", p.octave), ox + ow - 5, oy + 3)
+end
+
+-- ---------------------------------------------------------------------------
+-- RAIL panel (Slide): a ruler of pitch that scrolls under a fixed handle.
+-- A tick per semitone, taller named ticks for the notes steps and snapping
+-- land on (scale notes, or chord notes when following); an arrow to the note
+-- the slide will settle on, and how far off a note it sits.
+-- def:getPanel(state) -> { pitch, notes = { semis... }, names = { [semis] = name },
+--   target, cents, label }
+-- ---------------------------------------------------------------------------
+function Chrome:drawPanel_rail(def, state, col, ox, oy, ow, oh)
+    local C = Config.COLORS
+    local p = def:getPanel(state)
+    self:drawSunkenPanel(ox, oy, ow, oh)
+    local x0, w = ox + 8, ow - 16
+    local cx = x0 + w * 0.5
+    local span = 16                                  -- semitones across the panel
+    local function X(s) return cx + (s - p.pitch) / span * w end
+    local ry = oy + 24
+    self:setColor(C.GRID)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(x0, ry, x0 + w, ry)
+    love.graphics.setLineWidth(1)
+    love.graphics.setFont(self.fontTiny)
+    local isNote = {}
+    for _, s in ipairs(p.notes) do isNote[s] = true end
+    for s = math.ceil(p.pitch - span * 0.5), math_floor(p.pitch + span * 0.5) do
+        local x = X(s)
+        if x >= x0 and x <= x0 + w then
+            local n = isNote[s]
+            self:setColor(n and C.MUTED or C.DIM)
+            love.graphics.line(x, ry - (n and 6 or 3), x, ry + (n and 6 or 3))
+            if n and x >= x0 + 4 and x <= x0 + w - 4 then
+                local near = math_abs(s - p.pitch) < 0.5
+                self:setColor(near and C.TEXT or C.MUTED)
+                printCentre(self, self.fontTiny, p.names[s] or "", x, ry + 12)
+            end
+        end
+    end
+    -- where it will settle
+    if p.target and math_abs(p.target - p.pitch) > 0.04 then
+        local tx = X(p.target)
+        self:setColor(col, 0.9)
+        love.graphics.line(cx, ry - 15, tx, ry - 15)
+        local dir = (tx > cx) and -1 or 1
+        love.graphics.line(tx, ry - 15, tx + dir * 3, ry - 18)
+        love.graphics.line(tx, ry - 15, tx + dir * 3, ry - 12)
+    end
+    -- the handle (fixed in the middle; the rail moves)
+    self:setColor(col, 0.18)
+    love.graphics.rectangle("fill", cx - 8, ry - 10, 16, 20, 3, 3)
+    self:setColor(col)
+    love.graphics.rectangle("line", cx - 8, ry - 10, 16, 20, 3, 3)
+    self:setColor(C.TEXT)
+    love.graphics.setLineWidth(1.5)
+    love.graphics.line(cx, ry - 10, cx, ry + 10)
+    love.graphics.setLineWidth(1)
+    self:drawStarGlint(cx, ry - 11, 4.5, C.TEXT, 1.0)
+    if p.cents then
+        self:setColor(col)
+        love.graphics.print(p.cents, math_floor(cx + 11), oy + 4)
+    end
+    self:setColor(C.DIM)
+    printRight(self, p.label, ox + ow - 5, oy + 3)
+end
+
+-- ---------------------------------------------------------------------------
+-- VALVES panel: four pistons that sink while pressed, the breath, and the
+-- sum that makes the note (open note, minus the valves, = the note).
+-- def:getPanel(state) -> { keys = { { btn, down } x4 }, breath (0..1), breathLabel,
+--   open, openName, steps, note }
+-- ---------------------------------------------------------------------------
+function Chrome:drawPanel_valves(def, state, col, ox, oy, ow, oh)
+    local C = Config.COLORS
+    local p = def:getPanel(state)
+    self:drawSunkenPanel(ox, oy, ow, oh)
+    love.graphics.setFont(self.fontTiny)
+    for i, k in ipairs(p.keys) do
+        local x = ox + 12 + (i - 1) * 27
+        local top = oy + (k.down and 13 or 6)
+        -- stem, cap, casing
+        self:setColor(C.PANEL_HI)
+        love.graphics.rectangle("fill", x + 6, top + 8, 6, oy + 33 - top - 8, 2, 2)
+        self:setColor(C.GRID)
+        love.graphics.rectangle("line", x + 6, top + 8, 6, oy + 33 - top - 8, 2, 2)
+        self:setColor(k.down and col or C.PANEL_HI)
+        love.graphics.rectangle("fill", x, top, 18, 8, 3, 3)
+        self:setColor(k.down and col or C.GRID)
+        love.graphics.rectangle("line", x, top, 18, 8, 3, 3)
+        self:setColor(C.PANEL)
+        love.graphics.rectangle("fill", x - 2, oy + 33, 22, 4, 2, 2)
+        self:setColor(C.GRID)
+        love.graphics.rectangle("line", x - 2, oy + 33, 22, 4, 2, 2)
+        self:setColor(k.down and C.TEXT or C.MUTED)
+        printCentre(self, self.fontTiny, k.btn, x + 9, oy + 38)
+    end
+    local rx = ox + 124
+    self:setColor(C.DIM)
+    love.graphics.print("BREATH", rx, oy + 3)
+    self:setColor(C.PANEL_HI)
+    love.graphics.rectangle("fill", rx, oy + 15, 84, 5, 2, 2)
+    if p.breath > 0 then
+        self:setColor(col)
+        love.graphics.rectangle("fill", rx, oy + 15, 84 * p.breath, 5, 2, 2)
+    end
+    self:setColor(p.breath > 0 and col or C.DIM)
+    love.graphics.print(p.breathLabel, rx, oy + 22)
+    -- open note - valves = note
+    local x = rx
+    self:setColor(C.MUTED)
+    local open = p.open .. " " .. p.openName
+    love.graphics.print(open, x, oy + 35)
+    x = x + self.fontTiny:getWidth(open) + 6
+    self:setColor(col)
+    local steps = (p.steps > 0) and ("-" .. p.steps) or "OPEN"
+    love.graphics.print(steps, x, oy + 35)
+    x = x + self.fontTiny:getWidth(steps) + 6
+    self:setColor(C.TEXT)
+    love.graphics.setFont(self.fontSmall)
+    love.graphics.print(p.note, x, oy + 33)
+end
+
+-- ============================================================================
+-- STRUM VIEW: the strings (held ones glow, plucked ones ring, a pick sweeps
+-- the way of the stroke) and the strum pattern of the loop (down and up
+-- strokes as marks). def:getView(state, track) gives the data.
+-- ============================================================================
+function Chrome:drawStrumView(def, state, track, col, t)
+    local C = Config.COLORS
+    local v = def:getView(state, track)
+    self:setColor(C.TEXT)
+    love.graphics.setFont(self.fontHuge)
+    printCentre(self, self.fontHuge, v.name, 320, 112)
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(C.MUTED)
+    printCentre(self, self.fontSmall, v.sub, 320, 148)
+    self:drawCapsuleRow(320, 166, 16, {
+        { v.patch, C.GRID, C.PANEL_HI, col },
+        { v.middle, C.GRID, C.PANEL_HI, C.MUTED },
+        { v.follow, C.GRID, C.PANEL_HI, v.followOn and C.CYAN or C.DIM },
+    })
+
+    -- strings, high at the top
+    local ox, oy, ow, oh = 212, 188, 216, 50
+    self:drawSunkenPanel(ox, oy, ow, oh)
+    love.graphics.setFont(self.fontTiny)
+    local x1, x2 = ox + 36, ox + ow - 18
+    for i, str in ipairs(v.strings) do
+        local y = oy + 6 + (i - 1) * 9.5
+        local e = str.energy
+        self:setColor((e > 0.05 or str.held) and col or C.DIM)
+        love.graphics.print(str.label, ox + 5, math_floor(y - 5))
+        if e > 0.05 or str.held then
+            local pts = {}
+            for seg = 0, 24 do
+                local f = seg / 24
+                pts[#pts + 1] = x1 + f * (x2 - x1)
+                pts[#pts + 1] = y + math_sin(math_pi * f) * math_sin(f * 14 + t * 38 + i) * e * 2.6
+            end
+            if e > 0.05 then
+                self:setColor(col, 0.2 * e)
+                love.graphics.setLineWidth(4)
+                love.graphics.line(pts)
+            end
+            self:setColor(col, 0.55 + 0.45 * e)
+            love.graphics.setLineWidth(1.5)
+            love.graphics.line(pts)
+            love.graphics.setLineWidth(1)
+        else
+            self:setColor(C.DIM)
+            love.graphics.line(x1, y, x2, y)
+        end
+        self:setColor((e > 0.05 or str.held) and C.TEXT or C.DIM)
+        printRight(self, str.note, ox + ow - 5, math_floor(y - 5))
+    end
+    -- the pick, sweeping the way of the last stroke
+    if v.pick then
+        local px = ox + ow * 0.62
+        local f = v.pick.progress
+        local yTop, yBot = oy + 4, oy + oh - 4
+        local py = v.pick.down and (yTop + f * (yBot - yTop)) or (yBot - f * (yBot - yTop))
+        self:setColor(C.TEXT, 0.3 * v.pick.alpha)
+        love.graphics.line(px, yTop, px, yBot)
+        self:drawStarGlint(px, py, 5, C.TEXT, v.pick.alpha)
+    end
+
+    -- the strum pattern of the loop
+    local py, ph = 244, 34
+    self:drawSunkenPanel(ox, py, ow, ph)
+    self:setColor(C.DIM)
+    love.graphics.print("PATTERN", ox + 5, py + 3)
+    local beats = Looper:getTotalBeats()
+    local lx0, lw = ox + 8, ow - 16
+    for b = 1, beats - 1 do
+        local bx = math_floor(lx0 + b / beats * lw) + 0.5
+        self:setColor(C.GRID, (b % 4 == 0) and 0.9 or 0.35)
+        love.graphics.line(bx, py + 14, bx, py + ph - 3)
+    end
+    local my = py + 23
+    for _, m in ipairs(v.marks) do
+        local x = lx0 + m.frac * lw
+        self:setColor(col, m.down and 1.0 or 0.75)
+        if m.down then
+            love.graphics.polygon("fill", x - 3, my - 3, x + 3, my - 3, x, my + 3)
+        else
+            love.graphics.polygon("fill", x - 3, my + 3, x + 3, my + 3, x, my - 3)
+        end
+    end
+    local loop = Looper:getLoopTicks()
+    local phx = lx0 + ((Looper.tick % loop) / loop) * lw
+    self:setColor(C.TEXT)
+    love.graphics.line(phx, py + 13, phx, py + ph - 2)
+    if #v.marks == 0 then
+        self:setColor(C.MUTED)
+        printCentre(self, self.fontTiny, "R1 DOWN  -  L1 UP  -  BOTH DAMP", 320, py + 17)
+    end
 end
 
 -- Pitch trace: last 1.2 s, newest on the right; brighter = louder
@@ -2039,6 +2362,118 @@ function Chrome:drawLeadView(def, state, track, col)
     love.graphics.print(state.pattern, ox + 5, oy + 3)
 
     self:drawPitchTrace(def, state, col, 244, 34)
+end
+
+-- ============================================================================
+-- CHORD TRACK VIEW (src/instruments/chords.lua): the chord, then the loop's
+-- chords as a stepped line (height = the chord's root above the key, a star
+-- riding it as the playhead, as on the Lead's arp) and the progression as a
+-- row of dots with a star on the chord for this point in the loop.
+-- def:getView(state, track) gives the data.
+-- ============================================================================
+function Chrome:drawChordTrackView(def, state, track, col)
+    local C = Config.COLORS
+    local v = def:getView(state, track)
+
+    self:setColor(C.TEXT)
+    love.graphics.setFont(self.fontHuge)
+    love.graphics.print(v.name, math_floor(320 - self.fontHuge:getWidth(v.name) * 0.5), 112)
+
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(C.MUTED)
+    love.graphics.print(v.sub, math_floor(320 - self.fontSmall:getWidth(v.sub) * 0.5), 148)
+
+    local srcCol = (v.source == "this") and C.CYAN or C.DIM
+    local middle = v.colouring and { v.middle, col, col, C.BG } or { v.middle, C.GRID, C.PANEL_HI, C.MUTED }
+    self:drawCapsuleRow(320, 166, 16, {
+        { v.patch, C.GRID, C.PANEL_HI, col },
+        middle,
+        { v.sourceLabel, C.GRID, C.PANEL_HI, srcCol },
+    })
+
+    -- The loop: a stepped line through the chords
+    local ox, oy, ow, oh = 212, 188, 216, 54
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", ox, oy, ow, oh, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", ox, oy, ow, oh, 4, 4)
+    local beats = Looper:getTotalBeats()
+    for b = 1, beats - 1 do
+        local bx = math_floor(ox + b / beats * ow) + 0.5
+        self:setColor(C.GRID, (b % 4 == 0) and 0.9 or 0.3)
+        love.graphics.line(bx, oy + 3, bx, oy + oh - 3)
+    end
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(C.DIM)
+    love.graphics.print(v.loopLabel, ox + 5, oy + 3)
+
+    local lx0, lw = ox + 8, ow - 16
+    local function X(frac) return lx0 + frac * lw end
+    local function Y(level) return oy + oh - 9 - level * (oh - 24) end
+
+    if #v.spans == 0 then
+        local msg = v.emptyLabel
+        self:setColor(C.MUTED)
+        love.graphics.print(msg, math_floor(320 - self.fontTiny:getWidth(msg) * 0.5), oy + oh * 0.5 - 2)
+    end
+    local lastLabelX
+    for i, sp in ipairs(v.spans) do
+        local x1, x2, y = X(sp.from), X(sp.to), Y(sp.level)
+        local nxt = v.spans[i + 1]
+        -- plateau, then the step to the next chord
+        self:setColor(col, sp.now and 0.9 or 0.45)
+        love.graphics.setLineWidth(sp.now and 2 or 1.4)
+        love.graphics.line(x1, y, math_max(x1, x2 - 3), y)
+        love.graphics.setLineWidth(1)
+        if nxt then
+            self:setColor(col, 0.35)
+            love.graphics.line(math_max(x1, x2 - 3), y, X(nxt.from), Y(nxt.level))
+        end
+        if not sp.carry then
+            self:setColor(col)
+            love.graphics.circle("fill", x1, y, sp.now and 3.6 or 2.8)
+            -- the numeral beside each dot, when there's room (the current one always)
+            if sp.now or not lastLabelX or x1 - lastLabelX >= 20 then
+                self:setColor(sp.now and C.TEXT or C.MUTED)
+                -- high chords put it under the line, clear of the panel's label
+                love.graphics.print(sp.label, math_floor(x1 + 4), math_floor(sp.level > 0.6 and (y + 3) or (y - 14)))
+                lastLabelX = x1
+            end
+        end
+    end
+    if v.playhead then
+        self:drawStarGlint(X(v.playhead.frac), Y(v.playhead.level), 6.5, C.TEXT, 1.0)
+    end
+
+    -- The progression: a dot per chord, a star on the one for this point
+    local py, ph = 248, 34
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", ox, py, ow, ph, 4, 4)
+    self:setColor(C.GRID)
+    love.graphics.rectangle("line", ox, py, ow, ph, 4, 4)
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(C.DIM)
+    love.graphics.print(v.progName, ox + 5, py + 3)
+    love.graphics.print(v.progRight, math_floor(ox + ow - 5 - self.fontTiny:getWidth(v.progRight)), py + 3)
+    local n = #v.romans
+    local stepX = (n > 1) and (ow - 60) / (n - 1) or 0
+    local dy = py + ph * 0.5 + 2
+    for i, r in ipairs(v.romans) do
+        local x = (n > 1) and (ox + 30 + (i - 1) * stepX) or (ox + ow * 0.5)
+        if i > 1 then
+            self:setColor(C.GRID)
+            love.graphics.line(x - stepX + 6, dy, x - 6, dy)
+        end
+        local g = (i == v.guide)
+        if g then
+            self:drawStarGlint(x, dy, 5.5, col, 1.0)
+        else
+            self:setColor(C.MUTED)
+            love.graphics.circle("fill", x, dy, 2.2)
+        end
+        self:setColor(g and col or C.MUTED)
+        love.graphics.print(r, math_floor(x - self.fontTiny:getWidth(r) * 0.5), dy + 5)
+    end
 end
 
 -- ============================================================================

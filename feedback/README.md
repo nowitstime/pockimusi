@@ -26,6 +26,7 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | [Drums](drums.md) | Rhythm | — | — | [ ] |
 | [Hand Drums](hands.md) | Rhythm | Felt nice | Nothing specific yet | [ ] |
 | [Chord Harp](harp.md) | Chords | — | — | [ ] |
+| [Chord Track](chords.md) | Chords | Stamp makes it easy; was confusing | Second pass on the new buttons (write / colour / delete / stamp) | [ ] |
 | [Strum](strum.md) | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
 | [Bass](bass.md) | Bass | — | — | [ ] |
 | [Pad](pad.md) | Texture | — | — | [ ] |
@@ -79,7 +80,17 @@ The newer instruments need sounds made for how they play. Dial, Slide and Valves
 Today the Chord Harp is the track the others follow. Two routes, maybe both:
 
 1. **Strum as a chord source.** It follows chords today, so it would need to *choose* them: the Harp's chord map on the D-pad (MUSICAL_PARTS §3.4).
-2. **A separate chord track.** The Harp on its `SILENT (CHORDS ONLY)` patch already is one, without sound.
+2. **A separate chord track.** The Harp on its `SILENT (CHORDS ONLY)` patch already is one, without sound. Now built as its own instrument, [Chord Track](chords.md): progressions, snap to the bar, stamp. Playing will decide whether it stays an instrument or becomes a hidden fifth track.
+
+### Following the chords
+
+Every instrument that plays pitches can follow the chords now, with a `FOLLOW` row on the Track page. Bass, Lead, Pad, Strum and Valves had it; **Dial**, **Slide** and the **Chord Harp** have it now (off by default, so they play as before):
+
+- **Dial:** the eight positions are degrees over the current chord, the Bass's rule (1 root, 3 third, 5 fifth, 7 seventh, 8 octave; 2, 4, 6 walk the scale). Recorded notes re-fit when the chords change.
+- **Slide:** steps and snapping land on the chord's notes instead of the scale's.
+- **Chord Harp:** plays the chord source's chords instead of choosing them; it records strings, so it never becomes the chord source.
+
+Not Drums or Hand Drums (no pitch), and not the Chord Track (it sets the chords).
 
 ### Decisions waiting (MUSICAL_PARTS §7.4)
 
@@ -97,6 +108,7 @@ Newest first. One line each; the details go in the screens' files.
 
 | # | Date | Focus | Screens | Headline |
 | :-- | :-- | :-- | :-- | :-- |
+| 3 | 2026-11-18 📱 | Chord Track | Chord Track | Likes stamp and names on the timeline; wants numerals in the middle, clearer buttons, a delete, single-chord colours (aug), random colours |
 | 2 | 2026-11-16 📱 | Lead / Arp first pass | Lead / Arp | Fun and easy; `B` + arps mix well; ×2 on both shoulders is the move. Wants `1/4` rate, gate row, MiniFreak-style chaos + double, per-button pattern sets; no latch. Worries: loop slop, everything sounds like boss music |
 | 1 | 2026-11-16 📱 | First look at the five new instruments | Hand Drums, Strum, Slide, Dial, Valves | Dial most fun; Hand Drums nice; Valves needs brass; Strum and Slide promising. All ten stay in as ordinary instruments |
 

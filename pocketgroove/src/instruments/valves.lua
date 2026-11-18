@@ -33,6 +33,7 @@ local Valves = setmetatable({
     shortName = "VALV",
     title = "VALVES",
     viewKind = "bass",
+    PANEL = "valves",          -- the Bass view with pistons and breath in place of the oscilloscope
     eventClass = "valves",     -- its notes mean nothing to the Bass (and the reverse)
     defaultGridIndex = 3,      -- 1/16
 
@@ -417,6 +418,34 @@ function Valves:getReadout(state)
         (state.mode == "CHROMATIC") and "SEMI" or "SCALE",
         voice and (state.lastArticulation or "BLOW") or "BREATHE")
     return name, small
+end
+
+-- ---------------------------------------------------------------------------
+-- Stage panel (Chrome:drawPanel_valves): pistons, breath and the note's sum
+-- ---------------------------------------------------------------------------
+function Valves:getMiddleBadge(state)
+    return "VALVES " .. state.mode
+end
+
+function Valves:getPanel(state)
+    local keys = {}
+    for i, btn in ipairs({ "A", "B", "X", "Y" }) do keys[i] = { btn = btn, down = Input.down[btn] == true } end
+    local b = state.breath
+    local breathing = b and b.h and b.h:isHeld()
+    local octave = self.REGISTER_OCTAVE[state.register] or 0
+    local chromatic = (state.mode == "CHROMATIC")
+    local chord = (breathing and b.chord) or self:chordNow(state)
+    local open = self:pitchFor(state, state.tone, 0, octave, chord, chromatic)
+    local note = self:pitchFor(state, state.tone, state.steps, octave, chord, chromatic)
+    local function name(semis) return Theory.NOTE_NAMES[(math_floor(semis + 0.5) % 12) + 1] end
+    local level, label = 0, "R1 BLOW  -  L1 TONGUE"
+    if breathing then
+        level = (b.ev.vel or self.VEL) / self.VEL
+        label = (b.ev.action == "L1") and "L1 TONGUE" or "R1 BLOW"
+    end
+    return { keys = keys, breath = level, breathLabel = label,
+             open = self.TONE_LABELS[state.tone] or "ROOT", openName = name(open),
+             steps = state.steps or 0, note = name(note) }
 end
 
 -- ---------------------------------------------------------------------------

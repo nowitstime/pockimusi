@@ -79,5 +79,7 @@
 - Stays in as an ordinary instrument (session 1).
 
 ## Next
+- [ ] New screen panel: the dial (positions where the buttons are, a needle, the roll lit) and the 8 notes it walks. Does it help find your place?
+- [ ] Try the new `FOLLOW` row (off by default): positions become degrees over the current chord, as on the Bass; flat / sharp still apply.
 
 - [ ] Add the re-strike choice; try it with each sound; pick defaults.

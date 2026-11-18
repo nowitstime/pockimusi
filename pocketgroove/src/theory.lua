@@ -44,7 +44,9 @@ function Theory:getScaleDegreeSemis(degree)
 end
 
 -- Chord colours (Track page COLOUR row). TRIAD is the default.
-Theory.COLOURS = { "TRIAD", "7TH", "9TH", "SUS4", "ADD9" }
+-- AUG and DIM change the chord itself (major 3rd + raised 5th, minor 3rd +
+-- flat 5th), so followers play them too; the others change the voicing.
+Theory.COLOURS = { "TRIAD", "7TH", "9TH", "SUS4", "ADD9", "SUS2", "6TH", "AUG", "DIM" }
 
 -- Name suffix for a chord with the given third, seventh and colour
 local function colourSuffix(colour, third, seventh)
@@ -55,6 +57,14 @@ local function colourSuffix(colour, third, seventh)
         return (seventh == 11) and ("maj" .. n) or n
     elseif colour == "SUS4" then
         return "sus4"
+    elseif colour == "SUS2" then
+        return "sus2"
+    elseif colour == "6TH" then
+        return minor and "m6" or "6"
+    elseif colour == "AUG" then
+        return "aug"
+    elseif colour == "DIM" then
+        return "dim"
     elseif colour == "ADD9" then
         return minor and "m(add9)" or "add9"
     end
@@ -63,7 +73,8 @@ end
 
 -- `colour` is one of Theory.COLOURS (nil = TRIAD). Strings 1-4 are, per colour:
 --   TRIAD root 3rd 5th 8ve · 7TH root 3rd 5th 7th · 9TH root 3rd 7th 9th
---   SUS4  root 4th 5th 8ve · ADD9 root 3rd 5th 9th
+--   SUS4  root 4th 5th 8ve · ADD9 root 3rd 5th 9th · SUS2 root 2nd 5th 8ve
+--   6TH   root 3rd 5th 6th  · AUG  root 3rd #5th 8ve · DIM  root b3rd b5th 8ve
 function Theory:getChordForDirection(dirKey, l1, r1, colour)
     local scale = self.SCALES[self.scaleIndex].intervals
     local rootBase = self:getRootSemis()
@@ -134,6 +145,11 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
     local absRoot = rootBase + chordRootOffset
     local noteName = self.NOTE_NAMES[(absRoot % 12) + 1]
     colour = colour or "TRIAD"
+    if colour == "AUG" then
+        thirdInterval, fifthInterval = 4, 8
+    elseif colour == "DIM" then
+        thirdInterval, fifthInterval = 3, 6
+    end
     local octShift = 0
     if l1 and not r1 then
         octShift = -12
@@ -142,10 +158,11 @@ function Theory:getChordForDirection(dirKey, l1, r1, colour)
     end
 
     -- Chord tones as intervals above the root, by colour
-    local second = (colour == "SUS4") and 5 or thirdInterval     -- string 2
+    local second = (colour == "SUS4") and 5 or (colour == "SUS2") and 2 or thirdInterval  -- string 2
     local third  = (colour == "9TH") and seventhInterval or fifthInterval  -- string 3
     local top                                                     -- string 4
     if colour == "7TH" then top = seventhInterval
+    elseif colour == "6TH" then top = 9
     elseif colour == "9TH" or colour == "ADD9" then top = ninthInterval
     else top = 12 end
 
@@ -242,7 +259,8 @@ end
 -- Pad voicings (SPEC §7.4): the notes one Pad button plays over `chord`
 -- (key-relative data as above), lowest first, around middle C.
 --   FULL  root, 3rd, 5th, octave; the chord's colour changes the upper notes
---         (7TH: 7th on top · 9TH: 7th and 9th · SUS4: 4th for the 3rd · ADD9: 9th on top)
+--         (7TH: 7th on top · 9TH: 7th and 9th · SUS4 / SUS2: 4th / 2nd for the 3rd ·
+--         ADD9: 9th on top · 6TH: 6th on top; AUG / DIM come in the chord's own 3rd and 5th)
 --   OPEN  root, 5th, octave
 --   HIGH  5th, octave, 3rd above it
 -- Key roots and chord roots more than a tritone up are played below, so
@@ -259,7 +277,7 @@ function Theory:getPadVoicing(chord, shape, octave)
 
     local third, fifth, seventh = chord.third or 4, chord.fifth or 7, chord.seventh or 10
     local colour = chord.colour or "TRIAD"
-    local second = (colour == "SUS4") and 5 or third
+    local second = (colour == "SUS4") and 5 or (colour == "SUS2") and 2 or third
 
     local notes
     if shape == "OPEN" then
@@ -270,7 +288,8 @@ function Theory:getPadVoicing(chord, shape, octave)
         local mid, top = fifth, 12
         if colour == "7TH" then top = seventh
         elseif colour == "9TH" then mid, top = seventh, 14
-        elseif colour == "ADD9" then top = 14 end
+        elseif colour == "ADD9" then top = 14
+        elseif colour == "6TH" then top = 9 end
         notes = { 0, second, mid, top }
     end
 

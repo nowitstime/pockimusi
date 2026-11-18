@@ -36,7 +36,7 @@ local Looper = {
     currentStep = 1,
     activeTrack = 1,   -- Active track slot (1..4)
     currentTakeId = 0,
-    undoStack = {},    -- { kind = "take", takeId, trackSlot } or { kind = "swap", ... }
+    undoStack = {},    -- { kind = "take", takeId, trackSlot }, { kind = "swap", ... } or { kind = "events", trackSlot, events, label }
     tracks = {},
     -- Click (Transport X cycles off -> on -> count-in -> on + count-in)
     clickOn = false,   -- metronome click on every beat
@@ -333,6 +333,12 @@ function Looper:undo()
             track.state = entry.state
             track.events = entry.events
             self:showToast(string.format("UNDO: TRACK %d BACK TO %s (%d EVENTS)", entry.trackSlot, entry.name, #entry.events))
+            return
+        elseif entry.kind == "events" and track then
+            -- an edit that replaced a track's events (Chord Track stamp, delete, colour)
+            self:silenceTrack(entry.trackSlot)
+            track.events = entry.events
+            self:showToast(string.format("UNDO %s ON TRACK %d", entry.label or "EDIT", entry.trackSlot))
             return
         elseif entry.kind == "take" and track then
             local removed = 0

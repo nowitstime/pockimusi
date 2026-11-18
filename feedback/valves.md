@@ -68,5 +68,6 @@ Nothing sounds without breath.
 - Stays in as an ordinary instrument (session 1).
 
 ## Next
+- [ ] New screen panel: pistons that sink, the breath, and the sum (open note, minus the valves, = the note). Does the sum help learn the chart?
 
 - [ ] Brass sounds, then play again.
