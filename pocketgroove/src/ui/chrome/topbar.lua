@@ -31,7 +31,7 @@ function Chrome:drawTopBar()
     local C = Config.COLORS
     local sl = Looper.activeTrack
     local track = Looper.tracks[sl]
-    local instCol = Config.TRACK_COLORS[sl]
+    local instCol = self:trackColor(sl)
     local grid = Looper:getTrackGrid(sl)
     local mode = Modes.current or "NORMAL"
 

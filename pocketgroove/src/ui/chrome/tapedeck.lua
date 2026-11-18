@@ -76,7 +76,7 @@ end
 
 function Chrome:drawTapeDeck()
     local C = Config.COLORS
-    local activeCol = Config.TRACK_COLORS[Looper.activeTrack]
+    local activeCol = self:trackColor(Looper.activeTrack)
     local lx = 148
     local lw = 456
     local totalSixteenths = Looper:getTotalSixteenths()
@@ -103,7 +103,7 @@ function Chrome:drawTapeDeck()
         local ry = 369 + (tIdx - 1) * 25
         local cy = ry + 11
         local isSel = (Looper.activeTrack == tIdx)
-        local tColor = Config.TRACK_COLORS[tIdx]
+        local tColor = self:trackColor(tIdx)
         local track = Looper.tracks[tIdx]
         local grid = Looper:getTrackGrid(tIdx)
 

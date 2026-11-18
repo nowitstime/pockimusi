@@ -145,6 +145,12 @@ function Chrome:viewKind(def)
     return self.VIEW_KINDS[kind] and kind or "lab"
 end
 
+-- The colour of the instrument in a track slot
+function Chrome:trackColor(slot)
+    local def = Instruments:getTrackInstrument(slot)
+    return (def and Config.INST_COLORS[def.id]) or Config.TRACK_COLORS[slot]
+end
+
 function Chrome:isPlayMode(mode)
     return mode == "NORMAL" or mode == "REC_LATCH" or mode == "REC_HOLD"
 end

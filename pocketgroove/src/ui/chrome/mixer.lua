@@ -36,7 +36,7 @@ function Chrome:drawMixerView(t)
         local lvl = isMaster and Synth.masterVolume or trk.volume
         local isSelected = (Modes.mixTrack == i)
         local isMuted = not isMaster and trk.muted or false
-        local col = isMaster and C.TEXT or Config.TRACK_COLORS[i]
+        local col = isMaster and C.TEXT or self:trackColor(i)
 
         if isSelected then
             self:setColor(col, 0.22)

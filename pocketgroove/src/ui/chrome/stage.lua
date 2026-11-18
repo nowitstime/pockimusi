@@ -32,7 +32,7 @@ function Chrome:drawCenterStage()
     local sl = Looper.activeTrack
     local track = Looper.tracks[sl]
     local def, state = Instruments:getTrackInstrument(sl)
-    local instCol = Config.TRACK_COLORS[sl]
+    local instCol = self:trackColor(sl)
     local mode = Modes.current or "NORMAL"
     local playMode = self:isPlayMode(mode)
     local accent = self:getAccent(mode, instCol)
