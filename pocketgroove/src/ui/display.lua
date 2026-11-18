@@ -132,7 +132,9 @@ function Display:draw(drawFn)
         self:setFontScale(1)
         love.graphics.setCanvas(canvas)
         love.graphics.clear(bg[1], bg[2], bg[3], 1.0)
+        self.onCanvas = true
         drawFn()
+        self.onCanvas = false
         love.graphics.setCanvas()
 
         love.graphics.clear(0, 0, 0, 1)
@@ -153,6 +155,27 @@ function Display:draw(drawFn)
     drawFn()
     love.graphics.setScissor()
     love.graphics.pop()
+end
+
+-- Clip what is drawn next to a rectangle of the 640x480 picture (inside any
+-- clip already set). Returns what to hand back to popClip.
+function Display:pushClip(x, y, w, h)
+    local px, py, pw, ph = love.graphics.getScissor()
+    if self.onCanvas then
+        love.graphics.intersectScissor(x, y, w, h)
+    else
+        local s = self.scale or 1
+        love.graphics.intersectScissor((self.offsetX or 0) + x * s, (self.offsetY or 0) + y * s, w * s, h * s)
+    end
+    return { px, py, pw, ph }
+end
+
+function Display:popClip(prev)
+    if prev and prev[1] then
+        love.graphics.setScissor(prev[1], prev[2], prev[3], prev[4])
+    else
+        love.graphics.setScissor()
+    end
 end
 
 return Display

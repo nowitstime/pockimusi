@@ -391,11 +391,11 @@ return {
         H.truthy(seen["RISE"] and seen["FALL"], "its own D-pad labels")
         H.truthy(seen["PLAY"] and seen["SNAP"] and seen["DIVE"] and seen["LOUD"], "its own face labels")
         H.falsy(seen["LEGATO"] or seen["L5"], "none of the Bass's labels")
-        H.truthy(seen["L1: LOW"] and seen["R1: HIGH"], "its own shoulder labels")
+        H.truthy((seen["L1"] and seen["LOW"]) and (seen["R1"] and seen["HIGH"]), "its own shoulder labels")
         H.truthy(seen["SLIDE"], "its name as the title")
         H.hold("L1", "R1")
         seen = frame()
-        H.truthy(seen["L1+R1: WIDE"], "the label for both shoulders")
+        H.truthy((seen["L1+R1"] and seen["WIDE"]), "the label for both shoulders")
         H.release("L1", "R1")
     end },
 
@@ -410,9 +410,9 @@ return {
         local seen = frame()
         H.truthy(seen["ONE"] and seen["FIVE"], "its face labels")
         H.truthy(seen["L5"], "the Bass's D-pad labels")
-        H.truthy(seen["L1: OCT -1"] and seen["R1: OCT +1"], "the Bass's shoulder labels")
+        H.truthy((seen["L1"] and seen["OCT -1"]) and (seen["R1"] and seen["OCT +1"]), "the Bass's shoulder labels")
         H.hold("L1", "R1")
-        H.truthy(frame()["L1: OCT -1"], "no label for both: each shoulder keeps its own")
+        H.truthy((function(f) return f["L1"] and f["OCT -1"] end)(frame()), "no label for both: each shoulder keeps its own")
         H.release("L1", "R1")
     end },
 
@@ -441,7 +441,7 @@ return {
         H.truthy(seen["DOWN STROKE"], "the small line")
         H.truthy(seen["FIRST LINE"] and seen["SECOND LINE"], "further lines")
         H.truthy(seen["LAB"], "marked as a lab view")
-        H.truthy(seen["L1: -"] and seen["R1: -"], "no shoulder labels of its own")
+        H.truthy((seen["L1"] and seen["-"]) and (seen["R1"] and seen["-"]), "no shoulder labels of its own")
         H.truthy(seen["B"] and seen["X"], "plain face labels")
     end },
 
@@ -471,17 +471,17 @@ return {
         H.truthy(seen["REPEAT OFF"], "the drum view's capsules")
         H.truthy(seen["PAD X"] and seen["PAD A"], "its own D-pad labels")
         H.falsy(seen["FLAM"], "not the Drums' labels")
-        H.truthy(seen["L1: SOFT"] and seen["R1: LOUD"], "its own shoulder labels")
+        H.truthy((seen["L1"] and seen["SOFT"]) and (seen["R1"] and seen["LOUD"]), "its own shoulder labels")
     end },
 
     { "the five library instruments keep their views and labels", function()
         local M, frame = bootCapturing()
         local expect = {
-            drums = { "ACCENT", "RATCHET", "L1: 1/4", "R1: 1/8", "REPEAT OFF", "D-PAD: EXPRESSION" },
-            harp  = { "bVI", "IVm", "L1: OCT -", "R1: OCT +", "D-PAD: HARMONY" },
-            bass  = { "L5", "LEGATO", "STAC", "L1: OCT -1", "PITCH TRACE", "GLIDE MEDIUM", "D-PAD: SCALE DEGREE" },
-            pad   = { "BRIGHT +", "SWELL", "L1: OCT -1", "MOVE", "D-PAD: TONE" },
-            lead  = { "NOTE", "ARP", "L1: OCT -1", "PITCH TRACE", "D-PAD: SCALE DEGREE" },
+            drums = { "ACCENT", "RATCHET", "1/4", "1/8", "REPEAT OFF", "D-PAD: EXPRESSION" },
+            harp  = { "bVI", "IVm", "OCT -", "OCT +", "D-PAD: HARMONY" },
+            bass  = { "L5", "LEGATO", "STAC", "OCT -1", "PITCH TRACE", "GLIDE MEDIUM", "D-PAD: SCALE DEGREE" },
+            pad   = { "BRIGHT +", "SWELL", "OCT -1", "MOVE", "D-PAD: TONE" },
+            lead  = { "NOTE", "UP-DN", "OCT -1", "PITCH TRACE", "D-PAD: SCALE DEGREE" },
         }
         for id, labels in pairs(expect) do
             playOn(M, 3, id)
@@ -493,7 +493,7 @@ return {
         end
         playOn(M, 3, "lead")
         H.hold("L1", "R1")
-        H.truthy(frame()["L1+R1: RATE x2"], "the Lead's both-shoulders label")
+        H.truthy((function(f) return f["L1+R1"] and f["RATE x2"] end)(frame()), "the Lead's both-shoulders label")
         H.release("L1", "R1")
     end },
 
