@@ -60,6 +60,7 @@ end
 -- The parts, each adding its methods to Chrome (src/ui/chrome/*.lua)
 for _, part in ipairs({
     "prims",
+    "halos",
     "dpad",
     "face",
     "topbar",

@@ -40,32 +40,35 @@ function Chrome:drawCenterStage()
     local kind = self:viewKind(def)
     local view = def.VIEW or {}
 
-    -- Frame: grid line while jamming, mode colour (with a soft glow) otherwise
-    local borderCol = (mode == "NORMAL") and C.GRID or (Config.MODE_COLORS[mode] or C.GRID)
-    self:drawFrame(8, 50, 624, 306, borderCol, (mode == "NORMAL") and 1 or 1.6)
-    if mode ~= "NORMAL" then
-        for i, a in ipairs({ 0.16, 0.08, 0.04 }) do
-            self:setColor(borderCol, a)
-            love.graphics.setLineWidth(1.5)
-            love.graphics.rectangle("line", 8 - i, 50 - i, 624 + i * 2, 306 + i * 2, 6 + i, 6 + i)
-        end
-        love.graphics.setLineWidth(1)
-        if mode == "ERASE" or mode == "NEW" then
-            self:setColor(C.RED, 0.07)
-            love.graphics.rectangle("fill", 9, 51, 622, 304, 6, 6)
-        end
-    end
-
-    -- Vertical hairline dividers separating Left Zone | Center | Right Zone
-    self:setColor(C.GRID, 0.55)
-    love.graphics.line(198, 62, 198, 312)
-    love.graphics.line(442, 62, 442, 312)
-
-    -- Zone motifs: the instrument's own while playing, a generic astrolabe ring on settings pages
+    -- Frame: the instrument's dark stage, sky and halo while playing; a
+    -- solid mode-coloured border on a settings page or while recording
+    local borderCol = (mode == "NORMAL") and Config.shade(instCol, 0.45) or (Config.MODE_COLORS[mode] or C.GRID)
+    self:drawFrame(8, 50, 624, 306, borderCol, 1)
+    self.haloDrawn = false
     if playMode then
-        self:drawZoneMotifs(kind, instCol, t)
-    else
-        self:drawZoneMotifs("drums", accent, t)
+        self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
+    end
+    if mode == "ERASE" or mode == "NEW" then
+        self:setColor(C.RED, 0.07)
+        love.graphics.rectangle("fill", 9, 51, 622, 304, 6, 6)
+    end
+    self:setColor(borderCol)
+    love.graphics.setLineWidth((mode == "NORMAL") and 1 or 2)
+    love.graphics.rectangle("line", 8, 50, 624, 306, 6, 6)
+    love.graphics.setLineWidth(1)
+
+    if not self.haloDrawn then
+        -- Vertical hairline dividers separating Left Zone | Center | Right Zone
+        self:setColor(C.GRID, 0.55)
+        love.graphics.line(198, 62, 198, 312)
+        love.graphics.line(442, 62, 442, 312)
+
+        -- Zone motifs: a view's own plain motif, or the astrolabe ring on settings pages
+        if playMode then
+            self:drawZoneMotifs(kind, instCol, t)
+        else
+            self:drawZoneMotifs("drums", accent, t)
+        end
     end
 
     -- Shoulder capsules

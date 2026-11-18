@@ -125,9 +125,9 @@ def measure(text, size):
 
 RECORDER = r'''
 local ops = {}
-local state = { color = {1,1,1,1}, lw = 1, font = nil, tx = 0, ty = 0, sx = 1, stack = {} }
+local state = { color = {1,1,1,1}, lw = 1, font = nil, tx = 0, ty = 0, sx = 1, stack = {}, clip = nil }
 local function rec(kind, ...) ops[#ops+1] = { kind, state.color, state.lw, state.font and state.font.size or 12,
-                                              state.tx, state.ty, state.sx, {...} } end
+                                              state.tx, state.ty, state.sx, {...}, state.clip } end
 local function newFont(size)
     size = size or 12
     return { size = size,
@@ -151,6 +151,19 @@ GFX = setmetatable({
     polygon = function(...) rec("polygon", ...) end,
     arc = function(...) rec("arc", ...) end,
     print = function(...) rec("print", ...) end,
+    -- scissor, in screen pixels (layout pixels here: the window is 640x480)
+    setScissor = function(x, y, w, h) state.clip = x and { x, y, w, h } or nil end,
+    getScissor = function() if state.clip then return state.clip[1], state.clip[2], state.clip[3], state.clip[4] end end,
+    intersectScissor = function(x, y, w, h)
+        local c = state.clip
+        if c then
+            local x0, y0 = math.max(x, c[1]), math.max(y, c[2])
+            local x1, y1 = math.min(x + w, c[1] + c[3]), math.min(y + h, c[2] + c[4])
+            state.clip = { x0, y0, math.max(0, x1 - x0), math.max(0, y1 - y0) }
+        else
+            state.clip = { x, y, w, h }
+        end
+    end,
 }, { __index = function() return function() end end })
 function TAKE() return ops end
 '''
@@ -176,6 +189,7 @@ def render(ops, path):
     img = Image.new("RGBA", (640 * SCALE, 480 * SCALE), (0, 0, 0, 255))
     for op in lua_list(ops):
         kind, color, lw, fsize, tx, ty, sx, args = op[1], op[2], op[3], op[4], op[5], op[6], op[7], lua_list(op[8])
+        clip = lua_list(op[9]) if op[9] is not None else None
         if kind == "clear":
             img.paste((int(args[0] * 255), int(args[1] * 255), int(args[2] * 255), 255), (0, 0, img.width, img.height))
             continue
@@ -231,6 +245,11 @@ def render(ops, path):
         elif kind == "print":
             text, x, y = str(args[0]), args[1], args[2]
             d.text(P(x, y), text, font=font(fsize * sx), fill=col)
+        if clip:
+            x, y, cw, ch = (v * SCALE for v in clip)
+            mask = Image.new("L", img.size, 0)
+            ImageDraw.Draw(mask).rectangle([x, y, x + cw - 1, y + ch - 1], fill=255)
+            layer.putalpha(Image.composite(layer.getchannel("A"), mask, mask))
         img.alpha_composite(layer)
     img.convert("RGB").save(path)
 
