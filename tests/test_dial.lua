@@ -345,6 +345,24 @@ return {
         H.eq(def:pitchFor(s, 1, 0, F, 1), 6, "playback re-fits it: over F, a sharp root is F#")
     end },
 
+    { "the panel: the thumb's position, the roll, the notes it walks", function()
+        local M, track, def = boot()
+        local s = track.state
+        local p = def:getPanel(s)
+        H.eq(table.concat(p.notes, " "), "C D E F G A B C", "the scale, idle")
+        H.eq(p.pos, nil, "no note: no needle")
+        finger(POS[1]); H.play(0.15); finger(POS[2]); H.play(0.1); finger(POS[3]); H.play(0.05)
+        p = def:getPanel(s)
+        H.eq(p.pos, 3, "the thumb on 3")
+        H.eq(p.lit, 3, "E lit")
+        H.eq(p.trailFrom, 2, "rolled from 2")
+        H.truthy(p.trailAlpha > 0.5, "lit just now")
+        H.play(1.0)
+        H.eq(def:getPanel(s).trailAlpha, 0, "the roll fades")
+        finger(nil); H.play(0.1)
+        H.eq(def:getPanel(s).pos, nil, "lifted")
+    end },
+
     { "the stage words degree and octave; a page taking the note waits for a lift", function()
         local _, track, def = boot()
         local s = track.state

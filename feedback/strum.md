@@ -72,5 +72,6 @@ Easy shapes: `B + A` a triad, `A + X` root-fifth-octave, `Y + B` a seventh witho
 - Stays in as an ordinary instrument (session 1).
 
 ## Next
+- [ ] New screen: strings (held ones glow, struck ones ring, a pick sweeps the way of the stroke) and a PATTERN lane of down / up strokes. Does the pattern help?
 
 - [ ] Decide the chord-source question (feedback/README "Decisions waiting").

@@ -36,6 +36,7 @@ local Dial = setmetatable({
     shortName = "DIAL",
     title = "DIAL",
     viewKind = "bass",
+    PANEL = "dial",            -- the Bass view with the dial in place of the oscilloscope
     eventClass = "dial",       -- its notes carry accidentals Bass/Lead would re-pitch
     defaultGridIndex = 3,      -- 1/16
 
@@ -180,6 +181,7 @@ function Dial:updateInput(dt, state, track, play, hold)
     if Input.pressed.R1 then state.octave, shoulder = 1, true end
 
     if state.h then state.age = state.age + dt end
+    state.trailAge = (state.trailAge or 0) + dt
 
     -- Lift: the note ends
     if id == "NONE" then
@@ -226,6 +228,7 @@ function Dial:updateInput(dt, state, track, play, hold)
         state.voices = {}            -- mono: the old note (released) is no longer followed
         local h = hold(ev, { manual = true })
         state.h, state.pos, state.age = h, pos, 0.0
+        state.trailFrom = nil
         state.cur = { degree = degree, octave = octave, semis = semis }
         state.handles = { h }
         state.activeDegree = degree
@@ -246,6 +249,9 @@ function Dial:updateInput(dt, state, track, play, hold)
                 state.octave = o
             end
         end
+    end
+    if pos and state.pos and pos ~= state.pos then
+        state.trailFrom, state.trailAge = state.pos, 0.0     -- the roll, for the stage
     end
     state.pos = pos
     local semis = self:semisFor(degree, octave, state.acc, state.chord)
@@ -291,6 +297,31 @@ function Dial:startVoice(ev, state, track, semis, glideFrom)
         glideRate = self:getGlideRate(state),
         vibrato = ev.accent == true,
     })
+end
+
+-- Stage panel (Chrome:drawPanel_dial): where the thumb is, the roll just
+-- made, and the 8 notes the dial walks now (over the chord when following)
+Dial.TRAIL_TIME = 0.6          -- seconds the roll stays lit
+
+function Dial:getPanel(state)
+    local sounding = state.h ~= nil
+    local chord = state.follow and ((sounding and state.chord) or (Harmony:current())) or nil
+    local oct = (sounding and state.cur) and state.cur.octave or state.octave
+    local notes = {}
+    for d = 1, 8 do
+        local semis = self:semisFor(d, oct, 0, chord)
+        notes[d] = Theory.NOTE_NAMES[(math.floor(semis + 0.5) % 12) + 1]
+    end
+    local age = state.trailAge or 99
+    return {
+        pos = sounding and state.pos or nil,
+        home = sounding and state.pos == nil,
+        trailFrom = sounding and state.trailFrom or nil,
+        trailAlpha = math.max(0, 1 - age / self.TRAIL_TIME),
+        notes = notes,
+        lit = sounding and state.cur and state.cur.degree or nil,
+        octave = oct,
+    }
 end
 
 -- Stage (Bass view): keep the note name, word the line under it

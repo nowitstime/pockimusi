@@ -37,6 +37,20 @@ local function playEntry(st)
 end
 
 return {
+    { "the panel: pitch on the rail, the note it will settle on, how far off", function()
+        local M, st, def = boot()
+        setPitch(st, 4.4)
+        local p = def:getPanel(st)
+        H.near(p.pitch, 4.4, "the pitch")
+        H.eq(p.target, 4, "SNAP SOFT settles on E")
+        H.eq(p.cents, "+40c", "40 cents sharp")
+        H.eq(p.names[4], "E", "named")
+        H.eq(p.label, "SNAP SOFT", "snap shown")
+        H.eq(def:getMiddleBadge(st), "SPEED MEDIUM", "speed in the badge")
+        setPitch(st, 7)
+        H.eq(def:getPanel(st).cents, nil, "on a note: no cents")
+    end },
+
     { "FOLLOW: steps and snapping land on the chord's notes; saves", function()
         local M, st, def, track = boot()
         local L = M.Looper

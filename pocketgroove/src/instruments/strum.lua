@@ -34,7 +34,7 @@ local Strum = {
     name = "STRUM",
     shortName = "STRM",
     title = "STRUM",
-    viewKind = "lab",
+    viewKind = "strum",        -- its own stage view (Chrome:drawStrumView)
     eventClass = "strum",
     defaultGridIndex = 3, -- 1/16
 
@@ -92,6 +92,9 @@ function Strum:newState()
         ringing = {},                  -- [pitch] = voice: a string plucked again restarts
         handles = {},                  -- live bow handles
         last = nil,                    -- the newest stroke: { at, action, handle | rec }
+        energy = {},                   -- [step] = 0..1: how hard each string rings (stage)
+        pickAge = nil,                 -- seconds since the last stroke (stage)
+        pickDir = nil,                 -- its direction: "R1" / "L1"
     }
 end
 
@@ -399,6 +402,13 @@ function Strum:noteOn(ev, state, track, isPlayback)
         state.live[ev] = stroke
     end
     state.lastNotes = notes
+    -- the stage: the struck strings ring, the pick sweeps
+    if ev.action == "R1" or ev.action == "L1" then
+        state.energy = state.energy or {}
+        state.energy[0] = 1.0
+        for _, step in ipairs(self:stackOf(ev)) do state.energy[step] = 1.0 end
+        state.pickAge, state.pickDir = 0.0, ev.action
+    end
 end
 
 function Strum:noteOff(ev, state, track, isPlayback)
@@ -472,9 +482,61 @@ function Strum:updateVoices(dt, state, track)
     end
 end
 
--- A page took the controls: no stroke to withdraw any more
+-- A page took the controls: no stroke to withdraw any more. The stage's
+-- strings fade (slowly when they ring, fast when bowed and let go).
+Strum.RING_FADE = 0.9          -- energy per second
+Strum.PICK_TIME = 0.12         -- seconds the pick takes to cross the strings
+
 function Strum:updateVisuals(dt, state, controlsBlocked)
     if controlsBlocked then state.last = nil end
+    state.energy = state.energy or {}
+    for step, e in pairs(state.energy) do
+        state.energy[step] = math.max(0.0, e - dt * self.RING_FADE)
+    end
+    if state.pickAge then state.pickAge = state.pickAge + dt end
+end
+
+-- The stage view (Chrome:drawStrumView)
+local STRING_ROWS = { { 7, "8VE" }, { 6, "7TH" }, { 4, "5TH" }, { 2, "3RD" }, { 0, "ROOT" } }
+
+function Strum:getView(state, track)
+    local deg = state.activeDegree or 1
+    local octave = self.REGISTER_OCTAVES[state.register] or 0
+    local chord = state.follow and (Harmony:current()) or nil
+    local function name(semis) return Theory.NOTE_NAMES[(math_floor(semis + 0.5) % 12) + 1] end
+    local held = { [0] = true }
+    for _, step in ipairs(state.heldStack or {}) do held[step] = true end
+    local strings = {}
+    for i, row in ipairs(STRING_ROWS) do
+        local step = row[1]
+        strings[i] = { label = row[2], note = name(self:degreeSemis(state, deg + step, octave, chord)),
+                       held = held[step] == true, energy = (state.energy or {})[step] or 0 }
+    end
+
+    local dir = state.damped and "DAMPED" or (state.lastDir == "R1" and "DOWNSTROKE")
+        or (state.lastDir == "L1" and "UPSTROKE") or "READY"
+    local patch = self:getPatch(state)
+    local v = {
+        name = name(self:degreeSemis(state, deg, octave, chord)),
+        sub = string.format("DEG %s  -  %s  -  %s  -  %s", Bass:degreeLabel(deg), dir, state.register, state.strum),
+        patch = patch and patch.label or "?",
+        middle = (patch and patch.sustains) and "BOWED" or "PLUCKED",
+        follow = state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+        followOn = state.follow,
+        strings = strings,
+        marks = {},
+    }
+    if state.pickAge and state.pickAge < 0.6 then
+        v.pick = { down = (state.pickDir == "R1"), progress = math_min(1.0, state.pickAge / self.PICK_TIME),
+                   alpha = 1.0 - math.max(0.0, (state.pickAge - 0.3) / 0.3) }
+    end
+    local loop = Looper:getLoopTicks()
+    for _, ev in ipairs(track and track.events or {}) do
+        if (ev.action == "R1" or ev.action == "L1") and not ev.open then
+            v.marks[#v.marks + 1] = { frac = (ev.tick % loop) / loop, down = ev.action == "R1" }
+        end
+    end
+    return v
 end
 
 -- ---------------------------------------------------------------------------

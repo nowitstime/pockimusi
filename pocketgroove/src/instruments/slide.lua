@@ -37,6 +37,7 @@ local Slide = setmetatable({
     shortName = "SLID",
     title = "SLIDE",
     viewKind = "bass",
+    PANEL = "rail",            -- the Bass view with the slide rail in place of the oscilloscope
     eventClass = "slide",      -- its own: Bass / Lead notes are not kept on a swap
 
     HOME_GROUP = "LEAD",
@@ -434,6 +435,32 @@ function Slide:updateVoices(dt, state, track)
             end
         end
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Stage panel (Chrome:drawPanel_rail): the pitch on a rail of notes
+-- ---------------------------------------------------------------------------
+function Slide:getMiddleBadge(state)
+    return "SPEED " .. state.speed
+end
+
+function Slide:getPanel(state)
+    local notes = self:scaleNotes(state)
+    local names, root = {}, Theory:getRootSemis()
+    for _, n in ipairs(notes) do names[n] = Theory.NOTE_NAMES[((root + n) % 12) + 1] end
+    local near = self:nearestNote(state.pitch, state)
+    local off = state.pitch - near
+    local target
+    if state.settle then
+        target = state.settle.to
+    elseif state.snap ~= "OFF" then
+        target = near
+    end
+    return {
+        pitch = state.pitch, notes = notes, names = names, target = target,
+        cents = (math_abs(off) > self.OFF_SCALE) and string.format("%+dc", math_floor(off * 100 + 0.5)) or nil,
+        label = "SNAP " .. state.snap .. (state.follow and "  -  CHORD" or ""),
+    }
 end
 
 -- ---------------------------------------------------------------------------

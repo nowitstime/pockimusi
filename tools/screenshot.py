@@ -94,12 +94,13 @@ SCENES = {
     "harp-follow": 'local I = require("src.instruments"); local L = require("src.looper"); I:swapTrackInstrument(1, "chords");'
                    ' I.byId.chords:stamp(L.tracks[1].state, L.tracks[1]); I.byId.harp:cycleSetting(L.tracks[2].state, "FOLLOW", 1);'
                    ' H.tap("SELECT"); H.play(1.3); H.tap("B")',
-    "strum-play": 'require("src.instruments"):swapTrackInstrument(3, "strum"); H.tap("SELECT"); H.tap("SELECT");'
-                  ' H.hold("B", "A", "UP"); H.play(0.05); H.hold("R1"); H.play(0.2); H.release("R1"); H.play(0.15)',
+    "strum-play": 'require("src.instruments"):swapTrackInstrument(3, "strum"); H.tap("SELECT"); H.tap("SELECT"); H.tap("L2");'
+                  ' H.hold("B", "A", "UP"); for i = 1, 6 do H.hold(i % 3 == 0 and "L1" or "R1"); H.play(0.06);'
+                  ' H.release("L1", "R1"); H.play(0.25) end; H.tap("L2"); H.hold("R1"); H.play(0.06); H.release("R1"); H.play(0.04)',
     "dial-play": 'require("src.instruments"):swapTrackInstrument(3, "dial"); H.tap("SELECT"); H.tap("SELECT");'
                  ' H.hold("B"); H.play(0.3); H.hold("A"); H.play(0.1); H.release("B"); H.play(0.3)',
     "slide-play": 'require("src.instruments"):swapTrackInstrument(3, "slide"); H.tap("SELECT"); H.tap("SELECT");'
-                  ' H.hold("B"); H.play(0.2); H.hold("UP"); H.play(0.5); H.release("UP"); H.play(0.2)',
+                  ' H.hold("B"); H.play(0.2); H.hold("UP"); H.play(0.55); H.release("UP"); H.play(0.05)',
     "valves-play": 'require("src.instruments"):swapTrackInstrument(3, "valves"); H.tap("SELECT"); H.tap("SELECT");'
                    ' H.hold("R1"); H.play(0.3); H.hold("A"); H.play(0.3); H.hold("UP"); H.play(0.2)',
     "track-chords": 'require("src.instruments"):swapTrackInstrument(1, "chords"); H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("DOWN") end',
