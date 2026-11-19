@@ -187,7 +187,7 @@ function Chrome:drawFreshSessionView()
         love.graphics.print(text, math_floor(320 - font:getWidth(text) * 0.5), y)
     end
     if done then
-        centred("FRESH SESSION", 222, self.fontLarge, C.RED)
+        centred("FRESH", 222, self.fontLarge, C.RED)
         centred("LET GO - UNDO WITH L2 + R2 + LEFT", 246, self.fontSmall, C.TEXT)
     else
         centred("KEEP HOLDING", 222, self.fontLarge, C.RED)

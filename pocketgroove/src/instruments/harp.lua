@@ -21,7 +21,6 @@ local Harp = {
     id = "harp",
     name = "CHORD HARP",
     shortName = "HARP",
-    title = "OMNICHORD HARP",
     defaultGridIndex = 5, -- FREE
     -- Track page PATCH row: the sound pool (src/instruments/patches.lua)
     HOME_GROUP = "PLUCK",

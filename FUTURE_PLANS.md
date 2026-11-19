@@ -1,4 +1,4 @@
-# PocketGroove — Future Plans
+# Pockimusi — Future Plans
 
 Companion to [SPEC.md](SPEC.md), [ROADMAP.md](ROADMAP.md) and [FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md). The roadmap covers the phases already ordered. This file collects **feedback from playing and ideas for what comes after**: changes to the menus and the flow, song building, and the longer road to a new audio engine and hardware. Nothing here is scheduled. An idea moves to the roadmap once it is decided.
 
@@ -196,7 +196,7 @@ Form factor: something Steam Deck-shaped has full-size controls, a bigger screen
 - Transport setting rows, which would give replace / overdub and auto-stop a home (both blocked today by "no free button", SPEC §4).
 - Named session slots, before or alongside scenes.
 - More devices: resolution scaling.
-- Housekeeping: a README and licence, CI running `tests/run.py`, release builds (`PocketGroove.love` is a committed binary), one name (pockimusi / PocketGroove), splitting `ui/chrome.lua`, phase docs in a `docs/` folder.
+- Housekeeping: a README and licence, CI running `tests/run.py`, release builds (`PocketGroove.love` is a committed binary), finish the rename to Pockimusi (docs done; window title, launcher, `.love`, folder and save path still say PocketGroove, and moving the save folder needs a one-time copy of old saves), splitting `ui/chrome.lua`, phase docs in a `docs/` folder.
 
 ---
 

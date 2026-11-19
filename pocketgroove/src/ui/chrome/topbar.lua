@@ -111,14 +111,14 @@ function Chrome:drawTopBar()
 
     -- Right Mode Status Tag (rx=4) with vector icon + ASCII text
     local modeConfigs = {
-        NORMAL    = { label = "JAM SAFE",   icon = "GLINT",   stroke = C.GRID,   fill = C.PANEL_HI, txt = C.TEXT,   iconCol = C.AMBER },
+        NORMAL    = { label = "PLAY",       icon = "GLINT",   stroke = C.GRID,   fill = C.PANEL_HI, txt = C.TEXT,   iconCol = C.AMBER },
         REC_LATCH = { label = "REC LATCH",   icon = "DOT",     stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         REC_HOLD  = { label = "REC HOLD",    icon = "DOT",     stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
-        TRACK     = { label = "TRACK SOUND", icon = "GLINT",   stroke = C.PINK,   fill = C.PINK,     txt = C.BG,     iconCol = C.BG },
-        MIX       = { label = "MIXER",       icon = "FADERS",  stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
-        TRANSPORT = { label = "TRANSPORT",   icon = "GLINT",   stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
+        TRACK     = { label = "TRACK", icon = "GLINT",   stroke = C.PINK,   fill = C.PINK,     txt = C.BG,     iconCol = C.BG },
+        MIX       = { label = "MIX",         icon = "FADERS",  stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
+        TRANSPORT = { label = "CLOCK",       icon = "GLINT",   stroke = C.AMBER,  fill = C.AMBER,    txt = C.BG,     iconCol = C.BG },
         ERASE     = { label = "ERASE",       icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
-        NEW       = { label = "FRESH START", icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
+        NEW       = { label = "FRESH", icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         FX        = { label = "LIVE FX",     icon = "GLINT",   stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL

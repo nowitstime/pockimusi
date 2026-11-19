@@ -24,9 +24,8 @@ end
 
 local Bass = {
     id = "bass",
-    name = "RIBBON BASS",
+    name = "BASS",
     shortName = "BASS",
-    title = "RIBBON BASS",
     eventClass = "mono",     -- Bass and Lead play each other's notes (kept on a swap)
     defaultGridIndex = 3, -- 1/16
 

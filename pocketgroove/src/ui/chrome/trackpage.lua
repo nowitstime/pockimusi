@@ -25,7 +25,7 @@ local math_pi    = math.pi
 return function(Chrome)
 
 -- ============================================================================
--- TRACK SOUND PAGE: constellation of sound rows + moon-phase effect gauges
+-- TRACK PAGE: constellation of sound rows + moon-phase effect gauges
 -- ============================================================================
 function Chrome:drawMoonGauge(x, y, r, amount, on, col)
     local C = Config.COLORS
@@ -161,7 +161,7 @@ function Chrome:drawSwapCard(track, col)
     love.graphics.setLineWidth(1)
     self:drawStarGlint(320, 128, 12, col, 1.0)
     centred(string.format("TRACK %d BECOMES", track.slot), 152, self.fontTiny, C.MUTED)
-    centred(pDef.title or pDef.name, 170, self.fontLarge, C.TEXT)
+    centred(pDef.name, 170, self.fontLarge, C.TEXT)
     self:drawCapsule(232, 206, 176, 20, "RELEASE SELECT TO SWAP", col, col, C.BG, self.fontTiny)
     centred("L1 / R1: ANOTHER INSTRUMENT", 244, self.fontTiny, col)
     centred("BACK TO " .. (track.shortName or track.name) .. " CANCELS", 258, self.fontTiny, C.MUTED)

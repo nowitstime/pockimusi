@@ -1,4 +1,4 @@
-# PocketGroove — What Each Part Needs
+# Pockimusi — What Each Part Needs
 
 A loop is built from a few **parts**, each with its own job. This file asks, for each part, what players actually do in it: the moves, the decorations, the timing. Then it asks what that means for our instruments. The aim is to judge an instrument by **the part it plays**, not by how clever its controls are.
 

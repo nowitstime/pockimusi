@@ -52,8 +52,7 @@ end
 local Chords = {
     id = "chords",
     name = "CHORD TRACK",
-    shortName = "CHRD",
-    title = "CHORD TRACK",
+    shortName = "CHORD",
     viewKind = "chords",         -- its own stage view (Chrome:drawChordTrackView)
     defaultGridIndex = 1,        -- 1/4: a chord lands on a beat
     chordSource = true,          -- Harmony takes chords from this track (src/harmony.lua)

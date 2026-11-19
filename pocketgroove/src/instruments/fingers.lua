@@ -15,8 +15,7 @@ local Input = require("src.input")
 local Fingers = {
     id = "fingers",
     name = "FINGERS",
-    shortName = "FNGR",
-    title = "FINGERING TEST",
+    shortName = "FINGER",
     lab = true,
     viewKind = "lab",
 

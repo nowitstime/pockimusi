@@ -114,7 +114,7 @@ function Looper:setTrackInstrument(trackIdx, instrumentId, Instruments)
     track.gridIndex = instDef.defaultGridIndex or track.gridIndex
     track.state = instDef:newState()
     track.events = {}
-    self:showToast(string.format("TRACK %d -> %s", trackIdx, instDef.title or instDef.name))
+    self:showToast(string.format("TRACK %d -> %s", trackIdx, instDef.name))
 end
 
 -- Swing pushes events on odd 8th/16th grid positions late, at playback only.
@@ -440,7 +440,7 @@ function Looper:freshSession()
         track.muted = false
     end
     self:pushUndo({ kind = "fresh", tracks = saved })
-    self:showToast(string.format("FRESH SESSION (%d NOTES CLEARED - L2+R2+LEFT UNDOES)", total))
+    self:showToast(string.format("FRESH: %d NOTES CLEARED - L2+R2+LEFT UNDOES", total))
 end
 
 function Looper:clearTrack(trackIdx)

@@ -139,12 +139,12 @@ function Chrome:drawCenterStage()
     shoulder(510, r1Label, rOn, true)
 
     local titleStr = def.name
-    if mode == "TRACK" then titleStr = string.format("TRACK %d - SOUND", sl)
-    elseif mode == "MIX" then titleStr = "4-TRACK LEVEL & MUTE MIXER"
-    elseif mode == "TRANSPORT" then titleStr = "MASTER CLOCK"
-    elseif mode == "ERASE" then titleStr = "SELECTIVE ERASE & UNDO"
-    elseif mode == "NEW" then titleStr = "FRESH SESSION"
-    elseif mode == "FX" then titleStr = "LIVE PERFORMANCE FX"
+    if mode == "TRACK" then titleStr = string.format("TRACK %d", sl)
+    elseif mode == "MIX" then titleStr = "MIX"
+    elseif mode == "TRANSPORT" then titleStr = "CLOCK"
+    elseif mode == "ERASE" then titleStr = "ERASE"
+    elseif mode == "NEW" then titleStr = "FRESH"
+    elseif mode == "FX" then titleStr = "LIVE FX"
     end
 
     if mode == "TRACK" then

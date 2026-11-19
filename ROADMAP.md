@@ -1,4 +1,4 @@
-# PocketGroove — Roadmap
+# Pockimusi — Roadmap
 
 Companion to [SPEC.md](SPEC.md). The spec says *what things should be*; this file says *in what order we build them* and what comes next. Playtest feedback and ideas that aren't scheduled yet (menu rework, song building, audio engine, hardware) are in [FUTURE_PLANS.md](FUTURE_PLANS.md).
 

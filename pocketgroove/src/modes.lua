@@ -301,7 +301,7 @@ function handlers.TRACK(ctx, dt)
         else
             page.pending, page.pendingSlot = nextId, track.slot
             local nextDef = Instruments:getDefinition(nextId)
-            Looper:showToast("RELEASE SELECT TO SWAP TO " .. (nextDef.title or nextDef.name))
+            Looper:showToast("RELEASE SELECT TO SWAP TO " .. nextDef.name)
         end
     end
     -- A previewed swap shows its card in place of the rows, so they wait
