@@ -1,4 +1,4 @@
-# PocketGroove — Future Instruments (the lab)
+# Pockimusi — Future Instruments (the lab)
 
 Companion to [SPEC.md](SPEC.md) and [ROADMAP.md](ROADMAP.md). The roadmap covers the instruments already decided (Drums, Chord Harp, Bass, Pad, Lead/Arp). This file is the **lab**: ideas for other ways of playing, written up far enough to prototype. Nothing here is scheduled. An idea moves to the roadmap only after it has been played and has earned a slot (§7).
 

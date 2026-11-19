@@ -1,4 +1,6 @@
-# PocketGroove (Working Title) — Design & Technical Specification
+# Pockimusi — Design & Technical Specification
+
+**Name:** Pockimusi (*POCK-ee-MOO-see*: pocket + music). Written **Pockimusi** in prose, **POCKIMUSI** on screen, `pockimusi` for ids. The app was first called PocketGroove; the code, launcher (`PocketGroove.sh`), `.love` file, `pocketgroove/` folder and save folder still use that name for now.
 
 **Target hardware:** Anbernic RG35XX Plus (Allwinner H700, ARM64 Linux, 1 GB RAM, 640×480 4:3 IPS, no touchscreen, **no analog sticks**)
 **Engine:** LÖVE 11.5 via PortMaster (`gptokeyb` fallback), desktop PC for development

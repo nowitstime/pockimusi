@@ -1,4 +1,4 @@
-# PocketGroove — Feedback
+# Pockimusi — Feedback
 
 The whole app is in testing. Every instrument gets a pass, and every screen has a file here with **questions to answer while playing** and a **clear place for what you noticed**.
 
