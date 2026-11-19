@@ -133,7 +133,7 @@ The list shows six rows at a time and scrolls with the cursor (marks show when t
 
 ✅ **Safe instrument swap:** `L1 / R1` only previews the next instrument; it is applied when `SELECT` is released. While a swap is previewed a card with the new instrument's name takes the place of the rows, and the rows and effects wait. Applying stashes the old instrument, state and events on the undo stack, so **undo restores them** (one stack for takes and swaps, `L2 + R2 + LEFT`). Stepping back to the current instrument cancels. 📐 Same-class swaps (Bass ↔ Lead, both mono-melodic) keep events, because v2 events store degrees (§8).
 
-### 3.5 Transport = timing (hold `START`) ✅
+### 3.5 Clock = timing (hold `START`) ✅
 
 | Control | Job |
 | :-- | :-- |
@@ -173,7 +173,7 @@ Hybrid **latch / momentary** on `L2` ✅:
 - **Tap** `L2` (< 0.25 s, no other button used): toggle record on/off (latched).
 - **Hold** `L2` (≥ 0.25 s): record only while held (momentary punch-in).
 - Combos with `L2` never toggle the latch.
-- The top bar always shows `REC (LATCHED)` / `REC (HOLD)` / `JAM SAFE`.
+- The top bar always shows `REC LATCH` / `REC HOLD` / `PLAY`.
 
 Changes:
 
@@ -395,7 +395,7 @@ Event = {
 ## 11. UI layout (640×480) 🔧
 
 1. **Top bar:** active track + instrument, grid, bars, BPM, key/scale, current chord (📐), beat stars, mode badge.
-2. **Center stage:** one fixed template — shoulder badges top, D-pad left, face buttons right, instrument display middle, hint strip bottom. Track page, Transport and Mix draw over the stage.
+2. **Center stage:** one fixed template — shoulder badges top, D-pad left, face buttons right, instrument display middle, hint strip bottom. Track, Clock and Mix draw over the stage.
 3. **Tape deck:** four tracks with name, grid, mute, event markers and a shared playhead. 📐 Hits as beads, held notes as ribbons with bend lines, chord names along the chord-source lane.
 
 Principles: show mode in the same place always; hints for the held modifier only; colour-code tracks consistently and add shape cues so colour is never the only signal.
@@ -407,9 +407,38 @@ Principles: show mode in the same place always; hints for the held modifier only
 | Play | instrument colour | the instrument's own decorations |
 | Recording | crimson `#FB7185` (frame, badge, footer, playhead only) | — |
 | Track page (sound) | sakura pink `#F9A8D4` | constellation of rows, moon-phase effect gauges |
-| Transport (timing) | solar gold `#FCD34D` | astrolabe: circle-of-fifths key ring with scale arc, grid ticks that show swing, loop hand |
+| Clock (timing) | solar gold `#FCD34D` | astrolabe: circle-of-fifths key ring with scale arc, grid ticks that show swing, loop hand |
 | Mix / Live FX | moon silver `#DCE3F5` | — |
 | Erase | crimson with a tinted frame | — |
+
+**Names** ✅. Every page and instrument has one plain name, used the same in the top bar, footer, heading, tabs, mixer and tape deck. Flavour lives in the halos and colours, not the words. Short names are whole words (no abbreviations) and at most about 5 capitals, so they fit the mixer column and the tape deck header.
+
+| Page | Opened by | Name on screen |
+| :-- | :-- | :-- |
+| Play | — | `PLAY` |
+| Track | hold `SELECT` | `TRACK` |
+| Clock | hold `START` | `CLOCK` |
+| Mix | `SELECT + R2` | `MIX` |
+| Erase | `L2 + R2` | `ERASE` |
+| Fresh | from Erase | `FRESH` |
+| Live FX | `R2` | `LIVE FX` |
+
+| Instrument | Name | Short name (tabs, mixer, tape deck) |
+| :-- | :-- | :-- |
+| drums | DRUMS | DRUMS |
+| hands | HAND DRUMS | HANDS |
+| harp | CHORD HARP | HARP |
+| bass | BASS | BASS |
+| pad | PAD | PAD |
+| lead | LEAD & ARP | LEAD |
+| strum | STRUM | STRUM |
+| slide | SLIDE | SLIDE |
+| dial | DIAL | DIAL |
+| valves | VALVES | VALVES |
+| chords | CHORD TRACK | CHORD |
+| fingers (lab tool) | FINGERS | FINGER |
+
+Internally the Clock page is still the `TRANSPORT` mode and the Fresh page is `NEW`.
 
 The tape deck dims while a settings page is open. The Pad has Grain's mint. Tracks are coloured by slot, so a Lead takes the colour of the slot it is put in.
 

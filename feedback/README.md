@@ -34,7 +34,7 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | [Dial](dial.md) | Lead | ★ Most fun | Moving round is too quiet: wants a re-strike, not only a glide | [ ] |
 | [Slide](slide.md) | Lead | Could be good, unsure | Play more before deciding | [ ] |
 | [Valves](valves.md) | Lead | Liked the idea | Needs brass sounds | [ ] |
-| [Pages](pages.md) | Track page, Transport, Mix, stage | — | — | [ ] |
+| [Pages](pages.md) | Track page, Clock, Mix, stage | — | — | [ ] |
 
 Keep this table in step with each file's latest feedback.
 

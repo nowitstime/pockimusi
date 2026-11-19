@@ -229,6 +229,6 @@ return {
         M2.Session.restore(data)
         H.eq(L2.tracks[1].instrumentId, "bass", "slot 1")
         H.eq(L2.tracks[4].instrumentId, "harp", "slot 4")
-        H.eq(L2.tracks[1].name, "RIBBON BASS", "name follows")
+        H.eq(L2.tracks[1].name, "BASS", "name follows")
     end },
 }

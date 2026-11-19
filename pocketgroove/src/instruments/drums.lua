@@ -20,8 +20,7 @@ local math_max   = math.max
 local Drums = {
     id = "drums",
     name = "DRUMS",
-    shortName = "DRUM",
-    title = "DRUM MACHINE",
+    shortName = "DRUMS",
     defaultGridIndex = 3, -- 1/16
     eventClass = "drums",    -- instruments built on Drums keep each other's hits on a swap
 

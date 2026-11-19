@@ -122,7 +122,7 @@ function Chrome:drawTapeDeck()
 
         self:setColor((grid.id ~= "FREE") and tColor or C.DIM)
         love.graphics.setFont(self.fontTiny)
-        love.graphics.print(grid.label, 78, ry + 4)
+        love.graphics.print(grid.label, 84, ry + 4)
 
         -- Mute Rune Tag (Diamond vs M)
         if track.muted then

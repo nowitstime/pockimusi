@@ -72,7 +72,7 @@ return {
         local rows = M.Instruments:getSoundRows(def, state)
         local names = {}
         for i, r in ipairs(rows) do names[i] = r.label .. "=" .. r.value end
-        H.eq(table.concat(names, " "), "PATCH=SAW VALVES=SCALE REGISTER=MID FOLLOW=ON", "rows")
+        H.eq(table.concat(names, " "), "PATCH=SAW FINGERING=SCALE REGISTER=MID FOLLOW=ON", "rows")
         H.eq(def.VIEW.face.A, "-1", "the chart is on the screen")
         H.eq(def.VIEW.face.X, "-3", "X = 3 steps")
         H.truthy(def.eventClass ~= "mono", "Bass notes are not kept on a swap")
@@ -360,7 +360,7 @@ return {
         H.tap("B")
         H.eq(L:countTrackAction(3, "R1"), 0, "R1 breaths cleared")
         H.eq(L:countTrackAction(3, "L1"), 1, "L1 kept")
-        H.eq(L.toastText, "ERASED R1 BREATHS (2 HITS)", "toast")
+        H.eq(L.toastText, "ERASED BLOWS (2 HITS)", "toast")
         H.tap("A")
         H.eq(#track.events, 0, "L1 breaths cleared")
         H.release("L2", "R2"); H.play(0.1)

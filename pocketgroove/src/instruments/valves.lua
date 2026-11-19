@@ -30,8 +30,7 @@ local math_floor = math.floor
 local Valves = setmetatable({
     id = "valves",
     name = "VALVES",
-    shortName = "VALV",
-    title = "VALVES",
+    shortName = "VALVES",
     viewKind = "bass",
     PANEL = "valves",          -- the Bass view with pistons and breath in place of the oscilloscope
     eventClass = "valves",     -- its notes mean nothing to the Bass (and the reverse)
@@ -65,8 +64,8 @@ local Valves = setmetatable({
 
     LANES = { R1 = 1, L1 = 2 },
     ERASE = {
-        B = { actions = { "R1" }, label = "R1 BREATHS" },
-        A = { actions = { "L1" }, label = "L1 BREATHS" },
+        B = { actions = { "R1" }, label = "BLOWS" },
+        A = { actions = { "L1" }, label = "TONGUES" },
     },
     VIEW = {
         dpad = { DOWN = "L5", NEUTRAL = "ROOT", LEFT = "3RD", UP = "5TH", RIGHT = "7TH", DOWN_RIGHT = "OCT",
@@ -149,7 +148,7 @@ local ON_OFF = { { label = "OFF" }, { label = "ON" } }
 function Valves:getSoundRows(state)
     return {
         Patches.row(self, state),
-        { key = "VALVES", label = "VALVES", value = state.mode, kind = "setting",
+        { key = "VALVES", label = "FINGERING", value = state.mode, kind = "setting",
           items = itemsOf(self.MODES), index = indexOf(self.MODES, state.mode) },
         { key = "REGISTER", label = "REGISTER", value = state.register, kind = "setting",
           items = itemsOf(self.REGISTERS), index = indexOf(self.REGISTERS, state.register) },

@@ -18,7 +18,6 @@ local Hands = setmetatable({
     id = "hands",
     name = "HAND DRUMS",
     shortName = "HANDS",
-    title = "HAND DRUMS",
     viewKind = "drums",
     eventClass = "drums",            -- Drums <-> Hand Drums keep each other's hits
 

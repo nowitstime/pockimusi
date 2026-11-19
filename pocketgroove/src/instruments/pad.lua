@@ -25,9 +25,8 @@ local math_sqrt = math.sqrt
 
 local Pad = {
     id = "pad",
-    name = "CHORD PAD",
+    name = "PAD",
     shortName = "PAD",
-    title = "AURORA CHORD PAD",
     defaultGridIndex = 5, -- FREE
 
     SHAPES = {

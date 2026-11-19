@@ -34,7 +34,6 @@ local Dial = setmetatable({
     id = "dial",
     name = "DIAL",
     shortName = "DIAL",
-    title = "DIAL",
     viewKind = "bass",
     PANEL = "dial",            -- the Bass view with the dial in place of the oscilloscope
     eventClass = "dial",       -- its notes carry accidentals Bass/Lead would re-pitch

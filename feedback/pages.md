@@ -1,6 +1,6 @@
 # Pages — feedback
 
-**What:** everything that isn't an instrument: the Track page, Transport, Mix, the stage and tape deck, recording · **Spec:** SPEC §3.4–3.6, §4, §11 · **Background:** FUTURE_PLANS §2–§5 · **Index:** [feedback/](README.md)
+**What:** everything that isn't an instrument: the Track page, Clock, Mix, the stage and tape deck, recording · **Spec:** SPEC §3.4–3.6, §4, §11 · **Background:** FUTURE_PLANS §2–§5 · **Index:** [feedback/](README.md)
 
 ---
 
@@ -14,7 +14,7 @@ Sound rows, settings, instrument tabs and effects for the active track.
 - [ ] Is the instrument swap (preview, apply on release, undo) clear?
 - [ ] Are the setting rows understandable without the docs?
 
-## Transport (hold `START`)
+## Clock (hold `START`)
 
 Tempo, key, scale, bars, grid and swing.
 

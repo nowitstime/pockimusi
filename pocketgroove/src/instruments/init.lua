@@ -80,7 +80,7 @@ function Instruments:getSoundRows(def, state, track)
     if def.getSoundRows then
         rows = def:getSoundRows(state)
     else
-        local name = def.patchName or def.title or def.name
+        local name = def.patchName or def.name
         rows = { { key = "PATCH", label = "PATCH", value = name, items = { { label = name } }, index = 1 } }
     end
     if track then
@@ -159,7 +159,7 @@ function Instruments:swapTrackInstrument(trackSlot, instrumentId)
         end
         track.gridIndex = oldGrid
         Looper:showToast(string.format("TRACK %d -> %s (%d NOTES KEPT)", trackSlot,
-            newDef.title or newDef.name, #track.events))
+            newDef.name, #track.events))
     end
 end
 
