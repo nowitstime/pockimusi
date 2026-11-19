@@ -130,6 +130,8 @@ local function copyEvent(ev)
     for k, v in pairs(ev) do rec[k] = v end
     return rec
 end
+-- (a live event and its recording share subtables on purpose: Strum finds
+-- its recording by the shared stack. Notes kept across a swap are deep copies.)
 
 -- Put a different instrument in a slot. The old instrument, its state and
 -- its events go on the undo stack, so undo brings the track back.
@@ -155,7 +157,7 @@ function Instruments:swapTrackInstrument(trackSlot, instrumentId)
     Looper:setTrackInstrument(trackSlot, instrumentId, self)
     if keep then
         for i, ev in ipairs(oldEvents) do
-            if not ev.open then track.events[#track.events + 1] = copyEvent(ev) end
+            if not ev.open then track.events[#track.events + 1] = Looper.copyEvent(ev) end
         end
         track.gridIndex = oldGrid
         Looper:showToast(string.format("TRACK %d -> %s (%d NOTES KEPT)", trackSlot,
@@ -286,6 +288,7 @@ function Instruments:releaseNote(track, h)
         local len = h.recLen or h.fixedLen or math.floor(h:advance() + 0.5)
         h.rec.len = math.max(1, math.min(loop - 1, len))
         h.rec.open = nil
+        Looper:touch(track)                -- now it plays (and counts for Harmony)
     end
 end
 
