@@ -33,6 +33,7 @@ function love.load()
     Chrome:init()
     Display:init(Chrome)       -- remembered look (CRISP / PIXEL) and fullscreen
     Autosave:load()            -- the last session comes back
+    Synth:startPregen()        -- the other sounds, a little each frame
 end
 
 -- Save on the way out, and when the app goes to the background
