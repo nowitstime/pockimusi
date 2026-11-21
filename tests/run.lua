@@ -22,6 +22,7 @@ local FILES = {
     "test_pad",
     "test_lead",
     "test_patches",
+    "test_pregen",
     "test_mix",
     "test_drums",
     "test_session",

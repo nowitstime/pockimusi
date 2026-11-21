@@ -194,6 +194,9 @@ function H.loadMain()
     H.installLove()
     require("main")
     love.load()
+    -- No background sound generation in tests (the fake clock never moves
+    -- within a frame, so it would all run on the first one), unless asked
+    if not H.keepPregen then require("src.synth"):stopPregen() end
     return {
         Looper      = require("src.looper"),
         Input       = require("src.input"),

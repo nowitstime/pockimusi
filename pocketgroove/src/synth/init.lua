@@ -42,15 +42,115 @@ Synth.CHOKEABLE   = { hat_open = true }
 -- Sustained voices: patches, loop pools, noteOn / updateVoices (voice.lua)
 Voice.install(Synth)
 
-function Synth:createBuffer(durationSec, generatorFn)
-    local sampleCount = math_floor(durationSec * Config.SAMPLE_RATE)
-    local sd = love.sound.newSoundData(sampleCount, Config.SAMPLE_RATE, 16, 1)
-    for i = 0, sampleCount - 1 do
-        local t = i / Config.SAMPLE_RATE
-        local s = generatorFn(t, durationSec, i)
-        sd:setSample(i, clamp(s, -1.0, 1.0))
+-- ============================================================================
+-- Writing samples
+-- With LÖVE 11.3+ a SoundData gives a raw pointer, so samples are written
+-- straight into memory and LuaJIT can compile the whole loop (setSample is a
+-- C call, which stops it). Elsewhere (older LÖVE, tests) setSample is used.
+-- Samples go in chunks; between chunks, sounds generated in the background
+-- hand the frame back (see Pre-generation below).
+-- ============================================================================
+local ffi do
+    local ok, mod = pcall(require, "ffi")
+    ffi = ok and mod or nil
+end
+
+Synth.FILL_CHUNK = 512      -- samples between checks of the frame budget
+
+-- Fill `sd` (16-bit mono, `n` samples) with sampleAt(i), clamped to -1..1
+function Synth:fillSamples(sd, n, sampleAt)
+    local ptr = ffi and sd.getFFIPointer and sd:getFFIPointer()
+    local out = ptr and ffi.cast("int16_t *", ptr)
+    local chunk = self.FILL_CHUNK
+    local i = 0
+    while i < n do
+        local stop = math_min(n, i + chunk) - 1
+        if out then
+            for j = i, stop do
+                local s = sampleAt(j)
+                if s > 1.0 then s = 1.0 elseif s < -1.0 then s = -1.0 end
+                out[j] = s * 32767      -- truncates, the same as setSample
+            end
+        else
+            for j = i, stop do
+                sd:setSample(j, clamp(sampleAt(j), -1.0, 1.0))
+            end
+        end
+        i = stop + 1
+        self:pregenPause()
     end
+end
+
+function Synth:createBuffer(durationSec, generatorFn)
+    local sr = Config.SAMPLE_RATE
+    local sampleCount = math_floor(durationSec * sr)
+    local sd = love.sound.newSoundData(sampleCount, sr, 16, 1)
+    self:fillSamples(sd, sampleCount, function(i)
+        return generatorFn(i / sr, durationSec, i)
+    end)
     return sd
+end
+
+-- ============================================================================
+-- Pre-generation
+-- After boot, the patches not generated yet are built in the background, a
+-- little each frame (PREGEN_BUDGET seconds), so picking one later is instant.
+-- A patch picked while it is half built is finished at once.
+-- ============================================================================
+Synth.PREGEN_BUDGET = 0.002
+
+function Synth:startPregen()
+    local queue = {}
+    for _, id in ipairs(self.patchOrder) do
+        local p = self.patches[id]
+        if not p.built and not p.silent then queue[#queue + 1] = id end
+    end
+    if #queue == 0 then return end
+    self.pregen = {
+        queue = queue,
+        deadline = 0.0,
+        running = false,      -- inside the coroutine: may yield
+        started = love.timer.getTime(),
+        co = coroutine.create(function()
+            for _, id in ipairs(queue) do self:preparePatch(id) end
+        end),
+    }
+end
+
+function Synth:stopPregen()
+    self.pregen = nil
+end
+
+-- Called between chunks of samples: yield when the frame's budget is spent
+function Synth:pregenPause()
+    local job = self.pregen
+    if job and job.running and love.timer.getTime() >= job.deadline then
+        coroutine.yield()
+    end
+end
+
+-- Resume the background job. budget = seconds, or nil to run it to the end.
+function Synth:stepPregen(budget)
+    local job = self.pregen
+    if not job then return end
+    job.running = budget ~= nil
+    job.deadline = budget and (love.timer.getTime() + budget) or math.huge
+    local ok, err = coroutine.resume(job.co)
+    job.running = false
+    if not ok then
+        self.pregen = nil
+        error("sound pre-generation failed: " .. tostring(err))
+    end
+    if coroutine.status(job.co) == "dead" then
+        self.pregen = nil
+        print(string.format("[PocketGroove] pre-generated %d patches in the background (%.1fs)",
+            #job.queue, love.timer.getTime() - job.started))
+    end
+end
+
+-- Finish the background job now (a half-built patch is needed)
+function Synth:finishPregen()
+    while self.pregen do self:stepPregen(nil) end
 end
 
 function Synth:createPool(name, soundData, poolSize, baseDuration)
@@ -360,6 +460,9 @@ function Synth:update(dt)
     end
 
     self:updateMeters(dt)
+
+    -- Last, so the frame's notes and voices are never held up by it
+    if self.pregen then self:stepPregen(self.PREGEN_BUDGET) end
 end
 
 -- Meters: each voice's gain (one-shots fade over their life, sustained voices

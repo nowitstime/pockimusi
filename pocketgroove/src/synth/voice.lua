@@ -61,9 +61,9 @@ function Install.createLoop(Synth, freq, periods, wave)
     local n = period * periods
     local sd = love.sound.newSoundData(n, sr, 16, 1)
     local twoPi = Config.TWO_PI
-    for i = 0, n - 1 do
-        sd:setSample(i, clamp(wave(twoPi * i / period, twoPi * i / n), -1.0, 1.0))
-    end
+    Synth:fillSamples(sd, n, function(i)
+        return wave(twoPi * i / period, twoPi * i / n)
+    end)
     return sd, n, Install.loopTune(Synth, freq)
 end
 
@@ -120,9 +120,11 @@ end
 function Install.preparePatch(Synth, id, voices)
     local p = Synth.patches[id]
     if not p or p.silent then return p end
+    if p.building then Synth:finishPregen() end    -- half built in the background
     local gen = p.gen
     if gen and not p.built then
         p.built = true
+        p.building = true
         if gen.attack then
             local fn = gen.attack.fn or gen.attack.make(Synth)
             local sd = Synth:createBuffer(gen.attack.dur, fn)
@@ -135,6 +137,7 @@ function Install.preparePatch(Synth, id, voices)
         if gen.bright then
             Synth:createLoopPool(p.bright, (Synth:createLoop(gen.freq, gen.periods or 24, gen.bright)), n)
         end
+        p.building = false
     elseif voices then
         if p.attack then Synth:growPool(p.attack, voices) end
         if p.loop then Synth:growLoopPool(p.loop, voices) end
