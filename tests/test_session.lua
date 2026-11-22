@@ -161,7 +161,7 @@ return {
         H.eq(L.bpm, 180, "tempo clamped")
         H.eq(L.bars, 2, "bars default")
         H.falsy(L.clickOn, "click only if exactly true")
-        H.eq(L.activeTrack, 4, "active track clamped")
+        H.eq(L.activeTrack, 5, "active track clamped (5 = track C)")
         H.eq(M.Theory.rootIndex, 1, "key clamped")
         H.eq(M.Theory.scaleIndex, #M.Theory.SCALES, "scale clamped")
         H.eq(M.Synth.masterVolume, 1.0, "master clamped")

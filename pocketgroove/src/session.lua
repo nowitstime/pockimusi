@@ -83,8 +83,18 @@ function Session.snapshot()
             events = events,
         }
     end
+    -- Track C, the chord lane: its settings and chords (on the lane's own timeline)
+    local lane = Looper:getLane()
+    local laneOut
+    if lane then
+        local def = Instruments:getDefinition("lane")
+        local events = {}
+        for i, ev in ipairs(lane.events) do events[i] = snapshotEvent(ev, Looper:getLaneTicks()) end
+        laneOut = { settings = copyPlain(def:saveState(lane.state), 0), events = events }
+    end
     return {
         format = Session.FORMAT,
+        lane = laneOut,
         bpm = Looper.bpm,
         bars = Looper.bars,
         clickOn = Looper.clickOn,
@@ -260,10 +270,32 @@ function Session.restore(data)
         end
     end
 
-    Looper.activeTrack = int(data.activeTrack, 1, 4, 1)
+    -- Track C (older saves have none: an empty 4-bar lane)
+    local lane = Looper:getLane()
+    if lane then
+        local def = Instruments:getDefinition("lane")
+        local rawLane = type(data.lane) == "table" and data.lane or {}
+        lane.state = def:newState()
+        def:loadState(lane.state, rawLane.settings)
+        lane.events = {}
+        local laneT = Looper:getLaneTicks()
+        if type(rawLane.events) == "table" then
+            for _, rawEv in ipairs(rawLane.events) do
+                local ev = restoreEvent(rawEv, laneT)
+                if ev and ev.chord then
+                    lane.events[#lane.events + 1] = ev
+                    if ev.takeId and ev.takeId > maxTake then maxTake = ev.takeId end
+                end
+            end
+        end
+        Looper:touch(lane)
+    end
+
+    Looper.activeTrack = int(data.activeTrack, 1, #Looper.tracks, 1)
     Looper.currentTakeId = maxTake
     Looper.undoStack = {}
     Looper:seek(0.0)
+    Looper.pass = 0
     Looper:showToast("SESSION RESTORED")
     return true
 end

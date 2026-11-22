@@ -290,8 +290,11 @@ function handlers.TRACK(ctx, dt)
     end
     page.row = clamp(page.row, 1, #rows)
 
-    -- Instrument: L1 / R1 only preview; the swap happens on SELECT release
-    if Input.pressed.L1 or Input.pressed.R1 then
+    -- Instrument: L1 / R1 only preview; the swap happens on SELECT release.
+    -- Track C is always the chord lane.
+    if track.isLane and (Input.pressed.L1 or Input.pressed.R1) then
+        Looper:showToast("TRACK C IS ALWAYS THE CHORDS")
+    elseif Input.pressed.L1 or Input.pressed.R1 then
         local from = page.pending or track.instrumentId
         local nextId = Instruments:stepInstrumentId(from, Input.pressed.L1 and -1 or 1)
         page.picker, page.previewIn = nil, nil
@@ -309,7 +312,7 @@ function handlers.TRACK(ctx, dt)
 
     -- Effects on the face buttons: on / off, and the cursor goes to its row
     for _, btn in ipairs({ "X", "Y", "A", "B" }) do
-        if Input.pressed[btn] then
+        if Input.pressed[btn] and not def.NO_FX then
             local slot = Looper.FX_SLOTS[btn]
             Looper:toggleTrackFx(Looper.activeTrack, slot)
             for i, row in ipairs(rows) do
@@ -404,9 +407,14 @@ end
 function updateSelectTap()
     if not Input.released.SELECT then return end
     if not Input.comboUsed.SELECT and not Input.comboUsed.L2 and Input.selectHoldTime < Modes.TAP_MAX then
-        Looper.activeTrack = (Looper.activeTrack % 4) + 1
+        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> 1
+        Looper.activeTrack = (Looper.activeTrack % #Looper.tracks) + 1
         local nextTrack = Looper.tracks[Looper.activeTrack]
-        Looper:showToast(string.format("TRACK %d: %s", Looper.activeTrack, nextTrack and nextTrack.name or ""))
+        if nextTrack and nextTrack.isLane then
+            Looper:showToast("TRACK C: CHORDS - " .. (Looper.playing and "B CHANGES ON THE BAR LINE" or "B WRITES AND STEPS ON"))
+        else
+            Looper:showToast(string.format("TRACK %d: %s", Looper.activeTrack, nextTrack and nextTrack.name or ""))
+        end
     end
 end
 

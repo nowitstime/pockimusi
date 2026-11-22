@@ -58,7 +58,7 @@ local function hex(h)
 end
 Config.INST_COLORS = {
     drums = hex("FF5D5D"), hands = hex("FF9548"),
-    harp = hex("4DB6FF"), chords = hex("FFD84D"), strum = hex("38D9C6"),
+    harp = hex("4DB6FF"), chords = hex("FFD84D"), lane = hex("FFD84D"), strum = hex("38D9C6"),
     bass = hex("A07CFF"),
     lead = hex("FF7AC6"), dial = hex("D59BFF"), slide = hex("7FA6FF"), valves = hex("FFE9C2"),
     pad = hex("5CE3A0"),

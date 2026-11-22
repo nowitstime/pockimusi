@@ -26,6 +26,7 @@ local FILES = {
     "test_mix",
     "test_drums",
     "test_session",
+    "test_lane",
     "test_autosave",
     "test_lab",
     "test_display",
