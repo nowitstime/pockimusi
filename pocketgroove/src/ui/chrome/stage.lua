@@ -139,7 +139,7 @@ function Chrome:drawCenterStage()
     shoulder(510, r1Label, rOn, true)
 
     local titleStr = def.name
-    if mode == "TRACK" then titleStr = string.format("TRACK %d", sl)
+    if mode == "TRACK" then titleStr = "TRACK " .. Looper:slotLabel(sl)
     elseif mode == "MIX" then titleStr = "MIX"
     elseif mode == "TRANSPORT" then titleStr = "CLOCK"
     elseif mode == "ERASE" then titleStr = "ERASE"

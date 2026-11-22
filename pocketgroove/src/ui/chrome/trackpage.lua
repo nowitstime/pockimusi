@@ -109,6 +109,14 @@ end
 function Chrome:drawInstrumentTabs(track, col)
     local C = Config.COLORS
     local font = self.fontTiny
+    if track.isLane then
+        -- track C is always the chords: one title, no tabs
+        love.graphics.setFont(self.fontMed)
+        self:setColor(col)
+        local t = "TRACK C - CHORDS"
+        love.graphics.print(t, math_floor(320 - self.fontMed:getWidth(t) * 0.5), 62)
+        return
+    end
     local pending = Modes.trackPage.pending
     local selectedId = pending or track.instrumentId
     local y, h, pad = 60, 18, 7

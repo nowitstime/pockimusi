@@ -95,6 +95,9 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     elseif kind == "chords" then
         self:drawChordTrackView(def, state, track, col)
 
+    elseif kind == "lane" then
+        self:drawLaneView(def, state, track, col)
+
     elseif kind == "strum" then
         self:drawStrumView(def, state, track, col, t)
 

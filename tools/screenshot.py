@@ -23,6 +23,17 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
+    "lane-stopped": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 8; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
+                    ' H.tap("X"); H.play(0.05, { "LEFT", "B" }); H.play(0.05); H.hold("DOWN"); H.play(0.1)',
+    "lane-running": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 8; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
+                    ' H.tap("X"); H.tap("X"); L:setPlaying(true); L:seekLane(2 * 1920 + 600); H.play(0.05, { "UP_LEFT" and "DOWN", "B" }); H.play(0.2)',
+    "lane-wheel": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 16; L.activeTrack = L.LANE;'
+                  ' H.tap("X"); H.hold("X"); H.play(0.4); H.hold("DOWN"); H.play(0.2)',
+    "lane-empty": 'H.tap("SELECT"); H.tap("SELECT"); H.play(0.2)',
+    "lane-16": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 16; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
+               ' H.tap("X"); H.tap("X"); lane.state.picked = "ROYAL ROAD"; H.tap("X"); L:setPlaying(true); H.play(0.3)',
+    "lane-bass": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 8; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
+                 ' H.tap("X"); H.tap("X"); L.activeTrack = 3; L:setPlaying(true); L:seekLane(4 * 1920 + 300); H.play(0.3)',
     "play-drums": 'H.play(0.5)',
     "drums-pattern": 'H.tap("L2"); H.hold("B", "R1"); H.play(2.2); H.release("B", "R1");'
                      ' H.hold("Y", "UP"); H.play(0.05); H.release("Y", "UP"); H.play(1.0);'

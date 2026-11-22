@@ -25,7 +25,7 @@ local math_pi    = math.pi
 return function(Chrome)
 
 -- ============================================================================
--- REGION 3: THEMATIC CONSTELLATION TAPE DECK (y: 362..474)
+-- REGION 3: THE CHORD STRIP (y: 359..373) AND THE TAPE DECK (y: 376..474)
 -- ============================================================================
 -- A held note on a tape-deck lane: from x, w pixels long, wrapping from the
 -- lane end (x1) back to its start (x0). `lit` = sounding now, `open` = still
@@ -81,27 +81,28 @@ function Chrome:drawTapeDeck()
     local lw = 456
     local totalSixteenths = Looper:getTotalSixteenths()
 
-    self:drawFrame(8, 362, 624, 112, C.GRID, 1, activeCol)
+    self:drawLaneStrip(lx, lw)
+    self:drawFrame(8, 376, 624, 98, C.GRID, 1, activeCol)
 
     -- Vertical divider between headers and lanes
     self:setColor(C.GRID)
-    love.graphics.line(136, 368, 136, 468)
+    love.graphics.line(136, 381, 136, 469)
 
     -- Continuous bar & beat grid lines spanning the 4 threads
     for s = 0, totalSixteenths, 4 do
         local sx = lx + (s / totalSixteenths) * lw
         local isBar = (s % 16 == 0)
         self:setColor(isBar and C.GRID or C.PANEL_HI)
-        love.graphics.line(sx, 370, sx, 466)
+        love.graphics.line(sx, 383, sx, 467)
         if isBar then
-            self:drawDiamond(sx, 368, 2.0, C.MUTED)
-            self:drawDiamond(sx, 468, 2.0, C.MUTED)
+            self:drawDiamond(sx, 381, 2.0, C.MUTED)
+            self:drawDiamond(sx, 469, 2.0, C.MUTED)
         end
     end
 
     for tIdx = 1, 4 do
-        local ry = 369 + (tIdx - 1) * 25
-        local cy = ry + 11
+        local ry = 382 + (tIdx - 1) * 22
+        local cy = ry + 10
         local isSel = (Looper.activeTrack == tIdx)
         local tColor = self:trackColor(tIdx)
         local track = Looper.tracks[tIdx]
@@ -110,7 +111,7 @@ function Chrome:drawTapeDeck()
         -- Left Track Header
         if isSel then
             self:setColor(Config.shade(tColor, 0.24))
-            love.graphics.rectangle("fill", 12, ry, 120, 22, 3, 3)
+            love.graphics.rectangle("fill", 12, ry, 120, 20, 3, 3)
             self:drawStarGlint(19, cy, 4.5, tColor, 1.0)
         else
             self:drawDiamond(19, cy, 2.0, track.muted and C.DIM or tColor)
@@ -118,24 +119,24 @@ function Chrome:drawTapeDeck()
 
         self:setColor(isSel and C.TEXT or C.MUTED)
         love.graphics.setFont(self.fontSmall)
-        love.graphics.print(string.format("%d %s", tIdx, track.shortName or "TRK"), 28, ry + 3)
+        love.graphics.print(string.format("%d %s", tIdx, track.shortName or "TRK"), 28, ry + 2)
 
         self:setColor((grid.id ~= "FREE") and tColor or C.DIM)
         love.graphics.setFont(self.fontTiny)
-        love.graphics.print(grid.label, 84, ry + 4)
+        love.graphics.print(grid.label, 84, ry + 3)
 
         -- Mute Rune Tag (Diamond vs M)
         if track.muted then
-            self:drawTag(112, ry + 2, 18, 18, "M", C.RED, C.RED, C.BG, self.fontTiny)
+            self:drawTag(113, ry + 2, 16, 16, "M", C.RED, C.RED, C.BG, self.fontTiny)
         else
-            self:drawTag(112, ry + 2, 18, 18, "", C.GRID, C.PANEL_HI, tColor, self.fontTiny)
-            self:drawDiamond(121, ry + 11, 2.6, tColor)
+            self:drawTag(113, ry + 2, 16, 16, "", C.GRID, C.PANEL_HI, tColor, self.fontTiny)
+            self:drawDiamond(121, ry + 10, 2.4, tColor)
         end
 
         -- Constellation Thread Lane
         if isSel then
             self:setColor(Config.shade(tColor, 0.12))
-            love.graphics.rectangle("fill", lx - 2, ry + 2, lw + 4, 18, 3, 3)
+            love.graphics.rectangle("fill", lx - 2, ry + 1, lw + 4, 18, 3, 3)
         end
         self:setColor(Config.shade(tColor, isSel and 0.5 or 0.3))
         love.graphics.line(lx, cy, lx + lw, cy)
@@ -217,13 +218,13 @@ function Chrome:drawTapeDeck()
         local peak = math_min(1.0, meter.level)
         self:setColor(C.GRID)
         love.graphics.setLineWidth(2)
-        love.graphics.line(616, ry + 3, 616, ry + 19)
-        local mh = math_floor(16 * peak)
+        love.graphics.line(616, ry + 3, 616, ry + 17)
+        local mh = math_floor(14 * peak)
         if mh > 0 then
             self:setColor(col)
             love.graphics.setLineWidth(2.5)
-            love.graphics.line(616, ry + 19 - mh, 616, ry + 19)
-            self:drawDiamond(616, ry + 19 - mh, 2.2, col)
+            love.graphics.line(616, ry + 17 - mh, 616, ry + 17)
+            self:drawDiamond(616, ry + 17 - mh, 2.2, col)
         end
         love.graphics.setLineWidth(1)
     end
@@ -237,25 +238,149 @@ function Chrome:drawTapeDeck()
     local wakeW = math_min(14, px - lx)
     if wakeW > 1 then
         self:setColor(playCol, 0.08)
-        love.graphics.rectangle("fill", px - wakeW, 368, wakeW, 98)
+        love.graphics.rectangle("fill", px - wakeW, 381, wakeW, 88)
         self:setColor(playCol, 0.14)
-        love.graphics.rectangle("fill", px - wakeW * 0.45, 368, wakeW * 0.45, 98)
+        love.graphics.rectangle("fill", px - wakeW * 0.45, 381, wakeW * 0.45, 88)
     end
 
     self:setColor(playCol)
     love.graphics.setLineWidth(1.5)
-    love.graphics.line(px, 366, px, 470)
+    love.graphics.line(px, 380, px, 471)
     love.graphics.setLineWidth(1)
-    self:drawStarGlint(px, 366, 7.0, playCol, 1.0)
-    self:drawStarGlint(px, 470, 5.5, playCol, 0.9)
-    self:drawDiamond(px, 366, 2.5, C.TEXT)
+    self:drawStarGlint(px, 380, 6.0, playCol, 1.0)
+    self:drawStarGlint(px, 471, 5.0, playCol, 0.9)
+    self:drawDiamond(px, 380, 2.5, C.TEXT)
 
     -- Dim the deck while a settings page has focus
     local mode = Modes.current or "NORMAL"
     if mode == "TRACK" or mode == "TRANSPORT" or mode == "MIX" then
         self:setColor(C.BG, 0.55)
-        love.graphics.rectangle("fill", 7, 361, 626, 114)
+        love.graphics.rectangle("fill", 7, 358, 626, 117)
     end
+end
+
+-- ============================================================================
+-- THE CHORD STRIP: track C's whole lane at once, above the tape deck. Its
+-- own playhead; a frame marks the part under this loop pass when the lane
+-- is longer than the loop; only the chord playing now is lit.
+-- ============================================================================
+function Chrome:drawLaneStrip(lx, lw)
+    local lane = Looper:getLane()
+    if not lane then return end
+    local C = Config.COLORS
+    local def = Instruments:getDefinition("lane")
+    local col = self:trackColor(Looper.LANE)
+    local isSel = (Looper.activeTrack == Looper.LANE)
+    local y, h = 359, 14
+    local cy = y + h * 0.5
+
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", 8, y, 624, h, 4, 4)
+    self:setColor(isSel and Config.shade(col, 0.85) or C.GRID)
+    love.graphics.rectangle("line", 8, y, 624, h, 4, 4)
+
+    -- Header: C CHORDS, the lane's length, and which pass
+    if isSel then
+        self:setColor(Config.shade(col, 0.24))
+        love.graphics.rectangle("fill", 11, y + 2, 122, h - 4, 3, 3)
+        self:drawStarGlint(19, cy, 4.0, col, 1.0)
+    else
+        self:drawDiamond(19, cy, 2.0, col)
+    end
+    love.graphics.setFont(self.fontTiny)
+    local fh = self.fontTiny:getHeight()
+    local ty = math_floor(cy - fh * 0.5)
+    self:setColor(isSel and C.TEXT or Config.shade(col, 0.8))
+    love.graphics.print("C CHORDS", 28, ty)
+    self:setColor(col)
+    love.graphics.print(Looper:getLaneBars() .. " BAR", 80, ty)
+    local laneT, loopT = Looper:getLaneTicks(), Looper:getLoopTicks()
+    local passes = math.max(1, math_floor(laneT / loopT))
+    local pass = (Looper.pass % passes) + 1
+    if passes > 4 then
+        local txt = pass .. "/" .. passes
+        self:setColor(col)
+        love.graphics.print(txt, 131 - self.fontTiny:getWidth(txt), ty)
+    elseif passes > 1 then
+        for i = 1, passes do
+            local px = 131 - (passes - i) * 6 - 4
+            self:setColor(i == pass and col or C.DIM)
+            love.graphics.rectangle("fill", px, cy - 2, 4, 4, 1, 1)
+        end
+    end
+    self:setColor(C.GRID)
+    love.graphics.line(136, y + 3, 136, y + h - 3)
+
+    -- The chords
+    local spans = def:spans(lane.state, lane)
+    local nowPos = Looper:lanePos() / laneT
+    if #spans == 0 then
+        local msg = "NO CHORDS YET - EVERYTHING PLAYS IN " .. Theory:getKeyLabel() .. " - SELECT TAP TO REACH TRACK C"
+        self:setColor(col, 0.75)
+        love.graphics.print(msg, math_floor(lx + (lw - self.fontTiny:getWidth(msg)) * 0.5), ty)
+    else
+        local carry = nowPos < spans[1].from          -- before the first chord the last carries over
+        local namesOnly = Looper:getLaneBars() >= 16
+        for i, sp in ipairs(spans) do
+            local x0, x1 = lx + sp.from * lw, lx + sp.to * lw
+            local w = x1 - x0
+            local now = (nowPos >= sp.from and nowPos < sp.to) or (carry and i == #spans)
+            self:setColor(col, now and 0.34 or 0.10)
+            love.graphics.rectangle("fill", x0 + 0.5, y + 2, math_max(1, w - 1), h - 4, 2, 2)
+            self:setColor(col, 0.35)
+            love.graphics.rectangle("line", x0 + 0.5, y + 2, math_max(1, w - 1), h - 4, 2, 2)
+            local name = Theory:chordName(sp.chord)
+            local label = namesOnly and name or (name .. " " .. def:numeral(sp.chord))
+            if self.fontTiny:getWidth(label) > w - 4 then label = name end
+            if self.fontTiny:getWidth(label) <= w - 4 then
+                self:setColor(now and C.TEXT or col)
+                love.graphics.print(label, math_floor(x0 + 3), ty)
+            end
+        end
+    end
+
+    -- A live change (not recorded) shows as a dashed box where it plays
+    local o = lane.state.override
+    if o and Looper.playing then
+        local ox = lx + Looper:lanePos(o.start) / laneT * lw
+        local ow = math_min(o.len / laneT * lw, lx + lw - ox)
+        self:setColor(C.TEXT, 0.7)
+        self:dashedRect(ox, y + 1, ow, h - 2)
+    end
+
+    -- This pass, when the lane is longer than the loop
+    if laneT > loopT and #spans > 0 then
+        local wpos = (Looper.pass * loopT) % laneT
+        local wx = lx + wpos / laneT * lw
+        local ww = loopT / laneT * lw
+        self:setColor(C.TEXT, 0.7)
+        love.graphics.setLineWidth(1.2)
+        love.graphics.rectangle("line", wx - 1, y + 1, ww + 2, h - 2, 3, 3)
+        love.graphics.setLineWidth(1)
+    end
+
+    -- The strip's own playhead
+    if #spans > 0 then
+        local px = lx + nowPos * lw
+        self:setColor(C.TEXT)
+        love.graphics.setLineWidth(1.5)
+        love.graphics.line(px, y + 1, px, y + h - 1)
+        love.graphics.setLineWidth(1)
+    end
+end
+
+-- A dashed rectangle outline
+function Chrome:dashedRect(x, y, w, h)
+    local dash = 3
+    local function seg(x1, y1, x2, y2)
+        local len = math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+        local n = math_floor(len / (dash * 2))
+        for i = 0, n do
+            local a, b = (i * 2 * dash) / len, math_min(1, (i * 2 + 1) * dash / len)
+            if a < 1 then love.graphics.line(x1 + (x2 - x1) * a, y1 + (y2 - y1) * a, x1 + (x2 - x1) * b, y1 + (y2 - y1) * b) end
+        end
+    end
+    seg(x, y, x + w, y); seg(x + w, y, x + w, y + h); seg(x + w, y + h, x, y + h); seg(x, y + h, x, y)
 end
 
 end
