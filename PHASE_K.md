@@ -108,7 +108,7 @@ Part of [ROADMAP.md](ROADMAP.md). Background: [feedback/chords.md](feedback/chor
 
 ## Exit checklist
 
-- [ ] `python3 tests/run.py` green
+- [x] `python3 tests/run.py` green (462 tests; `tests/test_lane.lua` is new)
 - [ ] Writing 16 bars with the clock stopped feels quick and obvious 📱
 - [ ] Changing chords live on the bar line feels like playing, not editing 📱
 - [ ] The wheel is easy to aim with the thumb; two pages are enough 📱
@@ -121,6 +121,14 @@ Part of [ROADMAP.md](ROADMAP.md). Background: [feedback/chords.md](feedback/chor
 - §5: the lane is the chord source; drop the "lowest-numbered harp" rule.
 - §7.2 / §7.6: the Chord Track becomes track C; the Harp's `SILENT` patch stays until the Harp pass.
 - §11: the strip above the tape deck.
+
+## As built
+
+- Track C is `Looper.tracks[Looper.LANE]` (5), a track object outside the four slots; `src/instruments/lane.lua` is its instrument (never in the catalogue). Its events sit on the lane's timeline; the looper never plays them back.
+- `Looper.pass` counts loop passes; `Looper:songTick()`, `songTickAt(t)`, `lanePos()` and `seekLane(pos)` turn loop positions into lane positions and back.
+- Harmony: track C's live change or wheel preview, then its chords, then (as before) recorded Chord Harp / Chord Track chords in a slot, then a live chord, then the tonic. **Different from the plan:** recorded Harp chords still steer when track C is empty, so older sessions and the Harp keep working until the Harp pass.
+- Stamps and edits always write (one undo each); `B` while running writes only when recording.
+- The Chord Track stays a slot instrument for now.
 
 ## Open (decide after playing)
 

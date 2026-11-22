@@ -140,17 +140,17 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] `ODD` group: `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM`
 - [ ] Device listen: every new patch (written without hearing it), levels against the old ones, the hitch when a patch is first selected
 
-## Phase K · Chord lane — details in [PHASE_K.md](PHASE_K.md)
+## Phase K · Chord lane ✅ (device check pending) — details in [PHASE_K.md](PHASE_K.md)
 
-- [ ] K1 The lane in the looper (bars, passes, save, Harmony reads it)
-- [ ] K2 Track C on the `SELECT` cycle, its play surface and rows
-- [ ] K3 The strip above the tape deck
-- [ ] K4 Running controls: next bar line, shoulder lengths, live vs recorded
-- [ ] K5 Stopped controls: write and step, take back, preview
-- [ ] K6 Stamp: hold `X` for the wheel, tap `X` to place
-- [ ] K7 Chord chart stage view
-- [ ] K8 `FOLLOW` text and toast; Harp chords stop steering
-- [ ] K9 SPEC and feedback updates
+- [x] K1 The lane in the looper (bars, passes, save, Harmony reads it)
+- [x] K2 Track C on the `SELECT` cycle, its play surface and rows
+- [x] K3 The strip above the tape deck
+- [x] K4 Running controls: next bar line, shoulder lengths, live vs recorded
+- [x] K5 Stopped controls: write and step, take back, preview
+- [x] K6 Stamp: hold `X` for the wheel, tap `X` to place
+- [x] K7 Chord chart stage view
+- [x] K8 `FOLLOW` text and warning (Harp chords still steer when track C is empty: see the Harp pass)
+- [x] K9 SPEC and feedback updates
 
 ## Phase I · Tape deck v2 & visual polish
 

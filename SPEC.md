@@ -18,7 +18,7 @@ Companion: [ROADMAP.md](ROADMAP.md) says *in what order* this gets built.
 2. **Same grammar on every track.** A button's *role* is the same on every instrument (§3). Learn it once.
 3. **Zero-setup jamming.** The master loop is always rolling. Recording is a gesture, not a menu.
 4. **Instrument ≠ sound.** An instrument is *how you play*. A sound is *what comes out*. They are chosen independently (§6).
-5. **Four tracks, always visible.** The screen is sized for exactly four tracks. Tracks are *slots*; the instrument in a slot can be swapped (§7). Four is a fixed design limit.
+5. **Four instrument tracks plus the song's chord lane, always visible.** The screen is sized for exactly four instrument tracks. Tracks are *slots*; the instrument in a slot can be swapped (§7). Four is a fixed design limit. Track C, the chord lane, sits outside the slots as a thin strip above them (§5.1). ✅
 6. **Hard to play a wrong note.** Pitched instruments play scale degrees, and can follow the chord track (§5).
 7. **Look and feel together.** Each instrument pass includes its stage view in the shared visual template; the base look is set early and refined per instrument.
 8. **Self-contained procedural audio.** All sounds are generated in RAM at boot. Optional `.wav` loading is a later milestone.
@@ -104,7 +104,7 @@ The same layout on every instrument:
 | `LEFT / RIGHT` | Previous / next value for the selected row; holding repeats. A press previews a sound at once; held scrolling previews once it settles ✅ |
 | `L1 / R1` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release. The instruments are a carousel across the top of the page: the selected one in the centre, the rest a ring that fades towards the edges, lab instruments dotted ✅ |
 | Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space. The cursor jumps to that effect's row ✅ |
-| `SELECT` tap (< 0.25 s, no combo) | Next track 1→4 |
+| `SELECT` tap (< 0.25 s, no combo) | Next track 1 → 2 → 3 → 4 → C (the chord lane, §5.1) → 1 ✅ |
 
 **Rows** are the place every per-track option lives, so a new option costs a row, not a button. ✅ today: drums have `KIT, X, Y, A, B` (the kit row swaps all four sounds; a pad row swaps one); other instruments have a single `PATCH` row. The cursor opens on the **last pad you hit**, so "hit the snare, hold SELECT, press RIGHT" swaps the snare.
 
@@ -188,11 +188,37 @@ Changes:
 
 There is always a **current chord** at every point in the loop. A small `Harmony` module resolves it:
 
+0. ✅ **Track C first** (§5.1): a live change played on it without recording, or a progression being tried on its stamp wheel, wins for as long as it lasts; then track C's recorded chords, if it has any (read on the lane's own timeline).
 1. If a track holds a **Chord Harp** with recorded chords, the current chord is the most recent chord at that loop position (wrapping: before the loop's first chord, the last one carries over; a chord up to a 1/16 late still counts on the beat). With several harp tracks, the lowest-numbered one is the **chord source**. Muting it doesn't change harmony.
 2. If the harp has no recorded chords, the chord you last played live on it.
 3. Otherwise the **tonic** (I of the current key and scale).
 
 So nothing depends on recording chords first: with no chord track, followers simply play in the key.
+
+### 5.1 Track C: the chord lane ✅ (details: [PHASE_K.md](PHASE_K.md), code `src/instruments/lane.lua`)
+
+- **What:** a silent built-in track outside the four slots (`Looper.tracks[Looper.LANE]`), reached with `SELECT` taps after track 4. No `PATCH`, no mute, no effects; always the chords.
+- **Length:** `BARS` row, 2 / 4 / 8 / 16, independent of the loop. The looper counts loop passes (`Looper.pass`), so a lane longer than the loop plays a different part on each pass; a shorter one repeats. A double `START` tap returns to pass 1. A longer `BARS` repeats what is there; a shorter one drops the end (undoable).
+- **The playhead is the cursor; `B` writes where it is heading.**
+
+| Control | Clock running (live) | Clock stopped (writing it out) |
+| :-- | :-- | :-- |
+| D-pad | Which chord | Which chord, shown greyed out in the box under the playhead |
+| `B` | Change at the next bar line (up to a 1/16 late counts for the line just gone). Recording: written; not recording: the followers play it for its length, nothing written | Write this box, step on |
+| `L1` / `R1` held + `B` | Lasts 2 bars / lands on the next half bar | Write 2 bars / 1/2 bar and step that far |
+| `L1 + R1` held + `B` | Next beat | Write one beat |
+| `L1` / `R1` tap | — | Step back / on a bar (the chord carries on) |
+| `A` held + D-pad | Colour the chord playing | Colour the chord behind the playhead |
+| `Y` | Delete the chord playing (hold: keep deleting) | Take back the last thing written, step back |
+| `X` held | The progression wheel: point at one to hear it on the other tracks; `L1` / `R1` flip the page; let go = picked, nothing written | The same |
+| `X` tap | Stamp the picked progression from the next bar line | Stamp it at the playhead, step past it |
+
+- Writing a box leaves the rest of the lane as it was: a chord that was sounding at the end of the box comes back there if more chords follow.
+- Undo: stopped writes, stamps, colours and deletes are one undo per press; recording live is one undo per pass of the lane.
+- **Rows:** `BARS`, `PREVIEW` (`STRUM` / `STAB` / `OFF`: the chord plays softly as you write with the clock stopped), `SOUND` (the preview sound, default `HARP`), `COLOUR` (for new chords), `SPICE`.
+- **Wheel:** page 1 POP, 50S, SAD POP, ROCK, JAZZ ii-V-I, ROYAL ROAD, MIXO, CANON; page 2 DESCEND, HEROIC, BITTERSWEET, BLUES 8.
+- **FOLLOW:** a follower's `FOLLOW ON` row reads `ON - NO CHORDS YET` while nothing sets chords (it then plays as `OFF`); starting to record with `FOLLOW OFF` while chords are set warns.
+- Saved with the session (settings and chords); a fresh session clears it.
 
 **Followers** (Bass, Pad and Lead/Arp) have a **FOLLOW** setting row (Track page, default **on**):
 
@@ -396,7 +422,8 @@ Event = {
 
 1. **Top bar:** active track + instrument, grid, bars, BPM, key/scale, current chord (📐), beat stars, mode badge.
 2. **Center stage:** one fixed template — shoulder badges top, D-pad left, face buttons right, instrument display middle, hint strip bottom. Track, Clock and Mix draw over the stage.
-3. **Tape deck:** four tracks with name, grid, mute, event markers and a shared playhead. 📐 Hits as beads, held notes as ribbons with bend lines, chord names along the chord-source lane.
+3. **Chord strip** ✅ (y 359–373): track C's whole lane at once with its own playhead; a frame marks the part under this loop pass when the lane is longer than the loop; only the chord playing is lit; a live change shows dashed. Names and numerals up to 8 bars, names only at 16. The top bar shows `LANE` length in place of the grid on track C, and the lane bar (`5/8`) by the chord.
+4. **Tape deck:** four tracks with name, grid, mute, event markers and a shared playhead. 📐 Hits as beads, held notes as ribbons with bend lines, chord names along the chord-source lane.
 
 Principles: show mode in the same place always; hints for the held modifier only; colour-code tracks consistently and add shape cues so colour is never the only signal.
 
