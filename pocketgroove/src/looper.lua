@@ -466,7 +466,7 @@ function Looper:undo()
             self:showToast(string.format("UNDO: TRACK %d BACK TO %s (%d EVENTS)", entry.trackSlot, entry.name, #entry.events))
             return
         elseif entry.kind == "events" and track then
-            -- an edit that replaced a track's events (Chord Track stamp, delete, colour)
+            -- an edit that replaced a track's events (track C: write, stamp, clear, colour)
             self:silenceTrack(entry.trackSlot)
             track.events = entry.events
             if entry.laneBars then track.state.bars = entry.laneBars end   -- track C's BARS row

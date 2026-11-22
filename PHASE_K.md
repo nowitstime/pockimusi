@@ -124,13 +124,12 @@ Part of [ROADMAP.md](ROADMAP.md). Background: [feedback/chords.md](feedback/chor
 
 - Track C is `Looper.tracks[Looper.LANE]` (5), a track object outside the four slots; `src/instruments/lane.lua` is its instrument (never in the catalogue). Its events sit on the lane's timeline; the looper never plays them back.
 - `Looper.pass` counts loop passes; `Looper:songTick()`, `songTickAt(t)`, `lanePos()` and `seekLane(pos)` turn loop positions into lane positions and back.
-- Harmony: track C's live change or wheel preview, then its chords, then (as before) recorded Chord Harp / Chord Track chords in a slot, then a live chord, then the tonic. **Different from the plan:** recorded Harp chords still steer when track C is empty, so older sessions and the Harp keep working until the Harp pass.
+- Harmony (first build): track C's live change or wheel preview, then its chords, then (as before) recorded Chord Harp / Chord Track chords in a slot, then a live chord, then the tonic. Since the review: track C, then the tonic. **Different from the plan:** recorded Harp chords still steer when track C is empty, so older sessions and the Harp keep working until the Harp pass.
 - Stamps and edits always write (one undo each); `B` while running writes only when recording.
-- The Chord Track stays a slot instrument for now.
+- ~~The Chord Track stays a slot instrument for now.~~ **Retired after review:** track C is the only chord source (no recorded or live Harp chords in Harmony); the Chord Track is gone from the instruments, its shared parts (progressions, colour wheel, spice, numerals) live in `src/chordkit.lua`. An old save with a Chord Track in a slot loads its chords onto track C (when C is empty) and the slot gets its default instrument.
 - **Changed after the first device test:** `Y` is CLEAR (the box under the playhead, running or stopped; the playhead doesn't move) instead of DELETE / take-back; a stamp starts in the box under the playhead even with the clock running, instead of waiting for the next bar line. Chord length became a `GRID` row (1/2, 1, 2, 3, 4 bars; one box = one unit) in place of the shoulder lengths, and the same chord twice in a row joins into one. The greyed-out previews in the chart (the D-pad chord, the wheel's progression) are gone: the outlined box is enough, and they read as chords already there.
 
 ## Open (decide after playing)
 
 - Grid or a "reel" (the bar ahead big in the middle) for the stopped clock.
-- Does the Chord Track stay as a slot instrument once track C exists?
 - The Harp's job once the lane sets the chords.

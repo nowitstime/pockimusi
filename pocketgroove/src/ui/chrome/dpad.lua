@@ -27,8 +27,8 @@ return function(Chrome)
 -- ============================================================================
 -- ZONE 1: 8-POINT WIREFRAME STAR D-PAD (cx=102, cy=188)
 -- ============================================================================
--- `guideDirKey` (optional): a direction to suggest (the Chord Track's
--- progression); its label is lit in the accent with a dot under it
+-- `guideDirKey` (optional): a direction to suggest (an instrument's
+-- def:getGuideDir); its label is lit in the accent with a dot under it
 function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
     local C = Config.COLORS
     local cardR = 55

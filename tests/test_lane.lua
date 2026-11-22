@@ -5,7 +5,7 @@ local H = require("helpers")
 local function boot()
     local M = H.loadMain()
     M.Harmony = require("src.harmony")
-    M.Chords = M.Instruments.byId.chords
+    M.Chords = require("src.chordkit")
     H.play(0.1)
     local L = M.Looper
     local lane = L:getLane()
@@ -351,5 +351,43 @@ return {
         H.release("START"); H.play(0.1)
         H.eq(lane.gridIndex, grid, "grid unchanged")
         H.eq(lane.swing, swing, "swing unchanged")
+    end },
+
+    { "the Chord Track is retired: not in the catalogue; an old save's chords go to track C", function()
+        local M, L, lane = boot()
+        H.falsy(M.Instruments.byId.chords, "no Chord Track")
+        local c = chord(M, "V")
+        local ok = M.Session.restore({
+            format = 1, bars = 4,
+            tracks = {
+                { instrumentId = "drums" },
+                { instrumentId = "chords", events = {
+                    { tick = 0, action = "B", chord = chord(M, "I"), takeId = 3 },
+                    { tick = 1920, action = "B", chord = c, takeId = 9 } } },
+                { instrumentId = "bass" }, { instrumentId = "pad" },
+            },
+        })
+        H.truthy(ok, "restored")
+        H.eq(L.tracks[2].instrumentId, "harp", "the slot gets its default")
+        H.eq(#L.tracks[2].events, 0, "no notes left there")
+        H.eq(lane.state.bars, 4, "track C as long as the loop they were written on")
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G", "its chords are on track C")
+        H.truthy(L.currentTakeId >= 9, "new takes come after them")
+        H.eq(M.Theory:chordName((M.Harmony:chordAt(1920, 0))), "G", "and they steer")
+    end },
+
+    { "live FX: the face ring shows which button mutes which track", function()
+        local M, L = boot()
+        local Chrome = require("src.ui.chrome")
+        L.tracks[3].muted = true
+        H.hold("R2"); H.play(0.1)
+        H.eq(H.mode(), "FX", "live FX")
+        local dpad, face, _, active = Chrome:getControlLabels(M.Instruments:getDefinition("drums"), {}, "FX")
+        H.eq(face.B .. " " .. face.A .. " " .. face.Y .. " " .. face.X, "M1 M2 M3 [M] M4", "M1-M4, track 3 muted")
+        H.truthy(active.Y and not active.B, "the muted one is lit")
+        H.eq(dpad.UP .. " " .. dpad.DOWN .. " " .. dpad.LEFT .. " " .. dpad.RIGHT, "STUTTER SLOW FILTER CRUSH", "D-pad: the effects")
+        H.tap("A")
+        H.truthy(L.tracks[2].muted, "A mutes track 2")
+        H.release("R2"); H.play(0.1)
     end },
 }

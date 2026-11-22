@@ -231,6 +231,35 @@ function H.mode()
     return package.loaded["src.modes"].current
 end
 
+-- Chords on track C (the only chord source), the lane as long as the loop
+-- so lane ticks are loop ticks. `events` are chord events ({ tick, chord }).
+function H.laneChords(events, bars)
+    local L = package.loaded["src.looper"]
+    local lane = L:getLane()
+    lane.state.bars = bars or L.bars
+    lane.events = {}
+    for i, ev in ipairs(events) do
+        lane.events[i] = { tick = ev.tick, len = 0, action = "B", vel = 0.75, chord = ev.chord }
+    end
+    L:touch(lane)
+    return lane
+end
+
+-- One chord on track C for the whole lane
+function H.setChord(chord)
+    return H.laneChords({ { tick = 0, chord = chord } })
+end
+
+-- C G Am F on track C, a half bar each over a 2-bar loop (POP)
+function H.popChords(M)
+    local K = require("src.chordkit")
+    local list = {}
+    for i, dir in ipairs({ "NEUTRAL", "RIGHT", "DOWN", "LEFT" }) do
+        list[i] = { tick = (i - 1) * 960, chord = K:chordData(M.Theory:getChordForDirection(dir, false, false)) }
+    end
+    return H.laneChords(list, 2)
+end
+
 -- Run full game frames (update + draw) for `seconds`, with `buttons` held
 function H.play(seconds, buttons)
     for _, b in ipairs(buttons or {}) do H.keys[H.KEY[b]] = true end

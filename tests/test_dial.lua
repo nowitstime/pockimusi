@@ -321,9 +321,7 @@ return {
     { "FOLLOW: positions are degrees over the chord; flat / sharp still apply", function()
         local M, track, def = boot()
         local L = M.Looper
-        M.Instruments:swapTrackInstrument(1, "chords")
-        local ct = L.tracks[1]
-        M.Instruments.byId.chords:stamp(ct.state, ct)        -- C G Am F, a half bar each
+        H.popChords(M)                                       -- C G Am F on track C, a half bar each
         L.activeTrack = 2
         L:setPlaying(false); L:seek(0.3); H.play(0.05)       -- under G
         local s = track.state

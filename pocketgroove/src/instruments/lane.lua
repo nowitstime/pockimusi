@@ -37,7 +37,7 @@ local Input   = require("src.input")
 local Synth   = require("src.synth")
 local Looper  = require("src.looper")
 local Patches = require("src.instruments.patches")
-local Chords  = require("src.instruments.chords")
+local ChordKit = require("src.chordkit")
 
 local math_floor = math.floor
 local math_max   = math.max
@@ -119,21 +119,21 @@ function Lane:chordFor(state, dirKey, colour)
 end
 
 function Lane:progression(name)
-    for _, p in ipairs(Chords.PROGRESSIONS) do
+    for _, p in ipairs(ChordKit.PROGRESSIONS) do
         if p.name == name then return p end
     end
-    return Chords.PROGRESSIONS[1]
+    return ChordKit.PROGRESSIONS[1]
 end
 
 function Lane:progressionChords(state, name)
     local p = self:progression(name)
     local out = {}
-    for i, dir in ipairs(p.dirs) do out[i] = Chords:chordData(self:chordFor(state, dir)) end
+    for i, dir in ipairs(p.dirs) do out[i] = ChordKit:chordData(self:chordFor(state, dir)) end
     return out
 end
 
 function Lane:numeral(chord)
-    return Chords:numeral(chord)
+    return ChordKit:numeral(chord)
 end
 
 -- One box (GRID row): its length in ticks, and its label
@@ -347,7 +347,7 @@ end
 
 function Lane:liveChange(state, track)
     local _, label = self:unit(state)
-    local chord = Chords:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
+    local chord = ChordKit:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
     local at, len = self:landing(state)
     local rec = Input:isRecording()
     if rec then
@@ -369,7 +369,7 @@ end
 local function barOf(pos) return math_floor(pos / Looper.BAR_TICKS) + 1 end
 
 function Lane:stepWrite(state, track)
-    local chord = Chords:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
+    local chord = ChordKit:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
     local pos, len = self:boxAt(state, Looper:lanePos())
     self:pushEdit(track, "WRITE")
     self:write(track, chord, pos, len, "B")
@@ -451,7 +451,7 @@ function Lane:applyColour(state, track, colour, fresh)
         Looper:showToast("NO CHORD HERE - NEW CHORDS: " .. colour)
         return
     end
-    local chord = Chords:recolour(ev.chord, colour)
+    local chord = ChordKit:recolour(ev.chord, colour)
     if not chord then return end
     if fresh then self:pushEdit(track, "COLOUR") end
     local out = {}
@@ -506,7 +506,7 @@ function Lane:stamp(state, track)
     local pos, n = start, 0
     for _, dir in ipairs(p.dirs) do
         if pos >= laneT then break end
-        self:write(track, Chords:chordData(self:chordFor(state, dir)), pos, unit, "X")
+        self:write(track, ChordKit:chordData(self:chordFor(state, dir)), pos, unit, "X")
         pos = math_min(pos + unit, laneT)
         n = n + 1
     end
@@ -514,7 +514,7 @@ function Lane:stamp(state, track)
     state.spice, state.spiceKey = {}, nil
     if not running then
         Looper:seekLane(pos)
-        self:previewChord(state, track, Chords:chordData(self:chordFor(state, p.dirs[1])))
+        self:previewChord(state, track, ChordKit:chordData(self:chordFor(state, p.dirs[1])))
     end
     local cut = (n < #p.dirs) and string.format(" (%d OF %d FIT)", n, #p.dirs) or ""
     Looper:showToast(string.format("STAMPED %s: BARS %d-%d - %s A CHORD%s", p.name, barOf(start),
@@ -581,10 +581,10 @@ function Lane:updateInput(dt, state, track)
     if Input.down.A then
         local dir = Input:get8WayDirection()
         if Input.pressed.A then
-            self:applyColour(state, track, Chords.COLOUR_WHEEL[dir], true)
+            self:applyColour(state, track, ChordKit.COLOUR_WHEEL[dir], true)
             state.colourDir = dir
         elseif dir ~= "NEUTRAL" and dir ~= state.colourDir then
-            self:applyColour(state, track, Chords.COLOUR_WHEEL[dir], false)
+            self:applyColour(state, track, ChordKit.COLOUR_WHEEL[dir], false)
             state.colourDir = dir
         end
         return
@@ -658,7 +658,7 @@ function Lane:checkSpice(state, track)
     end
     local key = math_floor(Looper:songTick() / Looper:getLaneTicks())
     if state.spiceKey ~= key or state.spiceEvents ~= track.events then
-        Chords.rollSpice(Chords, state, track)
+        ChordKit:rollSpice(state, track)
         state.spiceKey, state.spiceEvents = key, track.events
     end
 end
@@ -700,7 +700,7 @@ function Lane:getSoundRows(state)
         listRow("PREVIEW", "PREVIEW", self.PREVIEWS, indexOf(self.PREVIEWS, state.previewStyle)),
         sound,
         listRow("COLOUR", "COLOUR", Theory.COLOURS, indexOf(Theory.COLOURS, state.colour)),
-        listRow("SPICE", "SPICE", Chords.SPICES, indexOf(Chords.SPICES, state.spiceLevel)),
+        listRow("SPICE", "SPICE", ChordKit.SPICES, indexOf(ChordKit.SPICES, state.spiceLevel)),
     }
 end
 
@@ -714,7 +714,7 @@ function Lane:previewRowSound(state, rowIdx)
     if rowIdx ~= self.SOUND_ROW then return end
     local was = state.previewStyle
     if was == "OFF" then state.previewStyle = "STRUM" end
-    self:previewChord(state, Looper:getLane(), Chords:chordData(self:chordFor(state, "NEUTRAL")), 0.7)
+    self:previewChord(state, Looper:getLane(), ChordKit:chordData(self:chordFor(state, "NEUTRAL")), 0.7)
     state.previewStyle = was
 end
 
@@ -732,12 +732,12 @@ function Lane:cycleSetting(state, key, delta)
     elseif key == "PREVIEW" then
         state.previewStyle = step(self.PREVIEWS, state.previewStyle, delta)
         Looper:showToast("PREVIEW: " .. state.previewStyle .. (state.previewStyle ~= "OFF" and " - WHEN WRITING WITH THE CLOCK STOPPED" or ""))
-        self:previewChord(state, Looper:getLane(), Chords:chordData(self:chordFor(state, "NEUTRAL")), 0.7)
+        self:previewChord(state, Looper:getLane(), ChordKit:chordData(self:chordFor(state, "NEUTRAL")), 0.7)
     elseif key == "COLOUR" then
         state.colour = step(Theory.COLOURS, state.colour, delta)
         Looper:showToast("NEW CHORDS: " .. state.colour)
     elseif key == "SPICE" then
-        state.spiceLevel = step(Chords.SPICES, state.spiceLevel, delta)
+        state.spiceLevel = step(ChordKit.SPICES, state.spiceLevel, delta)
         state.spice, state.spiceKey = {}, nil
         Looper:showToast("SPICE: " .. state.spiceLevel .. (state.spiceLevel ~= "OFF" and " - RANDOM COLOURS ON PLAYBACK" or ""))
     end
@@ -816,13 +816,13 @@ function Lane:loadState(state, data)
     for _, c in ipairs(Theory.COLOURS) do
         if data.colour == c then state.colour = c end
     end
-    for _, s in ipairs(Chords.SPICES) do
+    for _, s in ipairs(ChordKit.SPICES) do
         if data.spice == s then state.spiceLevel = s end
     end
     for _, p in ipairs(self.PREVIEWS) do
         if data.preview == p then state.previewStyle = p end
     end
-    for _, p in ipairs(Chords.PROGRESSIONS) do
+    for _, p in ipairs(ChordKit.PROGRESSIONS) do
         if data.picked == p.name then state.picked = p.name end
     end
     Patches.load(self, state, data.patch)

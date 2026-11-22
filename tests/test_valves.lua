@@ -12,9 +12,9 @@ local function boot()
     return M, track.state, M.Instruments.byId.valves, track
 end
 
--- The chord followers hear, as if played live on the harp
+-- The chord followers hear: one chord on track C
 local function setChord(M, dir)
-    M.Looper.tracks[2].state.liveChord = M.Theory:getChordForDirection(dir, false, false)
+    H.setChord(M.Theory:getChordForDirection(dir, false, false))
 end
 
 -- Voices that are holding (not released)

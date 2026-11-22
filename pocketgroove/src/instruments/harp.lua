@@ -1,11 +1,12 @@
 -- ============================================================================
 -- src/instruments/harp.lua — "Pocket Omnichord" Strum Harp Instrument Module
 --
--- FOLLOW row (off by default): the harp stops choosing chords and plays the
--- chord the chord source sets (a Chord Track, say). The strings are that
--- chord's root, 3rd, 5th and top note; L1 / R1 still move them an octave.
--- What it records then is strings, not chords: it never becomes the chord
--- source, and played back each string sounds over the chord at its tick.
+-- The harp's chords are its own: they never steer the other tracks (track C
+-- sets the song's chords, src/harmony.lua).
+-- FOLLOW row (off by default): the harp stops choosing chords and plays
+-- track C's chord. The strings are that chord's root, 3rd, 5th and top note;
+-- L1 / R1 still move them an octave. What it records then is strings, and
+-- played back each string sounds over the chord at its tick.
 -- ============================================================================
 
 local Theory = require("src.theory")
@@ -40,7 +41,7 @@ function Harp:newState()
         currentChord = nil,
         patch = "harp",            -- Track page PATCH row
         colour = "TRIAD",          -- Track page COLOUR row (Theory.COLOURS)
-        follow = false,            -- Track page FOLLOW row: play the chord source's chords
+        follow = false,            -- Track page FOLLOW row: play track C's chords
         strings = {
             { button = "B", label = "STR 1 (ROOT)", energy = 0.0, phase = 0.0, lastSemis = 0 },
             { button = "A", label = "STR 2 (3RD)",  energy = 0.0, phase = 0.0, lastSemis = 4 },
@@ -74,7 +75,7 @@ function Harp:updateVisuals(dt, state, controlsBlocked, isActive)
 end
 
 -- ---------------------------------------------------------------------------
--- Following: the chord source's chord as a harp chord (name, roman, strings)
+-- Following: track C's chord as a harp chord (name, roman, strings)
 function Harp:followedChord(state, chord, l1, r1)
     local oct = (l1 and not r1) and -12 or ((r1 and not l1) and 12 or 0)
     local notes = Theory:getPadVoicing(chord, "FULL", 0)
@@ -123,8 +124,7 @@ end
 function Harp:cycleSetting(state, key, delta)
     if key == "FOLLOW" then
         state.follow = not state.follow
-        if state.follow then state.liveChord = nil end      -- it no longer chooses
-        Looper:showToast("HARP FOLLOWS CHORDS: " .. (state.follow and "ON - PLAYS THE CHORD TRACK'S CHORDS" or "OFF"))
+        Looper:showToast("HARP FOLLOWS CHORDS: " .. (state.follow and "ON - PLAYS TRACK C'S CHORDS" or "OFF"))
         return
     end
     if key ~= "COLOUR" then return end
@@ -158,7 +158,6 @@ function Harp:updateInput(dt, state, track, emitEvent)
             -- One-shot. The chord is stored relative to the key, for Harmony
             -- (chord-follow) and so a key change transposes the recording.
             local data = self:chordData(chord)
-            state.liveChord = data             -- what followers use until chords are recorded
             emitEvent({
                 action = btn,
                 semis = chord.notes[self.BUTTON_TO_INDEX[btn]] or 0,

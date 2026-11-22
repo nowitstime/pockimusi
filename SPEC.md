@@ -19,7 +19,7 @@ Companion: [ROADMAP.md](ROADMAP.md) says *in what order* this gets built.
 3. **Zero-setup jamming.** The master loop is always rolling. Recording is a gesture, not a menu.
 4. **Instrument ≠ sound.** An instrument is *how you play*. A sound is *what comes out*. They are chosen independently (§6).
 5. **Four instrument tracks plus the song's chord lane, always visible.** The screen is sized for exactly four instrument tracks. Tracks are *slots*; the instrument in a slot can be swapped (§7). Four is a fixed design limit. Track C, the chord lane, sits outside the slots as a thin strip above them (§5.1). ✅
-6. **Hard to play a wrong note.** Pitched instruments play scale degrees, and can follow the chord track (§5).
+6. **Hard to play a wrong note.** Pitched instruments play scale degrees, and can follow track C's chords (§5).
 7. **Look and feel together.** Each instrument pass includes its stage view in the shared visual template; the base look is set early and refined per instrument.
 8. **Self-contained procedural audio.** All sounds are generated in RAM at boot. Optional `.wav` loading is a later milestone.
 
@@ -184,16 +184,15 @@ Changes:
 
 ---
 
-## 5. Harmony: the chord track & chord-follow ✅ (details: [PHASE_D.md](PHASE_D.md))
+## 5. Harmony: track C & chord-follow ✅ (details: [PHASE_D.md](PHASE_D.md), [PHASE_K.md](PHASE_K.md))
 
-There is always a **current chord** at every point in the loop. A small `Harmony` module resolves it:
+There is always a **current chord** at every point in the loop. **Track C (§5.1) is the only chord source**; a small `Harmony` module resolves it:
 
-0. ✅ **Track C first** (§5.1): a live change played on it without recording, or a progression being tried on its stamp wheel, wins for as long as it lasts; then track C's recorded chords, if it has any (read on the lane's own timeline).
-1. If a track holds a **Chord Harp** with recorded chords, the current chord is the most recent chord at that loop position (wrapping: before the loop's first chord, the last one carries over; a chord up to a 1/16 late still counts on the beat). With several harp tracks, the lowest-numbered one is the **chord source**. Muting it doesn't change harmony.
-2. If the harp has no recorded chords, the chord you last played live on it.
-3. Otherwise the **tonic** (I of the current key and scale).
+1. ✅ A live change played on track C without recording, or a progression being tried on its stamp wheel, wins for as long as it lasts.
+2. ✅ Track C's chords: the most recent chord at that point of the lane (wrapping: before the lane's first chord, the last one carries over; a chord up to a 1/16 late still counts on the beat).
+3. ✅ Otherwise the **tonic** (I of the current key and scale).
 
-So nothing depends on recording chords first: with no chord track, followers simply play in the key.
+A Chord Harp's chords (recorded or live) are its own and steer nothing. So nothing depends on writing chords first: with track C empty, followers simply play in the key.
 
 ### 5.1 Track C: the chord lane ✅ (details: [PHASE_K.md](PHASE_K.md), code `src/instruments/lane.lua`)
 
@@ -229,7 +228,7 @@ Live playing uses the same rule, so what you hear while playing is what replays.
 
 Mapping (follow on): chord roots more than a tritone above the key root are played below it (V = G below C). Degree 1 = chord root, 3 = chord third, 5 = chord fifth, 7 = chord seventh, 8 = octave, L5 = fifth below. On diatonic chords, 2, 4 and 6 walk the key's scale from the chord root; on borrowed chords (♭VI, ♭VII, iv) they are +2, +5 and +8/+9 above the root. ❓ Tune after playtesting.
 
-Erasing or swapping away the chord source makes followers fall back (live chord, then tonic); nothing breaks.
+Clearing track C makes followers fall back to the tonic; nothing breaks.
 
 ---
 
@@ -280,8 +279,8 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 
 - ✅ Chords on the D-pad (§3.3); each face button plucks one string of the chord (`B` root, `A`, `Y`, `X` top). One press, one note.
 - ✅ Shoulders = voicing octave; both = wide voicing. Colour on the `COLOUR` row.
-- ✅ Rows: `PATCH` (the sound pool, §6, starting on `HARP`; `SILENT` makes it a chord track that isn't heard), `COLOUR`.
-- ✅ Every harp event stores its chord relative to the key (root offset, 3rd, 5th, 7th, suffix, numeral, colour, recording key); a key change transposes recorded notes and chords. The lowest-numbered harp track with chords is the **chord source** for Harmony (§5).
+- ✅ Rows: `PATCH` (the sound pool, §6, starting on `HARP`; `SILENT` too), `COLOUR`, `FOLLOW` (off by default; on, it plays track C's chord instead of choosing).
+- ✅ Every harp event stores its chord relative to the key (root offset, 3rd, 5th, 7th, suffix, numeral, colour, recording key); a key change transposes recorded notes and chords. The harp's chords are its own: track C sets the song's chords (§5).
 - 📐 Strumming is planned as a separate instrument, with Lead/Arp (§7.5).
 
 ### 7.3 Bass 🔧 — *next instrument pass* (plan: [PHASE_B.md](PHASE_B.md))
@@ -462,7 +461,6 @@ Principles: show mode in the same place always; hints for the held modifier only
 | slide | SLIDE | SLIDE |
 | dial | DIAL | DIAL |
 | valves | VALVES | VALVES |
-| chords | CHORD TRACK | CHORD |
 | fingers (lab tool) | FINGERS | FINGER |
 
 Internally the Clock page is still the `TRANSPORT` mode and the Fresh page is `NEW`.

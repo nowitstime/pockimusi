@@ -212,14 +212,23 @@ function Chrome:getControlLabels(def, state, mode)
     local flashMap = {}
     local activeMap = {}
 
+    -- The face buttons mute tracks 1-4 (Mix page and live FX): a muted one is lit
+    local function muteLabels()
+        local labels = {}
+        for btn, slot in pairs({ B = 1, A = 2, Y = 3, X = 4 }) do
+            local muted = Looper.tracks[slot].muted
+            labels[btn] = muted and ("M" .. slot .. " [M]") or ("M" .. slot)
+            activeMap[btn] = muted
+        end
+        return labels
+    end
+
     if mode == "MIX" then
         dpadLabels = { UP = "LVL+", DOWN = "LVL-", LEFT = "TRK <", RIGHT = "TRK >" }
-        faceLabels = {
-            B = Looper.tracks[1].muted and "M1 [M]" or "M1",
-            A = Looper.tracks[2].muted and "M2 [M]" or "M2",
-            Y = Looper.tracks[3].muted and "M3 [M]" or "M3",
-            X = Looper.tracks[4].muted and "M4 [M]" or "M4",
-        }
+        faceLabels = muteLabels()
+    elseif mode == "FX" then
+        dpadLabels = { UP = "STUTTER", DOWN = "SLOW", LEFT = "FILTER", RIGHT = "CRUSH" }
+        faceLabels = muteLabels()
     elseif mode == "TRACK" then
         local fx = Looper.tracks[Looper.activeTrack].fx
         dpadLabels = { UP = "ROW UP", DOWN = "ROW DOWN", LEFT = "VALUE <", RIGHT = "VALUE >" }

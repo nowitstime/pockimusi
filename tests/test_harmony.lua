@@ -15,11 +15,12 @@ local function chordEv(M, dir, tick, colour)
     return { tick = tick, len = 0, action = "B", semis = c.notes[1], vel = 0.8, chord = Harp:chordData(c) }
 end
 
--- C - Am - F - G, one chord per half bar (2 bars = 3840 ticks)
-local function chordLoop(M, L, slot)
-    L.tracks[slot or 2].events = {
-        chordEv(M, "NEUTRAL", 0), chordEv(M, "DOWN", 960), chordEv(M, "LEFT", 1920), chordEv(M, "RIGHT", 2880),
-    }
+-- C - Am - F - G on track C, one chord per half bar (2 bars = 3840 ticks)
+local function chordList(M)
+    return { chordEv(M, "NEUTRAL", 0), chordEv(M, "DOWN", 960), chordEv(M, "LEFT", 1920), chordEv(M, "RIGHT", 2880) }
+end
+local function chordLoop(M, L)
+    H.laneChords(chordList(M))
 end
 
 local function bassNote(tick, degree, extra)
@@ -67,54 +68,49 @@ return {
         H.eq(at(2500), "F", "third chord")
         H.eq(at(3700), "G", "last chord")
         H.eq(select(2, at(0)), "recorded", "source")
-        L.tracks[2].events = { chordEv(M, "DOWN", 960), chordEv(M, "RIGHT", 2880) }
+        H.laneChords({ chordEv(M, "DOWN", 960), chordEv(M, "RIGHT", 2880) })
         H.eq(at(100), "G", "before the first chord: the last one carries over")
     end },
 
     { "a chord played a touch late still counts on the beat", function()
         local M, L = boot()
-        L.tracks[2].events = { chordEv(M, "NEUTRAL", 30), chordEv(M, "DOWN", 1000) }
+        H.laneChords({ chordEv(M, "NEUTRAL", 30), chordEv(M, "DOWN", 1000) })
         H.eq(name(M, M.Harmony:chordAt(960)), "Am", "40 ticks late: new chord on the beat")
         H.eq(name(M, M.Harmony:chordAt(800)), "C", "but not a whole 1/8 early")
         H.eq(name(M, M.Harmony:chordAt(0)), "C", "same at the loop start")
     end },
 
-    { "the lowest-numbered harp with chords is the source; muting doesn't matter", function()
+    { "track C is the only source: a harp's recorded chords don't steer; muting doesn't matter", function()
         local M, L = boot()
-        M.Instruments:swapTrackInstrument(4, "harp")
-        L.tracks[4].events = { chordEv(M, "LEFT", 0) }
-        H.eq(M.Harmony:source(), L.tracks[4], "track 2 has no chords yet")
-        L.tracks[2].events = { chordEv(M, "RIGHT", 0) }
-        H.eq(M.Harmony:source(), L.tracks[2], "track 2 wins")
+        L.tracks[2].events = { chordEv(M, "LEFT", 0) }             -- the harp on track 2
+        H.eq(M.Harmony:source(), nil, "a harp is never the source")
+        H.eq(select(2, M.Harmony:chordAt(0)), "tonic", "so: the tonic")
+        H.laneChords({ chordEv(M, "RIGHT", 0) })
+        H.eq(M.Harmony:source(), L:getLane(), "track C is")
         L.tracks[2].muted = true
-        H.eq(name(M, M.Harmony:chordAt(0)), "G", "muted source still sets the harmony")
+        H.eq(name(M, M.Harmony:chordAt(0)), "G", "track C's chord")
     end },
 
-    { "nothing recorded: the chord last played live on the harp", function()
+    { "a chord played live on the harp doesn't steer the others", function()
         local M, L = boot()
         H.tap("SELECT")                                 -- harp
         H.hold("LEFT"); H.tap("B"); H.release("LEFT")   -- play IV, not recording
         local chord, from = M.Harmony:chordAt(0)
-        H.eq(name(M, chord), "F", "live chord")
-        H.eq(from, "live", "source")
-        H.tap("SELECT")                                 -- on to the bass: D-pad now plays bass
-        H.hold("RIGHT"); H.play(0.2)
-        H.eq(L.tracks[2].state.currentChord.roman, "I", "the harp's own chord ignores the D-pad while the bass is active")
-        H.release("RIGHT")
-        H.eq(name(M, M.Harmony:chordAt(0)), "F", "moving the D-pad on another track doesn't change it")
+        H.eq(name(M, chord), "C", "still the tonic")
+        H.eq(from, "tonic", "source")
         chordLoop(M, L)
-        H.eq(select(2, M.Harmony:chordAt(0)), "recorded", "recorded chords win")
+        H.eq(select(2, M.Harmony:chordAt(0)), "recorded", "track C's chords")
     end },
 
-    { "erasing, clearing or swapping the chord track falls back", function()
+    { "clearing track C falls back; undo of a fresh session brings it back", function()
         local M, L = boot()
         chordLoop(M, L)
         H.eq(name(M, M.Harmony:chordAt(960)), "Am", "following")
-        L:clearTrack(2)
+        L:clearTrack(L.LANE)
         H.eq(select(2, M.Harmony:chordAt(960)), "tonic", "cleared")
         chordLoop(M, L)
-        M.Instruments:swapTrackInstrument(2, "drums")
-        H.eq(select(2, M.Harmony:chordAt(960)), "tonic", "swapped away")
+        L:freshSession()
+        H.eq(select(2, M.Harmony:chordAt(960)), "tonic", "fresh session")
         L:undo()
         H.eq(name(M, M.Harmony:chordAt(960)), "Am", "undo brings the chords back")
     end },
@@ -122,6 +118,7 @@ return {
     { "a key change moves recorded chords, and the harp plays them in the new key", function()
         local M, L = boot()
         chordLoop(M, L)
+        L.tracks[2].events = chordList(M)                          -- the harp's own recording
         M.Theory.rootIndex = 3                          -- D
         H.eq(name(M, M.Harmony:chordAt(960)), "Bm", "vi in D")
         local heard = {}
@@ -166,7 +163,7 @@ return {
 
     { "borrowed chords give their own root and third", function()
         local M, L = boot()
-        L.tracks[2].events = { chordEv(M, "DOWN_LEFT", 0), chordEv(M, "UP", 1920) }
+        H.laneChords({ chordEv(M, "DOWN_LEFT", 0), chordEv(M, "UP", 1920) })
         L.tracks[3].events = { bassNote(0, 1), bassNote(480, 3), bassNote(1920, 1), bassNote(2400, 3) }
         H.eq(playLoop(M, L), "-2 2 -4 0", "Bb, D, Ab, C")
     end },
@@ -183,7 +180,7 @@ return {
 
     { "octave and the 7th colour carry through", function()
         local M, L = boot()
-        L.tracks[2].events = { chordEv(M, "RIGHT", 0, "7TH") }
+        H.laneChords({ chordEv(M, "RIGHT", 0, "7TH") })
         L.tracks[3].events = { bassNote(0, 7), bassNote(960, 1, { octave = 1 }) }
         H.eq(playLoop(M, L), "5 7", "F (b7 of G7), G an octave up from G below")
     end },

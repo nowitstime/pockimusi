@@ -27,7 +27,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
 | Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `LEFT / RIGHT` change the value. A new option costs a row, not a button |
 | Instrument swap | Preview with `LEFT/RIGHT`, apply on `SELECT` release, **undoable** |
-| Harmony | **Chord-follow**: chord harp track drives the current chord, tonic fallback, per-track `FOLLOW` row |
+| Harmony | **Chord-follow**: **track C** (the chord lane) is the only chord source, tonic fallback, per-track `FOLLOW` row. The Chord Track instrument is retired |
 | Drums randomness | **Variation** row + **chance** hits, applied at playback |
 | Notes | **Event format v2**: integer ticks, note length, degrees + absolute pitch, bends, chance |
 | Audio | **Sustained voices** (attack + seamless loop layers) for all pitched patches |

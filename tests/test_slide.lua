@@ -54,9 +54,7 @@ return {
     { "FOLLOW: steps and snapping land on the chord's notes; saves", function()
         local M, st, def, track = boot()
         local L = M.Looper
-        M.Instruments:swapTrackInstrument(1, "chords")
-        local ct = L.tracks[1]
-        M.Instruments.byId.chords:stamp(ct.state, ct)        -- C G Am F, a half bar each
+        H.popChords(M)                                       -- C G Am F on track C, a half bar each
         L.activeTrack = 3
         L:setPlaying(false); L:seek(0.3); H.play(0.05)       -- under G
         H.eq(def:nearestNote(5, st), 5, "off: F is a scale note")

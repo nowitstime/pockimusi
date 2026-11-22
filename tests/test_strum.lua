@@ -278,7 +278,7 @@ return {
         local M, state, def, track = boot()
         local T, S = M.Theory, M.Synth
         local V = T:getChordForDirection("RIGHT", false, false)
-        M.Looper.tracks[2].state.liveChord = V                -- the harp's chord is now V
+        H.setChord(V)                                         -- track C's chord is now V
         local root = T:getScaleDegreeSemis(1)
         local ev = { action = "R1", tick = 0, degree = 1, octave = 0, semis = root, stack = { 2, 4 },
                      strum = 0.012, vel = 0.85, len = 0 }

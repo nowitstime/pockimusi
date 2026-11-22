@@ -52,7 +52,7 @@ Chrome.FOOTER_HINTS = {
                   { "key", { "SELECT" }, "FRESH" } },
     NEW       = { { "key", { "SELECT" }, "HOLD 1 S: CLEAR ALL NOTES" }, { "dpad", "L", "WITH L2+R2: UNDO" } },
     FX        = { { "dpad", "U", "STUTTER" }, { "dpad", "D", "SLOW" }, { "dpad", "L", "FILTER" }, { "dpad", "R", "CRUSH" },
-                  { "face", "XYAB", "MUTE" } },
+                  { "face", "XYAB", "MUTE 1-4" } },
 }
 Chrome.FOOTER_TAGS = { REC_LATCH = "REC", REC_HOLD = "REC", TRACK = "TRACK", MIX = "MIX", TRANSPORT = "CLOCK",
                        ERASE = "ERASE", NEW = "FRESH", FX = "LIVE FX" }

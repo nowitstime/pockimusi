@@ -21,7 +21,7 @@ local Instruments = {
     -- there is skipped, so an instrument is added by adding its file. Only a
     -- module marked `lab = true` (a test tool such as FINGERS) depends on
     -- Config.LAB.
-    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "chords", "fingers" },
+    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" },
     catalog = {},
     byId = {},
 }

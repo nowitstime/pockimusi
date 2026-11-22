@@ -20,9 +20,9 @@ local function chordEv(M, dir, tick)
 end
 
 local function chordLoop(M, L)
-    L.tracks[2].events = {
+    H.laneChords({
         chordEv(M, "NEUTRAL", 0), chordEv(M, "DOWN", 960), chordEv(M, "LEFT", 1920), chordEv(M, "RIGHT", 2880),
-    }
+    })
 end
 
 local function seekTick(L, tick)
@@ -230,7 +230,7 @@ return {
         H.play(L:getLoopDuration() * 0.98)
         check(notes, "playback")
         -- new chords: the recording re-harmonises
-        L.tracks[2].events = { chordEv(M, "LEFT", 0) }
+        H.laneChords({ chordEv(M, "LEFT", 0) })
         L:silenceAll()
         notes = watch(M, L)
         seekTick(L, 3830)
