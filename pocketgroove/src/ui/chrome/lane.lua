@@ -3,10 +3,10 @@
 -- (part of src/ui/chrome.lua: adds methods to the Chrome table)
 --
 -- One box per bar, four to a row (2 x 4 at 8 bars, 4 x 4 at 16). The
--- playhead is the cursor: its box is outlined. Clock stopped, that box shows
--- the D-pad's chord greyed out before B writes it. Running, the playing box
--- is lit and a change waiting for the bar line shows dashed. While X is held
--- the progression being pointed at shows greyed out where a tap would put it.
+-- playhead is the cursor: its box is outlined, and that is where B and a
+-- stamp write (no greyed-out preview: it read as a chord already there).
+-- Running, the playing box is lit and a change waiting for the bar line
+-- shows dashed.
 -- ============================================================================
 
 local Config      = require("src.config")
@@ -31,19 +31,6 @@ function Chrome:drawLaneView(def, state, track, col)
     local running = Looper.playing
     local cells = def:cells(state, track)
 
-    -- Ghost chords: the wheel's progression from where a tap would land, or
-    -- (stopped) the D-pad's chord in the box under the playhead
-    local ghost = {}
-    if state.wheelOpen and state.hover then
-        local chords = def:progressionChords(state, state.hover)
-        local start = math_floor(pos / bar)            -- a tap stamps from the box under the playhead
-        for i, ch in ipairs(chords) do
-            local b = start + i
-            if b <= nBars then ghost[b] = ch end
-        end
-    elseif not running and state.currentChord then
-        ghost[curBar] = state.currentChord
-    end
     local q = state.queued
     local queuedBar = q and q.at > song and (math_floor(Looper:lanePos(q.at) / bar) + 1) or nil
 
@@ -101,14 +88,10 @@ function Chrome:drawLaneView(def, state, track, col)
         local cy = gy + math_floor((b - 1) / cols) * (ch + gap)
         local isCur = (b == curBar)
         local playing = running and isCur
-        local g = ghost[b]
 
         self:setColor(playing and Config.shade(col, 0.3) or C.PANEL)
         love.graphics.rectangle("fill", cx, cy, cw, ch, 3, 3)
-        if g then
-            self:setColor(C.TEXT, 0.55)
-            self:dashedRect(cx + 0.5, cy + 0.5, cw - 1, ch - 1)
-        elseif b == queuedBar then
+        if b == queuedBar then
             self:setColor(C.TEXT, 0.85)
             self:dashedRect(cx + 0.5, cy + 0.5, cw - 1, ch - 1)
         else
@@ -124,10 +107,7 @@ function Chrome:drawLaneView(def, state, track, col)
 
         -- what is in the box
         local name, numeral, fg, nfg
-        if g then
-            name, numeral = Theory:chordName(g), def:numeral(g)
-            fg, nfg = { C.TEXT[1], C.TEXT[2], C.TEXT[3], 0.6 }, C.MUTED
-        elseif b == queuedBar then
+        if b == queuedBar then
             name, numeral = Theory:chordName(q.chord), def:numeral(q.chord)
             fg, nfg = C.TEXT, C.MUTED
         elseif #cell.starts == 1 then

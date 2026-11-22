@@ -49,6 +49,7 @@ Reach it with `SELECT` taps after track 4 (1 → 2 → 3 → 4 → C). It is sil
 - **Good:** the idea.
 - **Not yet:** the buttons and stamping still a little unintuitive; BACK on `Y` was strange; a stamp starting from the next slot felt strange.
 - **Changed:** `Y` is CLEAR, the box under the playhead, in both modes (the playhead doesn't move; undo stays on `L2 + R2 + LEFT`). A stamp starts in the box the playhead is on, running or stopped.
+- **Then:** the greyed-out preview boxes were confusing: removed; the outlined box under the playhead shows where things go.
 
 ---
 

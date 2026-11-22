@@ -203,7 +203,7 @@ So nothing depends on recording chords first: with no chord track, followers sim
 
 | Control | Clock running (live) | Clock stopped (writing it out) |
 | :-- | :-- | :-- |
-| D-pad | Which chord | Which chord, shown greyed out in the box under the playhead |
+| D-pad | Which chord | Which chord (the outlined box under the playhead is where it goes) |
 | `B` | Change at the next bar line (up to a 1/16 late counts for the line just gone). Recording: written; not recording: the followers play it for its length, nothing written | Write this box, step on |
 | `L1` / `R1` held + `B` | Lasts 2 bars / lands on the next half bar | Write 2 bars / 1/2 bar and step that far |
 | `L1 + R1` held + `B` | Next beat | Write one beat |

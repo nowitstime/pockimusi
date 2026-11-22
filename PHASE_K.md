@@ -129,7 +129,7 @@ Part of [ROADMAP.md](ROADMAP.md). Background: [feedback/chords.md](feedback/chor
 - Harmony: track C's live change or wheel preview, then its chords, then (as before) recorded Chord Harp / Chord Track chords in a slot, then a live chord, then the tonic. **Different from the plan:** recorded Harp chords still steer when track C is empty, so older sessions and the Harp keep working until the Harp pass.
 - Stamps and edits always write (one undo each); `B` while running writes only when recording.
 - The Chord Track stays a slot instrument for now.
-- **Changed after the first device test:** `Y` is CLEAR (the box under the playhead, running or stopped; the playhead doesn't move) instead of DELETE / take-back; a stamp starts in the box under the playhead even with the clock running, instead of waiting for the next bar line.
+- **Changed after the first device test:** `Y` is CLEAR (the box under the playhead, running or stopped; the playhead doesn't move) instead of DELETE / take-back; a stamp starts in the box under the playhead even with the clock running, instead of waiting for the next bar line. The greyed-out previews in the chart (the D-pad chord, the wheel's progression) are gone: the outlined box is enough, and they read as chords already there.
 
 ## Open (decide after playing)
 
