@@ -204,18 +204,18 @@ So nothing depends on recording chords first: with no chord track, followers sim
 | Control | Clock running (live) | Clock stopped (writing it out) |
 | :-- | :-- | :-- |
 | D-pad | Which chord | Which chord (the outlined box under the playhead is where it goes) |
-| `B` | Change at the next bar line (up to a 1/16 late counts for the line just gone). Recording: written; not recording: the followers play it for its length, nothing written | Write this box, step on |
-| `L1` / `R1` held + `B` | Lasts 2 bars / lands on the next half bar | Write 2 bars / 1/2 bar and step that far |
-| `L1 + R1` held + `B` | Next beat | Write one beat |
-| `L1` / `R1` tap | — | Step back / on a bar (the chord carries on) |
+| `B` | Change at the next box (up to a 1/16 late counts for the box just begun). Recording: written; not recording: the followers play it for one box, nothing written | Write this box, step on |
+| `L1` / `R1` tap | — | Step back / on a box (the chord carries on) |
 | `A` held + D-pad | Colour the chord playing | Colour the chord behind the playhead |
 | `Y` | Clear the box playing (hold: keep clearing each box reached) | Clear the box under the playhead (it doesn't move) |
 | `X` held | The progression wheel: point at one to hear it on the other tracks; `L1` / `R1` flip the page; let go = picked, nothing written | The same |
 | `X` tap | Stamp the picked progression from the box the playhead is on, no waiting | Stamp it from the playhead's box, step past it |
 
+- **One box = one `GRID` unit:** 1/2, 1 (default), 2, 3 or 4 bars. `B` writes one box, a stamp puts one chord in each box, `Y` clears one box. Changing `GRID` moves no chords; the chart just redraws its boxes (the last box stops at the lane's end).
+- **The same chord twice in a row joins into one** on the timeline, so a long chord is the same chord again, or a box stepped over. Lengths mix freely: pick the finest grid you need.
 - Writing a box leaves the rest of the lane as it was: a chord that was sounding at the end of the box comes back there if more chords follow.
 - Undo: stopped writes, stamps, colours and clears are one undo per press; recording live is one undo per pass of the lane.
-- **Rows:** `BARS`, `PREVIEW` (`STRUM` / `STAB` / `OFF`: the chord plays softly as you write with the clock stopped), `SOUND` (the preview sound, default `HARP`), `COLOUR` (for new chords), `SPICE`.
+- **Rows:** `BARS`, `GRID`, `PREVIEW` (`STRUM` / `STAB` / `OFF`: the chord plays softly as you write with the clock stopped), `SOUND` (the preview sound, default `HARP`), `COLOUR` (for new chords), `SPICE`.
 - **Wheel:** page 1 POP, 50S, SAD POP, ROCK, JAZZ ii-V-I, ROYAL ROAD, MIXO, CANON; page 2 DESCEND, HEROIC, BITTERSWEET, BLUES 8.
 - **FOLLOW:** a follower's `FOLLOW ON` row reads `ON - NO CHORDS YET` while nothing sets chords (it then plays as `OFF`); starting to record with `FOLLOW OFF` while chords are set warns.
 - Saved with the session (settings and chords); a fresh session clears it.

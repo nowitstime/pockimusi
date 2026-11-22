@@ -12,16 +12,16 @@ Reach it with `SELECT` taps after track 4 (1 → 2 → 3 → 4 → C). It is sil
 
 | Control | Clock running | Clock stopped |
 | :-- | :-- | :-- |
-| D-pad + `B` | Change at the next bar line (live; written while recording) | Write this box, step on |
-| `L1` / `R1` held + `B` | Lasts 2 bars / next half bar | Write 2 bars / 1/2 bar |
-| `L1 + R1` + `B` | Next beat | Write a beat |
-| `L1` / `R1` tap | — | Step back / on (the chord carries on) |
+| D-pad + `B` | Change at the next box (live; written while recording) | Write this box, step on |
+| `L1` / `R1` tap | — | Step back / on a box (the chord carries on) |
 | `A` held + D-pad | Colour the chord playing | Colour the chord behind the playhead |
 | `Y` | Clear the box playing (hold: keep clearing) | Clear the box under the playhead |
 | `X` held | Progression wheel (`L1` / `R1`: page 2); let go = picked | The same |
 | `X` tap | Stamp the picked progression from the box playing | Stamp it here, step past it |
 
-**Rows:** `BARS` (2 / 4 / 8 / 16), `PREVIEW` (`STRUM` / `STAB` / `OFF`), `SOUND`, `COLOUR`, `SPICE`.
+One box = one `GRID` unit (1/2, 1, 2, 3, 4 bars). The same chord twice in a row joins into one.
+
+**Rows:** `BARS` (2 / 4 / 8 / 16), `GRID`, `PREVIEW` (`STRUM` / `STAB` / `OFF`), `SOUND`, `COLOUR`, `SPICE`.
 
 **Try:** stop the clock (`START`), go to track C, and write 16 bars: hold `X`, point at a progression, let go, tap `X` a few times, finish a bar or two with `B`. Then press play, go to the bass, and jam over it.
 
@@ -50,6 +50,7 @@ Reach it with `SELECT` taps after track 4 (1 → 2 → 3 → 4 → C). It is sil
 - **Not yet:** the buttons and stamping still a little unintuitive; BACK on `Y` was strange; a stamp starting from the next slot felt strange.
 - **Changed:** `Y` is CLEAR, the box under the playhead, in both modes (the playhead doesn't move; undo stays on `L2 + R2 + LEFT`). A stamp starts in the box the playhead is on, running or stopped.
 - **Then:** the greyed-out preview boxes were confusing: removed; the outlined box under the playhead shows where things go.
+- **Then:** chord length as a setting, not controls: `GRID` row (1/2, 1, 2, 3, 4 bars, default 1); one box = one unit; the same chord twice in a row joins into one, so lengths mix by repeating. The shoulder lengths are gone: shoulders only step boxes with the clock stopped.
 
 ---
 

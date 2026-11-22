@@ -5,30 +5,30 @@
 -- (Looper.tracks[Looper.LANE]). Its chords sit on the lane's own timeline,
 -- 2 / 4 / 8 / 16 bars (BARS row), which can be longer than the loop.
 --
+-- One box = one GRID unit (GRID row: 1/2, 1, 2, 3 or 4 bars; default 1). The
+-- same chord twice in a row joins into one on the timeline, so longer
+-- chords are just the same chord again (or a box stepped over).
+--
 -- The playhead is the cursor; B writes where it is heading.
 --   Clock running (live)
---     D-pad + B        change at the next bar line (a press up to a 1/16
+--     D-pad + B        change at the next box line (a press up to a 1/16
 --                      late counts for the line just gone). Recording: it is
---                      written. Not recording: the followers play it for its
---                      length, nothing is written.
---     L1 / R1 held + B sparser (lasts 2 bars) / denser (next half bar)
---     L1 + R1 + B      next beat
+--                      written. Not recording: the followers play it for one
+--                      box, nothing is written.
 --     A held + D-pad   colour the chord playing
 --     Y                clear the box playing (hold: keep clearing)
 --   Clock stopped (writing it out)
 --     D-pad + B        write the box under the playhead, step on
---     L1 / R1 held + B write 2 bars / 1/2 bar and step that far (both: a beat)
---     L1 / R1 tap      step back / on a bar (the chord carries on)
+--     L1 / R1 tap      step back / on a box (the chord carries on)
 --     A held + D-pad   colour the chord behind the playhead
 --     Y                clear the box under the playhead (it doesn't move)
 --   Both
 --     X held           the progression wheel: point at one to hear it on the
 --                      other tracks; L1 / R1 flip the page; let go = picked
---     X tap            stamp the picked progression where the playhead is
---                      (running: from the next bar line) and step past it.
---                      Shoulders held: 2 bars / 1/2 bar / a beat a chord.
+--     X tap            stamp the picked progression from the box under the
+--                      playhead, one chord a box (stopped: step past it).
 --
--- Edits (stamp, colour, delete, stopped writes) are one undo per press.
+-- Edits (stamp, colour, clear, stopped writes) are one undo per press.
 -- Recording live is one undo per pass of the lane.
 -- ============================================================================
 
@@ -59,6 +59,8 @@ local Lane = {
     STRUM_GAP = 0.02,
 
     BARS = { 2, 4, 8, 16 },
+    GRIDS = { 0.5, 1, 2, 3, 4 },            -- one box, in bars (GRID row)
+    GRID_LABELS = { "1/2 BAR", "1 BAR", "2 BARS", "3 BARS", "4 BARS" },
     PREVIEWS = { "STRUM", "STAB", "OFF" },
     LATE = 120,                   -- a press this soon after a line counts for that line
     TAP = 0.25,                   -- X held longer than this opens the wheel
@@ -76,7 +78,7 @@ local Lane = {
 
     VIEW = {
         dpad = {},
-        face = { B = "WRITE", A = "COLOUR", Y = "DELETE", X = "STAMP" },
+        face = { B = "WRITE", A = "COLOUR", Y = "CLEAR", X = "STAMP" },
     },
 }
 
@@ -89,6 +91,7 @@ local DIRS = { "NEUTRAL", "UP", "UP_RIGHT", "RIGHT", "DOWN_RIGHT", "DOWN", "DOWN
 function Lane:newState()
     return {
         bars = 4,
+        grid = 1,                  -- one box, in bars (GRID row)
         colour = "TRIAD",          -- colour new chords get
         spiceLevel = "OFF",
         spice = {},                -- [event] = coloured chord, this lane pass (Harmony)
@@ -133,13 +136,35 @@ function Lane:numeral(chord)
     return Chords:numeral(chord)
 end
 
--- The shoulders say where a chord lands and how long it lasts: { grid, len, label }
-function Lane:shoulderLength(l1, r1)
-    local bar = Looper.BAR_TICKS
-    if l1 and r1 then return Looper.PPQN, Looper.PPQN, "1 BEAT" end
-    if l1 then return bar, 2 * bar, "2 BARS" end
-    if r1 then return bar / 2, bar / 2, "1/2 BAR" end
-    return bar, bar, "1 BAR"
+-- One box (GRID row): its length in ticks, and its label
+function Lane:unit(state)
+    local g = state.grid or 1
+    local label = "1 BAR"
+    for i, v in ipairs(self.GRIDS) do
+        if v == g then label = self.GRID_LABELS[i] end
+    end
+    return math_floor(g * Looper.BAR_TICKS + 0.5), label
+end
+
+-- The box holding lane position `pos`: its start and length (the last box
+-- stops at the lane's end)
+function Lane:boxAt(state, pos)
+    local unit = self:unit(state)
+    local laneT = Looper:getLaneTicks()
+    local start = math_floor(pos / unit) * unit
+    return start, math_min(unit, laneT - start), math_floor(pos / unit)
+end
+
+-- How many boxes the lane has
+function Lane:boxCount(state)
+    return math.ceil(Looper:getLaneTicks() / self:unit(state))
+end
+
+-- Where a box starts, as "BAR 5" or "BAR 5.3" (bar.beat)
+function Lane:posLabel(pos)
+    local bar = math_floor(pos / Looper.BAR_TICKS) + 1
+    local beat = math_floor((pos % Looper.BAR_TICKS) / Looper.PPQN) + 1
+    return beat == 1 and ("BAR " .. bar) or ("BAR " .. bar .. "." .. beat)
 end
 
 -- ---------------------------------------------------------------------------
@@ -172,6 +197,38 @@ function Lane:activeAt(track, pos)
     end
 end
 
+-- Are two chords the same chord (name and colour)?
+local function sameChord(a, b)
+    return a and b and Theory:chordName(a) == Theory:chordName(b) and (a.colour or "TRIAD") == (b.colour or "TRIAD")
+end
+
+-- The same chord twice in a row joins into one: the later one goes. (The
+-- lane's first chord is never joined to its last across the end.)
+function Lane:joinRepeats(list)
+    local chords = {}
+    for _, ev in ipairs(list) do
+        if ev.chord then chords[#chords + 1] = ev end
+    end
+    table.sort(chords, function(a, b) return a.tick < b.tick end)
+    local drop, prev = {}, nil
+    for _, ev in ipairs(chords) do
+        if prev and sameChord(prev.chord, ev.chord) then drop[ev] = true else prev = ev end
+    end
+    if not next(drop) then return list end
+    local out = {}
+    for _, ev in ipairs(list) do
+        if not drop[ev] then out[#out + 1] = ev end
+    end
+    return out
+end
+
+-- Replace the lane's events (repeats joined)
+function Lane:setEvents(track, list)
+    track.events = self:joinRepeats(list)
+    Looper:touch(track)
+    return track.events
+end
+
 -- Write `chord` over lane positions [pos, pos + len) (never past the lane's
 -- end). What was there goes; if a chord was sounding at the end of the span
 -- and more chords follow, it comes back there, so writing one box leaves the
@@ -199,9 +256,7 @@ function Lane:write(track, chord, pos, len, via, takeId)
     end
     out[#out + 1] = { tick = pos, len = 0, action = "B", via = via or "B", chord = chord, vel = 0.75,
                       takeId = takeId or Looper.currentTakeId }
-    track.events = out
-    Looper:touch(track)
-    return out
+    return self:setEvents(track, out)
 end
 
 -- One undo entry for an edit (the whole list as it was)
@@ -278,19 +333,22 @@ end
 -- ---------------------------------------------------------------------------
 -- Live (clock running)
 -- ---------------------------------------------------------------------------
--- The line a press lands on: the next one, or the one just gone if it is
--- less than LATE ticks back
-function Lane:landing(grid)
+-- The box a press lands on: the next one, or the one just begun if it is
+-- less than LATE ticks old. Returns its song tick and length.
+function Lane:landing(state)
     local song = Looper:songTick()
-    local line = math_floor(song / grid) * grid
-    if song - line < self.LATE then return line end
-    return line + grid
+    local pos = Looper:lanePos(song)
+    local start, len = self:boxAt(state, pos)
+    if pos - start < self.LATE then return song - (pos - start), len end
+    local nextPos = (start + len) % Looper:getLaneTicks()
+    local _, nextLen = self:boxAt(state, nextPos)
+    return song + (start + len - pos), nextLen
 end
 
 function Lane:liveChange(state, track)
-    local grid, len, label = self:shoulderLength(Input.down.L1, Input.down.R1)
+    local _, label = self:unit(state)
     local chord = Chords:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
-    local at = self:landing(grid)
+    local at, len = self:landing(state)
     local rec = Input:isRecording()
     if rec then
         local take = self:recordUndo(state, track)
@@ -311,38 +369,42 @@ end
 local function barOf(pos) return math_floor(pos / Looper.BAR_TICKS) + 1 end
 
 function Lane:stepWrite(state, track)
-    local grid, len, label = self:shoulderLength(Input.down.L1, Input.down.R1)
     local chord = Chords:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
-    local from = Looper:lanePos()
-    local pos = math_floor(from / grid) * grid
+    local pos, len = self:boxAt(state, Looper:lanePos())
     self:pushEdit(track, "WRITE")
     self:write(track, chord, pos, len, "B")
     Looper:seekLane(pos + len)
     state.flash.B = 1.0
     self:previewChord(state, track, chord)
-    Looper:showToast(string.format("BAR %d: %s (%s) - %s", barOf(pos), Theory:chordName(chord), self:numeral(chord), label))
+    Looper:showToast(string.format("%s: %s (%s)", self:posLabel(pos), Theory:chordName(chord), self:numeral(chord)))
 end
 
--- L1 / R1 tap: back / on to a bar line
-function Lane:step(dir)
-    local bar = Looper.BAR_TICKS
+-- L1 / R1 tap: back / on a box
+function Lane:step(state, dir)
     local pos = Looper:lanePos()
-    local line = math_floor(pos / bar) * bar
+    local start, len = self:boxAt(state, pos)
     local target
     if dir < 0 then
-        target = (pos - line > 1) and line or line - bar
+        if pos - start > 1 then
+            target = start
+        elseif start == 0 then
+            target = (self:boxCount(state) - 1) * self:unit(state)      -- wrap to the last box
+        else
+            target = self:boxAt(state, start - 1)
+        end
     else
-        target = line + bar
+        target = start + len
     end
     Looper:seekLane(target)
-    Looper:showToast(string.format("BAR %d OF %d", barOf(Looper:lanePos()), Looper:getLaneBars()))
+    local _, _, i = self:boxAt(state, Looper:lanePos())
+    Looper:showToast(string.format("BOX %d OF %d - %s", i + 1, self:boxCount(state), self:posLabel(Looper:lanePos())))
 end
 
--- Y: clear box `b` (bars from 0): the chords that start in it go. A chord
+-- Y: clear box `b` (from 0): the chords that start in it go. A chord
 -- carried over from before it keeps playing there.
 function Lane:clearBox(state, track, b, fresh)
-    local bar = Looper.BAR_TICKS
-    local from, to = b * bar, (b + 1) * bar
+    local unit = self:unit(state)
+    local from, to = b * unit, math_min((b + 1) * unit, Looper:getLaneTicks())
     local out, gone = {}, {}
     for _, ev in ipairs(track.events) do
         if ev.chord and ev.tick >= from and ev.tick < to then gone[#gone + 1] = ev else out[#out + 1] = ev end
@@ -351,17 +413,16 @@ function Lane:clearBox(state, track, b, fresh)
     if #gone == 0 then
         if fresh then
             local carried = self:activeAt(track, from)
-            Looper:showToast(string.format("BAR %d: NOTHING TO CLEAR%s", b + 1,
+            Looper:showToast(string.format("%s: NOTHING TO CLEAR%s", self:posLabel(from),
                 carried and (" (" .. Theory:chordName(carried.chord) .. " CARRIES ON)") or ""))
         end
         return
     end
     if fresh then self:pushEdit(track, "CLEAR") end
-    track.events = out
-    Looper:touch(track)
+    self:setEvents(track, out)
     local names = {}
     for i, ev in ipairs(gone) do names[i] = Theory:chordName(ev.chord) end
-    Looper:showToast(string.format("BAR %d CLEARED (%s)", b + 1, table.concat(names, " ")))
+    Looper:showToast(string.format("%s CLEARED (%s)", self:posLabel(from), table.concat(names, " ")))
 end
 
 -- ---------------------------------------------------------------------------
@@ -392,8 +453,7 @@ function Lane:applyColour(state, track, colour, fresh)
     for k, v in pairs(ev) do copy[k] = v end
     copy.chord = chord
     out[i] = copy
-    track.events = out
-    Looper:touch(track)
+    self:setEvents(track, out)
     state.flash.A = 1.0
     if not Looper.playing then self:previewChord(state, track, chord) end
     Looper:showToast(string.format("%s -> %s (%s)", Theory:chordName(ev.chord), Theory:chordName(chord), self:numeral(chord)))
@@ -428,20 +488,19 @@ function Lane:closeWheel(state)
     state.preview = nil
 end
 
-function Lane:stamp(state, track, l1, r1)
+function Lane:stamp(state, track)
     local p = self:progression(state.picked)
-    local grid, len, label = self:shoulderLength(l1, r1)
+    local unit, label = self:unit(state)
     local laneT = Looper:getLaneTicks()
     local running = Looper.playing
-    local from = Looper:lanePos()
-    local start = math_floor(from / grid) * grid      -- the box under the playhead, running or stopped
+    local start = self:boxAt(state, Looper:lanePos())   -- the box under the playhead, running or stopped
     self:pushEdit(track, "STAMP")
     Looper:beginRecordingTake()
     local pos, n = start, 0
     for _, dir in ipairs(p.dirs) do
         if pos >= laneT then break end
-        self:write(track, Chords:chordData(self:chordFor(state, dir)), pos, len, "X")
-        pos = pos + len
+        self:write(track, Chords:chordData(self:chordFor(state, dir)), pos, unit, "X")
+        pos = math_min(pos + unit, laneT)
         n = n + 1
     end
     state.flash.X = 1.0
@@ -467,7 +526,7 @@ local function shoulderTaps(state)
             if Input.down[other] then state[other .. "used"] = true end
         end
     end
-    if Input.pressed.B or Input.pressed.X or state.wheelOpen then
+    if Input.pressed.X or state.wheelOpen then
         if Input.down.L1 then state.L1used = true end
         if Input.down.R1 then state.R1used = true end
     end
@@ -478,10 +537,6 @@ function Lane:updateInput(dt, state, track)
 
     -- X: hold for the wheel, tap to stamp
     if Input.down.X then
-        -- the shoulders held at any point during the tap set the chord length
-        if Input.pressed.X then state.xL1, state.xR1 = false, false end
-        state.xL1 = state.xL1 or Input.down.L1
-        state.xR1 = state.xR1 or Input.down.R1
         state.xHeld = state.xHeld + dt
         if not state.wheelOpen and state.xHeld >= self.TAP then
             state.wheelOpen = true
@@ -510,7 +565,7 @@ function Lane:updateInput(dt, state, track)
             end
             self:closeWheel(state)
         else
-            self:stamp(state, track, state.xL1 or Input.down.L1, state.xR1 or Input.down.R1)
+            self:stamp(state, track)
         end
         state.xHeld = 0.0
     end
@@ -533,7 +588,7 @@ function Lane:updateInput(dt, state, track)
         if Input.pressed.B then self:liveChange(state, track) end
     end
     -- Y: clear the box under the playhead; held while running, each box it reaches
-    local box = math_floor(Looper:lanePos() / Looper.BAR_TICKS)
+    local _, _, box = self:boxAt(state, Looper:lanePos())
     if Input.pressed.Y then
         self:clearBox(state, track, box, true)
         state.clearing = box
@@ -547,8 +602,8 @@ function Lane:updateInput(dt, state, track)
     end
     if not Looper.playing then
         if Input.pressed.B then self:stepWrite(state, track) end
-        if Input.released.L1 and not state.L1used and not Input.down.R1 then self:step(-1) end
-        if Input.released.R1 and not state.R1used and not Input.down.L1 then self:step(1) end
+        if Input.released.L1 and not state.L1used and not Input.down.R1 then self:step(state, -1) end
+        if Input.released.R1 and not state.R1used and not Input.down.L1 then self:step(state, 1) end
     end
 end
 
@@ -581,9 +636,9 @@ function Lane:updateVisuals(dt, state, controlsBlocked, isActive)
     if wheel then
         self.VIEW.l1, self.VIEW.r1, self.VIEW.both = "PAGE", "PAGE", nil
     elseif Looper.playing then
-        self.VIEW.l1, self.VIEW.r1, self.VIEW.both = "2 BARS", "1/2 BAR", "1 BEAT"
+        self.VIEW.l1, self.VIEW.r1, self.VIEW.both = "-", "-", nil
     else
-        self.VIEW.l1, self.VIEW.r1, self.VIEW.both = "< STEP", "STEP >", "1 BEAT"
+        self.VIEW.l1, self.VIEW.r1, self.VIEW.both = "< BOX", "BOX >", nil
     end
 end
 
@@ -625,7 +680,7 @@ local function listRow(key, label, labels, index)
     return { key = key, label = label, kind = "setting", value = labels[index], items = items, index = index }
 end
 
-Lane.SOUND_ROW = 3
+Lane.SOUND_ROW = 4
 
 function Lane:getSoundRows(state)
     local bars = {}
@@ -634,6 +689,7 @@ function Lane:getSoundRows(state)
     sound.label = "SOUND"
     return {
         listRow("BARS", "BARS", bars, indexOf(self.BARS, state.bars)),
+        listRow("GRID", "GRID", self.GRID_LABELS, indexOf(self.GRIDS, state.grid)),
         listRow("PREVIEW", "PREVIEW", self.PREVIEWS, indexOf(self.PREVIEWS, state.previewStyle)),
         sound,
         listRow("COLOUR", "COLOUR", Theory.COLOURS, indexOf(Theory.COLOURS, state.colour)),
@@ -662,6 +718,10 @@ end
 function Lane:cycleSetting(state, key, delta)
     if key == "BARS" then
         self:setBars(state, Looper:getLane(), step(self.BARS, state.bars, delta))
+    elseif key == "GRID" then
+        state.grid = step(self.GRIDS, state.grid, delta)
+        local _, label = self:unit(state)
+        Looper:showToast("ONE BOX = " .. label .. " - B AND STAMPS WRITE " .. label .. " A CHORD")
     elseif key == "PREVIEW" then
         state.previewStyle = step(self.PREVIEWS, state.previewStyle, delta)
         Looper:showToast("PREVIEW: " .. state.previewStyle .. (state.previewStyle ~= "OFF" and " - WHEN WRITING WITH THE CLOCK STOPPED" or ""))
@@ -686,20 +746,23 @@ local function shown(state, ev)
     return (state.spice and state.spice[ev]) or ev.chord
 end
 
--- One entry per bar: the chords starting in it ({ chord, frac }), or a
--- carried chord (`carry`), or nothing before the lane's first chord
+-- One entry per box: the chords starting in it ({ chord, frac }), or a
+-- carried chord (`carry`), or nothing before the lane's first chord.
+-- `from` is the box's start (lane ticks), `onBar` whether that is a bar line.
 function Lane:cells(state, track)
     local list = chordEvents(track)
-    local bar = Looper.BAR_TICKS
+    local unit = self:unit(state)
+    local laneT = Looper:getLaneTicks()
     local out = {}
-    local n = state.bars
+    local n = self:boxCount(state)
     local k, current = 1, nil
     for b = 1, n do
-        local from, to = (b - 1) * bar, b * bar
-        local cell = { starts = {}, bar = b }
+        local from, to = (b - 1) * unit, math_min(b * unit, laneT)
+        local cell = { starts = {}, index = b, from = from, onBar = (from % Looper.BAR_TICKS == 0),
+                       bar = math_floor(from / Looper.BAR_TICKS) + 1 }
         while list[k] and list[k].tick < to do
             local ev = list[k]
-            cell.starts[#cell.starts + 1] = { chord = shown(state, ev), frac = (ev.tick - from) / bar, ev = ev }
+            cell.starts[#cell.starts + 1] = { chord = shown(state, ev), frac = (ev.tick - from) / (to - from), ev = ev }
             current = ev
             k = k + 1
         end
@@ -731,7 +794,7 @@ end
 -- Save / load (the events are saved by Session with the lane)
 -- ---------------------------------------------------------------------------
 function Lane:saveState(state)
-    return { bars = state.bars, colour = state.colour, spice = state.spiceLevel, patch = state.patch,
+    return { bars = state.bars, grid = state.grid, colour = state.colour, spice = state.spiceLevel, patch = state.patch,
              preview = state.previewStyle, picked = state.picked }
 end
 
@@ -739,6 +802,9 @@ function Lane:loadState(state, data)
     if type(data) ~= "table" then return end
     for _, b in ipairs(self.BARS) do
         if data.bars == b then state.bars = b end
+    end
+    for _, g in ipairs(self.GRIDS) do
+        if data.grid == g then state.grid = g end
     end
     for _, c in ipairs(Theory.COLOURS) do
         if data.colour == c then state.colour = c end

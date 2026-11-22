@@ -2,7 +2,8 @@
 -- src/ui/chrome/lane.lua — Track C's stage view: the chord chart
 -- (part of src/ui/chrome.lua: adds methods to the Chrome table)
 --
--- One box per bar, four to a row (2 x 4 at 8 bars, 4 x 4 at 16). The
+-- One box per GRID unit (1/2 to 4 bars), four to a row (eight past 16
+-- boxes). The
 -- playhead is the cursor: its box is outlined, and that is where B and a
 -- stamp write (no greyed-out preview: it read as a chord already there).
 -- Running, the playing box is lit and a change waiting for the bar line
@@ -27,16 +28,23 @@ function Chrome:drawLaneView(def, state, track, col)
     local nBars = state.bars
     local song = Looper:songTick()
     local pos = Looper:lanePos()
-    local curBar = math_floor(pos / bar) + 1
     local running = Looper.playing
     local cells = def:cells(state, track)
+    local nBoxes = #cells
+    local boxStart, boxLen, boxIdx = def:boxAt(state, pos)
+    local curBox = boxIdx + 1
+    local _, unitLabel = def:unit(state)
 
     local q = state.queued
-    local queuedBar = q and q.at > song and (math_floor(Looper:lanePos(q.at) / bar) + 1) or nil
+    local queuedBox
+    if q and q.at > song then
+        local _, _, qi = def:boxAt(state, Looper:lanePos(q.at))
+        queuedBox = qi + 1
+    end
 
     -- Header
     love.graphics.setFont(self.fontTiny)
-    local info = (running and "LIVE" or "STOPPED") .. " - " .. nBars .. " BARS"
+    local info = (running and "LIVE" or "STOPPED") .. " - " .. nBars .. " BARS - BOX " .. unitLabel
     if state.spiceLevel ~= "OFF" then info = info .. " - SPICE " .. state.spiceLevel end
     self:setColor(C.MUTED)
     love.graphics.print(info, 208, 88)
@@ -54,17 +62,17 @@ function Chrome:drawLaneView(def, state, track, col)
     elseif running then
         if q and q.at > song then
             big = "NEXT: " .. Theory:chordName(q.chord)
-            sub = "AT BAR " .. queuedBar .. (q.rec and "  -  RECORDED" or "  -  LIVE, NOT RECORDED")
+            sub = "AT " .. def:posLabel(Looper:lanePos(q.at)) .. (q.rec and "  -  RECORDED" or "  -  LIVE, NOT RECORDED")
         else
             local chord = state.currentChord
             big = chord and Theory:chordName(chord) or "-"
-            sub = "B: NEXT BAR LINE  -  L2 RECORDS"
+            sub = "B: NEXT BOX  -  L2 RECORDS"
         end
         bigCol = C.TEXT
     else
         local chord = state.currentChord
         big = chord and Theory:chordName(chord) or "-"
-        sub = "B WRITES BAR " .. curBar .. ", STEPS ON"
+        sub = "B WRITES " .. def:posLabel(boxStart) .. ", STEPS ON"
         bigCol = C.TEXT
     end
     love.graphics.setFont(self.fontLarge)
@@ -75,23 +83,23 @@ function Chrome:drawLaneView(def, state, track, col)
     love.graphics.print(sub, math_floor(320 - self.fontTiny:getWidth(sub) * 0.5), 124)
 
     -- The chart
-    local cols = math_min(4, nBars)
-    local rows = math.ceil(nBars / cols)
+    local cols = (nBoxes > 16) and 8 or math_min(4, nBoxes)
+    local rows = math.ceil(nBoxes / cols)
     local gx, gy, gw, gh = 206, 140, 228, 160
     local gap = 4
     local cw = (gw - (cols - 1) * gap) / cols
     local ch = math_min(44, (gh - (rows - 1) * gap) / rows)
-    local small = ch < 30
-    for b = 1, nBars do
+    local small = ch < 30 or cols > 4
+    for b = 1, nBoxes do
         local cell = cells[b]
         local cx = gx + ((b - 1) % cols) * (cw + gap)
         local cy = gy + math_floor((b - 1) / cols) * (ch + gap)
-        local isCur = (b == curBar)
+        local isCur = (b == curBox)
         local playing = running and isCur
 
         self:setColor(playing and Config.shade(col, 0.3) or C.PANEL)
         love.graphics.rectangle("fill", cx, cy, cw, ch, 3, 3)
-        if b == queuedBar then
+        if b == queuedBox then
             self:setColor(C.TEXT, 0.85)
             self:dashedRect(cx + 0.5, cy + 0.5, cw - 1, ch - 1)
         else
@@ -107,7 +115,7 @@ function Chrome:drawLaneView(def, state, track, col)
 
         -- what is in the box
         local name, numeral, fg, nfg
-        if b == queuedBar then
+        if b == queuedBox then
             name, numeral = Theory:chordName(q.chord), def:numeral(q.chord)
             fg, nfg = C.TEXT, C.MUTED
         elseif #cell.starts == 1 then
@@ -126,7 +134,7 @@ function Chrome:drawLaneView(def, state, track, col)
         if f:getWidth(name) > cw - 4 then f = self.fontTiny end
         love.graphics.setFont(f)
         self:setColor(fg)
-        local showNum = numeral and not small and nBars < 16
+        local showNum = numeral and not small and nBoxes < 16
         local ny = showNum and (cy + ch * 0.5 - f:getHeight() + 1) or (cy + (ch - f:getHeight()) * 0.5)
         love.graphics.print(name, math_floor(cx + (cw - f:getWidth(name)) * 0.5), math_floor(ny))
         if showNum then
@@ -134,15 +142,15 @@ function Chrome:drawLaneView(def, state, track, col)
             self:setColor(nfg)
             love.graphics.print(numeral, math_floor(cx + (cw - self.fontTiny:getWidth(numeral)) * 0.5), math_floor(cy + ch * 0.5 + 2))
         end
-        if not small then
+        if not small and cell.onBar then
             love.graphics.setFont(self.fontTiny)
             self:setColor(C.DIM)
-            love.graphics.print(tostring(b), cx + 3, cy + 1)
+            love.graphics.print(tostring(cell.bar), cx + 3, cy + 1)        -- the bar the box starts on
         end
 
         -- the playhead: stopped, a star on the box's edge; running, it rides through the box
         if isCur then
-            local frac = running and ((pos % bar) / bar) or 0
+            local frac = running and ((pos - boxStart) / boxLen) or 0
             self:drawStarGlint(cx + frac * cw, cy + (running and 0 or ch * 0.5), running and 4.5 or 5.5, C.TEXT, 1.0)
         end
     end

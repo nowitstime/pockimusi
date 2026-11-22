@@ -71,7 +71,7 @@ return {
         local rows = M.Instruments:getSoundRows(def, lane.state, lane)
         local keys = {}
         for i, r in ipairs(rows) do keys[i] = r.key end
-        H.eq(table.concat(keys, " "), "BARS PREVIEW PATCH COLOUR SPICE", "its rows; no effect rows")
+        H.eq(table.concat(keys, " "), "BARS GRID PREVIEW PATCH COLOUR SPICE", "its rows; no effect rows")
     end },
 
     { "an 8-bar lane over a 2-bar loop: each pass gets its own chords", function()
@@ -135,19 +135,20 @@ return {
         L.pass = 0; L:seek(0.3)
         H.play(0.05, { "DOWN", "B" })          -- vi, recorded
         M.Input.recLatched = false
-        H.eq(laneOf(M, L, lane), "1.1:C 2.1:Am 3.1:Am 4.1:F", "written on bar 2")
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:Am 4.1:F", "written on bar 2 (joins the Am after it)")
         L:undo()
         H.eq(laneOf(M, L, lane), "1.1:C 2.1:G 3.1:Am 4.1:F", "one undo per lane pass")
     end },
 
-    { "running: shoulders make a change sparser or denser", function()
+    { "running: GRID sets the box a change lands on", function()
         local M, L, lane = boot()
         fill(M, L, lane, { "I", "V", "vi", "IV" })
+        lane.state.grid = 0.5
         M.Input.recLatched = true
         L.activeTrack = L.LANE
         L.pass = 0; L:seek(0.1)                -- early in bar 1
-        H.play(0.05, { "R1", "RIGHT", "B" })   -- V on the half bar
-        H.eq(laneOf(M, L, lane), "1.1:C 1.3:G 2.1:G 3.1:Am 4.1:F", "lands half way through bar 1")
+        H.play(0.05, { "LEFT", "B" })          -- IV on the half bar
+        H.eq(laneOf(M, L, lane), "1.1:C 1.3:F 2.1:G 3.1:Am 4.1:F", "a 1/2-bar box: lands half way through bar 1")
         M.Input.recLatched = false
     end },
 
@@ -161,9 +162,10 @@ return {
         H.eq(laneOf(M, L, lane), "1.1:C 2.1:G", "two boxes")
         H.eq(lanePos(L), 3, "playhead on bar 3")
         H.tap("R1")                            -- step on: G carries on
-        H.play(0.05, { "L1", "DOWN", "B" }); H.play(0.05)   -- Am for 2 bars
-        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G 4.1:Am", "carry, then a 2-bar chord")
-        H.eq(lanePos(L), 6, "stepped 2 bars")
+        H.play(0.05, { "DOWN", "B" }); H.play(0.05)          -- Am
+        H.play(0.05, { "DOWN", "B" }); H.play(0.05)          -- Am again: joins
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G 4.1:Am", "carry, then the same chord twice = one 2-bar chord")
+        H.eq(lanePos(L), 6, "stepped 2 boxes")
         H.tap("L1"); H.tap("L1")
         H.eq(lanePos(L), 4, "L1 taps step back")
         H.tap("Y")
@@ -221,8 +223,10 @@ return {
 
         stopped(L)
         lane.state.picked = "JAZZ ii-V-I"
-        H.play(0.05, { "L1", "X" }); H.play(0.05)
-        H.eq(laneOf(M, L, lane), "1.1:Dm 3.1:G 5.1:C 7.1:C", "L1 held: two bars a chord")
+        lane.state.grid = 2
+        H.tap("X")
+        H.eq(laneOf(M, L, lane), "1.1:Dm 3.1:G 5.1:C", "GRID 2 bars: two bars a chord; I I joins into one")
+        H.eq(lanePos(L), 1, "stepped past it (wraps to bar 1)")
     end },
 
     { "stamp while running starts in the box the playhead is on", function()
@@ -278,5 +282,22 @@ return {
         bassState.follow = true
         H.falsy(Modes:followWarning(), "FOLLOW ON: none")
     end },
-}
 
+    { "GRID: one box per unit; changing it moves no chords", function()
+        local M, L, lane, def = boot()
+        fill(M, L, lane, { "I", "V", "vi", "IV" })
+        lane.state.grid = 0.5
+        H.eq(#def:cells(lane.state, lane), 8, "1/2 bar: 8 boxes in 4 bars")
+        lane.state.grid = 3
+        local cells = def:cells(lane.state, lane)
+        H.eq(#cells, 2, "3 bars: 2 boxes (the last is short)")
+        H.eq(#cells[1].starts, 3, "the first box holds C G Am")
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G 3.1:Am 4.1:F", "nothing moved")
+        L.activeTrack = L.LANE
+        L:setPlaying(false); L:seekLane(0)
+        H.tap("R1")
+        H.eq(lanePos(L), 4, "R1 steps one 3-bar box")
+        H.tap("R1")
+        H.eq(lanePos(L), 1, "past the short last box: back to the start")
+    end },
+}

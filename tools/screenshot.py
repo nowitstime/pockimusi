@@ -30,6 +30,10 @@ SCENES = {
     "lane-wheel": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 16; L.activeTrack = L.LANE;'
                   ' H.tap("X"); H.hold("X"); H.play(0.4); H.hold("DOWN"); H.play(0.2)',
     "lane-trackpage": 'local L = require("src.looper"); L.activeTrack = L.LANE; H.hold("SELECT"); H.play(0.3); H.tap("DOWN")',
+    "lane-half": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 16; lane.state.grid = 0.5; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
+                 ' H.tap("X"); H.tap("X"); H.tap("R1"); H.play(0.05, { "RIGHT", "B" }); H.play(0.05)',
+    "lane-grid2": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 8; lane.state.grid = 2; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
+                  ' H.tap("X"); L:setPlaying(true); H.play(0.4)',
     "lane-empty": 'H.tap("SELECT"); H.tap("SELECT"); H.play(0.2)',
     "lane-16": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 16; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
                ' H.tap("X"); H.tap("X"); lane.state.picked = "ROYAL ROAD"; H.tap("X"); L:setPlaying(true); H.play(0.3)',

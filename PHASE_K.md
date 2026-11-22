@@ -45,8 +45,6 @@ Part of [ROADMAP.md](ROADMAP.md). Background: [feedback/chords.md](feedback/chor
 | :-- | :-- | :-- |
 | D-pad | Which chord | Which chord, shown greyed out in the box ahead |
 | `B` | Change at the **next bar line** | Write this box, step on |
-| `L1` / `R1` held + `B` | Sparser: lasts 2 bars · denser: next half bar | Write 2 bars / ½ bar and step that far |
-| `L1 + R1` held + `B` | Change on the next beat | Write one beat |
 | `L1` / `R1` tap | — | Step back / step on (the chord carries on, `%`) |
 | `A` held + D-pad | Colour the chord playing | Colour the box behind the playhead |
 | `Y` | Delete the chord playing (hold: keep deleting) | Take back the last thing written (a chord or a whole stamp) and step back |
@@ -129,7 +127,7 @@ Part of [ROADMAP.md](ROADMAP.md). Background: [feedback/chords.md](feedback/chor
 - Harmony: track C's live change or wheel preview, then its chords, then (as before) recorded Chord Harp / Chord Track chords in a slot, then a live chord, then the tonic. **Different from the plan:** recorded Harp chords still steer when track C is empty, so older sessions and the Harp keep working until the Harp pass.
 - Stamps and edits always write (one undo each); `B` while running writes only when recording.
 - The Chord Track stays a slot instrument for now.
-- **Changed after the first device test:** `Y` is CLEAR (the box under the playhead, running or stopped; the playhead doesn't move) instead of DELETE / take-back; a stamp starts in the box under the playhead even with the clock running, instead of waiting for the next bar line. The greyed-out previews in the chart (the D-pad chord, the wheel's progression) are gone: the outlined box is enough, and they read as chords already there.
+- **Changed after the first device test:** `Y` is CLEAR (the box under the playhead, running or stopped; the playhead doesn't move) instead of DELETE / take-back; a stamp starts in the box under the playhead even with the clock running, instead of waiting for the next bar line. Chord length became a `GRID` row (1/2, 1, 2, 3, 4 bars; one box = one unit) in place of the shoulder lengths, and the same chord twice in a row joins into one. The greyed-out previews in the chart (the D-pad chord, the wheel's progression) are gone: the outlined box is enough, and they read as chords already there.
 
 ## Open (decide after playing)
 
