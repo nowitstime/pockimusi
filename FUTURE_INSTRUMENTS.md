@@ -245,6 +245,10 @@ The single buttons are 1, 3, 5, 7: chord tones on the buttons, passing notes bet
 | **Conductor drums** | Hold a pad to fill in a pattern; D-pad sets density and placement | 💤 fold into Drums `VARIATION` (Phase H) |
 | **Vowel** | D-pad picks a vowel (ah, ee, oh…), buttons pick the chord tone: a choir that sings | 💤 really a patch family for Pad (brightness crossfade between vowel layers), not an instrument |
 | **Slicer** | 4 pads × 8 directions = 32 slices of a sample | 💤 needs sample loading (Phase J) |
+| **Euclid** | Each face button is a voice; the D-pad sets how many hits are spread evenly over the bar, the shoulders rotate the pattern. Layered polyrhythms | 💤 overlaps Drums `VARIATION`; revisit after [PHASE_L.md](PHASE_L.md) |
+| **Cycle** | A 3- or 5-step phrase repeating against the 4/4 bar, drifting against it | 💤 a row on Roller or Euclid rather than an instrument |
+| **Echo** | Each note repeats on the grid, fading; the D-pad sets what each repeat does (stay, climb, fall, octave) | 🧩 an `ECHO` row on melodic instruments (after Phase L) |
+| **Riser** | Holding builds tension that peaks on the next phrase line; release early to cut it | 🧩 recordable `R2` effects, not a track slot |
 
 ---
 
