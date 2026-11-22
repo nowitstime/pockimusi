@@ -243,7 +243,8 @@ function Chrome:drawTrackPageView(def, state, track, col)
         self:setColor(isSel and col or C.MUTED)
         love.graphics.print(row.label, 250, y - 6)
 
-        local value = isSel and ("<  " .. row.value .. "  >") or row.value
+        local shownValue = row.note and (row.value .. " - " .. row.note) or row.value
+        local value = isSel and ("<  " .. shownValue .. "  >") or shownValue
         love.graphics.setFont(self.fontSmall)
         self:setColor((isSel and not off) and C.TEXT or C.MUTED)
         love.graphics.print(value, valueX, y - 7)
@@ -270,7 +271,8 @@ function Chrome:drawTrackPageView(def, state, track, col)
     end
 
     -- Effects as moon phases, with the face button that switches each one
-    for i, slot in ipairs(Looper.FX_ORDER) do
+    -- (track C is silent: no effects)
+    for i, slot in ipairs(track.isLane and {} or Looper.FX_ORDER) do
         local x = 236 + (i - 1) * 56
         local on = track.fx.on[slot]
         local amt = track.fx[slot]

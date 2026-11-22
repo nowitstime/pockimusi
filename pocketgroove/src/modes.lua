@@ -145,11 +145,26 @@ local function updateRecPass()
     end
 end
 
+-- Recording on a track whose FOLLOW is off while chords are set: its notes
+-- won't move with the chords. A warning, or nil.
+function Modes:followWarning()
+    local def, state, track = Instruments:getTrackInstrument(Looper.activeTrack)
+    if not state or state.follow ~= false or not track or track.isLane then return nil end
+    local hasRow = false
+    for _, row in ipairs(Instruments:getSoundRows(def, state)) do
+        if row.key == "FOLLOW" then hasRow = true end
+    end
+    if not hasRow or not require("src.harmony"):source() then return nil end
+    return "FOLLOW OFF - THESE NOTES STAY PUT WHEN THE CHORDS CHANGE"
+end
+
 local function updateRecord()
     updateCountIn()
     updateRecPass()
     if Input.pressed.L2 then
         Looper:beginRecordingTake()
+        Modes.warned = Modes:followWarning()
+        if Modes.warned then Looper:showToast(Modes.warned) end
     end
     if not Input.released.L2 then return end
 
@@ -161,7 +176,7 @@ local function updateRecord()
             startCountIn()
         else
             Input.recLatched = not Input.recLatched
-            Looper:showToast(Input.recLatched and "[REC] RECORD LATCHED (TAP L2 TO STOP)" or "RECORD STOPPED")
+            Looper:showToast(Input.recLatched and (Modes.warned or "[REC] RECORD LATCHED (TAP L2 TO STOP)") or "RECORD STOPPED")
         end
     elseif Input.recLatched and Input.l2HoldTime >= Modes.TAP_MAX then
         -- Releasing a held punch-in also clears the latch

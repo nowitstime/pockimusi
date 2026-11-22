@@ -85,6 +85,11 @@ function Instruments:getSoundRows(def, state, track)
         local name = def.patchName or def.name
         rows = { { key = "PATCH", label = "PATCH", value = name, items = { { label = name } }, index = 1 } }
     end
+    for _, row in ipairs(rows) do
+        if row.key == "FOLLOW" and row.value == "ON" and not require("src.harmony"):hasChords() then
+            row.note = "NO CHORDS YET"          -- drawn after the value; ON plays as OFF until then
+        end
+    end
     if track and not def.NO_FX then
         for _, slot in ipairs(Looper.FX_ORDER) do
             local on = track.fx.on[slot]

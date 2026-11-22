@@ -520,7 +520,7 @@ function Strum:getView(state, track)
         sub = string.format("DEG %s  -  %s  -  %s  -  %s", Bass:degreeLabel(deg), dir, state.register, state.strum),
         patch = patch and patch.label or "?",
         middle = (patch and patch.sustains) and "BOWED" or "PLUCKED",
-        follow = state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+        follow = Harmony:followChip(state.follow),
         followOn = state.follow,
         strings = strings,
         marks = {},

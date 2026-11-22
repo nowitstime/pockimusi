@@ -147,6 +147,20 @@ function Harmony:chordAt(tick, lookahead)
     return self:tonic(), "tonic"
 end
 
+-- Is anything setting chords (recorded, live, or a live change on track C)?
+-- With nothing, FOLLOW ON plays exactly as FOLLOW OFF: everything is in the key.
+function Harmony:hasChords()
+    if self:source() or self:liveChord() then return true end
+    return self:overrideAt(Looper:songTick()) ~= nil
+end
+
+-- The FOLLOW chip on a follower's stage: what it follows
+function Harmony:followChip(on)
+    if not on then return "FOLLOW OFF" end
+    if not self:hasChords() then return "FOLLOW - NO CHORDS" end
+    return "FOLLOW " .. Theory:chordName((self:current()))
+end
+
 -- The chord at the playhead
 function Harmony:current()
     return self:chordAt(Looper.tick)

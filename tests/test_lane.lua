@@ -240,4 +240,27 @@ return {
         L:undo()
         H.eq(#lane.events, 8, "undo")
     end },
+    { "FOLLOW says when there is nothing to follow; recording with FOLLOW OFF over chords warns", function()
+        local M, L, lane = boot()
+        local Modes = require("src.modes")
+        local bassDef, bassState, bass = M.Instruments:getTrackInstrument(3)
+        local function followRow()
+            for _, r in ipairs(M.Instruments:getSoundRows(bassDef, bassState, bass)) do
+                if r.key == "FOLLOW" then return r.value .. (r.note and (" - " .. r.note) or "") end
+            end
+        end
+        bassState.follow = true
+        M.Instruments:swapTrackInstrument(2, "drums")          -- no Harp chords either
+        H.eq(followRow(), "ON - NO CHORDS YET", "nothing set: the row says so")
+        H.eq(M.Harmony:followChip(true), "FOLLOW - NO CHORDS", "and the chip")
+        fill(M, L, lane, { "I", "V" })
+        H.eq(followRow(), "ON", "chords on track C")
+        H.eq(M.Harmony:followChip(true):sub(1, 7), "FOLLOW ", "chip names the chord")
+        L.activeTrack = 3
+        bassState.follow = false
+        H.truthy(Modes:followWarning(), "FOLLOW OFF over chords: a warning")
+        bassState.follow = true
+        H.falsy(Modes:followWarning(), "FOLLOW ON: none")
+    end },
 }
+
