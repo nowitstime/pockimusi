@@ -36,7 +36,7 @@ function Chrome:drawLaneView(def, state, track, col)
     local ghost = {}
     if state.wheelOpen and state.hover then
         local chords = def:progressionChords(state, state.hover)
-        local start = running and math_floor(Looper:lanePos(def:landing(bar)) / bar) or math_floor(pos / bar)
+        local start = math_floor(pos / bar)            -- a tap stamps from the box under the playhead
         for i, ch in ipairs(chords) do
             local b = start + i
             if b <= nBars then ghost[b] = ch end

@@ -209,12 +209,12 @@ So nothing depends on recording chords first: with no chord track, followers sim
 | `L1 + R1` held + `B` | Next beat | Write one beat |
 | `L1` / `R1` tap | — | Step back / on a bar (the chord carries on) |
 | `A` held + D-pad | Colour the chord playing | Colour the chord behind the playhead |
-| `Y` | Delete the chord playing (hold: keep deleting) | Take back the last thing written, step back |
+| `Y` | Clear the box playing (hold: keep clearing each box reached) | Clear the box under the playhead (it doesn't move) |
 | `X` held | The progression wheel: point at one to hear it on the other tracks; `L1` / `R1` flip the page; let go = picked, nothing written | The same |
-| `X` tap | Stamp the picked progression from the next bar line | Stamp it at the playhead, step past it |
+| `X` tap | Stamp the picked progression from the box the playhead is on, no waiting | Stamp it from the playhead's box, step past it |
 
 - Writing a box leaves the rest of the lane as it was: a chord that was sounding at the end of the box comes back there if more chords follow.
-- Undo: stopped writes, stamps, colours and deletes are one undo per press; recording live is one undo per pass of the lane.
+- Undo: stopped writes, stamps, colours and clears are one undo per press; recording live is one undo per pass of the lane.
 - **Rows:** `BARS`, `PREVIEW` (`STRUM` / `STAB` / `OFF`: the chord plays softly as you write with the clock stopped), `SOUND` (the preview sound, default `HARP`), `COLOUR` (for new chords), `SPICE`.
 - **Wheel:** page 1 POP, 50S, SAD POP, ROCK, JAZZ ii-V-I, ROYAL ROAD, MIXO, CANON; page 2 DESCEND, HEROIC, BITTERSWEET, BLUES 8.
 - **FOLLOW:** a follower's `FOLLOW ON` row reads `ON - NO CHORDS YET` while nothing sets chords (it then plays as `OFF`); starting to record with `FOLLOW OFF` while chords are set warns.

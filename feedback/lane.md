@@ -17,9 +17,9 @@ Reach it with `SELECT` taps after track 4 (1 → 2 → 3 → 4 → C). It is sil
 | `L1 + R1` + `B` | Next beat | Write a beat |
 | `L1` / `R1` tap | — | Step back / on (the chord carries on) |
 | `A` held + D-pad | Colour the chord playing | Colour the chord behind the playhead |
-| `Y` | Delete the chord playing | Take back the last write |
+| `Y` | Clear the box playing (hold: keep clearing) | Clear the box under the playhead |
 | `X` held | Progression wheel (`L1` / `R1`: page 2); let go = picked | The same |
-| `X` tap | Stamp the picked progression from the next bar | Stamp it here, step past it |
+| `X` tap | Stamp the picked progression from the box playing | Stamp it here, step past it |
 
 **Rows:** `BARS` (2 / 4 / 8 / 16), `PREVIEW` (`STRUM` / `STAB` / `OFF`), `SOUND`, `COLOUR`, `SPICE`.
 
@@ -44,7 +44,11 @@ Reach it with `SELECT` taps after track 4 (1 → 2 → 3 → 4 → C). It is sil
 
 ## Feedback
 
-*No pass yet.*
+### Session 1 — 2026-11-22 📱
+
+- **Good:** the idea.
+- **Not yet:** the buttons and stamping still a little unintuitive; BACK on `Y` was strange; a stamp starting from the next slot felt strange.
+- **Changed:** `Y` is CLEAR, the box under the playhead, in both modes (the playhead doesn't move; undo stays on `L2 + R2 + LEFT`). A stamp starts in the box the playhead is on, running or stopped.
 
 ---
 

@@ -164,11 +164,13 @@ return {
         H.play(0.05, { "L1", "DOWN", "B" }); H.play(0.05)   -- Am for 2 bars
         H.eq(laneOf(M, L, lane), "1.1:C 2.1:G 4.1:Am", "carry, then a 2-bar chord")
         H.eq(lanePos(L), 6, "stepped 2 bars")
+        H.tap("L1"); H.tap("L1")
+        H.eq(lanePos(L), 4, "L1 taps step back")
         H.tap("Y")
-        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G", "Y takes back the last write")
-        H.eq(lanePos(L), 4, "and steps back to where it was")
-        H.tap("L1")
-        H.eq(lanePos(L), 3, "L1 tap steps back")
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G", "Y clears the box under the playhead")
+        H.eq(lanePos(L), 4, "and the playhead stays")
+        H.tap("Y")
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G", "an empty box: nothing to clear")
     end },
 
     { "writing one box over a full lane leaves the rest as it was", function()
@@ -192,9 +194,11 @@ return {
         H.eq(lanePos(L), 5, "playhead on bar 5")
         H.tap("X")
         H.eq(#lane.events, 8, "a second tap: bars 5-8")
+        H.tap("L1")
         H.tap("Y")
-        H.eq(#lane.events, 4, "Y takes back a whole stamp")
-        H.eq(lanePos(L), 5, "back on bar 5")
+        H.eq(#lane.events, 7, "Y clears one box of it")
+        L:undo()
+        H.eq(#lane.events, 8, "undo brings it back")
     end },
 
     { "stamp: hold X for the wheel, point, let go = picked, nothing written", function()
@@ -221,13 +225,25 @@ return {
         H.eq(laneOf(M, L, lane), "1.1:Dm 3.1:G 5.1:C 7.1:C", "L1 held: two bars a chord")
     end },
 
-    { "stamp while running starts on the next bar line", function()
+    { "stamp while running starts in the box the playhead is on", function()
         local M, L, lane = boot()
         lane.state.bars = 8
         L.activeTrack = L.LANE
         L.pass = 0; L:seek(0.3)                -- in bar 1
         H.tap("X")
-        H.eq(laneOf(M, L, lane), "2.1:C 3.1:G 4.1:Am 5.1:F", "from bar 2")
+        H.eq(laneOf(M, L, lane), "1.1:C 2.1:G 3.1:Am 4.1:F", "from bar 1, no waiting")
+    end },
+
+    { "running: Y clears the box playing, and each box reached while held", function()
+        local M, L, lane = boot()
+        fill(M, L, lane, { "I", "V", "vi", "IV" })
+        L.activeTrack = L.LANE
+        L.pass = 0; L:seek(0.3)                -- in bar 1
+        H.tap("Y")
+        H.eq(laneOf(M, L, lane), "2.1:G 3.1:Am 4.1:F", "bar 1 cleared")
+        L.pass = 0; L:seek(0.45)               -- near the end of bar 1
+        H.hold("Y"); H.play(0.6); H.release("Y"); H.play(0.05)
+        H.eq(laneOf(M, L, lane), "3.1:Am 4.1:F", "held into bar 2: cleared too")
     end },
 
     { "BARS: a longer lane repeats what is there, a shorter one drops the end", function()

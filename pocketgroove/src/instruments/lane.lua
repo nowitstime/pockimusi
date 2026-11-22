@@ -14,13 +14,13 @@
 --     L1 / R1 held + B sparser (lasts 2 bars) / denser (next half bar)
 --     L1 + R1 + B      next beat
 --     A held + D-pad   colour the chord playing
---     Y                delete the chord playing (hold: keep deleting)
+--     Y                clear the box playing (hold: keep clearing)
 --   Clock stopped (writing it out)
 --     D-pad + B        write the box under the playhead, step on
 --     L1 / R1 held + B write 2 bars / 1/2 bar and step that far (both: a beat)
 --     L1 / R1 tap      step back / on a bar (the chord carries on)
 --     A held + D-pad   colour the chord behind the playhead
---     Y                take back the last thing written, step back
+--     Y                clear the box under the playhead (it doesn't move)
 --   Both
 --     X held           the progression wheel: point at one to hear it on the
 --                      other tracks; L1 / R1 flip the page; let go = picked
@@ -103,7 +103,6 @@ function Lane:newState()
         preview = nil,             -- { chords, start, len } the wheel's progression (Harmony)
         queued = nil,              -- { chord, at, len, rec } for the view
         currentChord = nil,
-        history = {},              -- stopped writes, for Y
         flash = { B = 0, A = 0, Y = 0, X = 0 },
         recTake = nil,             -- { pass } the lane pass being recorded
     }
@@ -253,7 +252,6 @@ function Lane:setBars(state, track, bars)
         track.events = out
         Looper:touch(track)
     end
-    state.history = {}
     Looper:showToast(string.format("TRACK C: %d BARS%s", bars, newT > oldT and " (REPEATS WHAT IS THERE)" or ""))
 end
 
@@ -317,10 +315,8 @@ function Lane:stepWrite(state, track)
     local chord = Chords:chordData(state.currentChord or self:chordFor(state, "NEUTRAL"))
     local from = Looper:lanePos()
     local pos = math_floor(from / grid) * grid
-    local before = track.events
-    local entry = self:pushEdit(track, "WRITE")
+    self:pushEdit(track, "WRITE")
     self:write(track, chord, pos, len, "B")
-    table.insert(state.history, { entry = entry, events = before, after = track.events, from = from })
     Looper:seekLane(pos + len)
     state.flash.B = 1.0
     self:previewChord(state, track, chord)
@@ -342,20 +338,30 @@ function Lane:step(dir)
     Looper:showToast(string.format("BAR %d OF %d", barOf(Looper:lanePos()), Looper:getLaneBars()))
 end
 
--- Y stopped: take back the last write (a chord or a stamp)
-function Lane:takeBack(state, track)
-    local h = table.remove(state.history)
-    if not h or track.events ~= h.after then
-        state.history = {}
-        Looper:showToast("NOTHING TO TAKE BACK")
+-- Y: clear box `b` (bars from 0): the chords that start in it go. A chord
+-- carried over from before it keeps playing there.
+function Lane:clearBox(state, track, b, fresh)
+    local bar = Looper.BAR_TICKS
+    local from, to = b * bar, (b + 1) * bar
+    local out, gone = {}, {}
+    for _, ev in ipairs(track.events) do
+        if ev.chord and ev.tick >= from and ev.tick < to then gone[#gone + 1] = ev else out[#out + 1] = ev end
+    end
+    state.flash.Y = 1.0
+    if #gone == 0 then
+        if fresh then
+            local carried = self:activeAt(track, from)
+            Looper:showToast(string.format("BAR %d: NOTHING TO CLEAR%s", b + 1,
+                carried and (" (" .. Theory:chordName(carried.chord) .. " CARRIES ON)") or ""))
+        end
         return
     end
-    track.events = h.events
+    if fresh then self:pushEdit(track, "CLEAR") end
+    track.events = out
     Looper:touch(track)
-    if Looper.undoStack[#Looper.undoStack] == h.entry then table.remove(Looper.undoStack) end
-    Looper:seekLane(h.from)
-    state.flash.Y = 1.0
-    Looper:showToast(string.format("TAKEN BACK - BAR %d", barOf(Looper:lanePos())))
+    local names = {}
+    for i, ev in ipairs(gone) do names[i] = Theory:chordName(ev.chord) end
+    Looper:showToast(string.format("BAR %d CLEARED (%s)", b + 1, table.concat(names, " ")))
 end
 
 -- ---------------------------------------------------------------------------
@@ -393,18 +399,6 @@ function Lane:applyColour(state, track, colour, fresh)
     Looper:showToast(string.format("%s -> %s (%s)", Theory:chordName(ev.chord), Theory:chordName(chord), self:numeral(chord)))
 end
 
-function Lane:deleteEvent(state, track, ev, fresh)
-    if fresh then self:pushEdit(track, "DELETE") end
-    local out = {}
-    for _, e in ipairs(track.events) do
-        if e ~= ev then out[#out + 1] = e end
-    end
-    track.events = out
-    Looper:touch(track)
-    state.flash.Y = 1.0
-    Looper:showToast(string.format("DELETED %s (%s)", Theory:chordName(ev.chord), self:numeral(ev.chord)))
-end
-
 -- ---------------------------------------------------------------------------
 -- Stamp: hold X for the wheel, tap X to put the picked progression down
 -- ---------------------------------------------------------------------------
@@ -440,9 +434,8 @@ function Lane:stamp(state, track, l1, r1)
     local laneT = Looper:getLaneTicks()
     local running = Looper.playing
     local from = Looper:lanePos()
-    local start = running and Looper:lanePos(self:landing(grid)) or math_floor(from / grid) * grid
-    local before = track.events
-    local entry = self:pushEdit(track, "STAMP")
+    local start = math_floor(from / grid) * grid      -- the box under the playhead, running or stopped
+    self:pushEdit(track, "STAMP")
     Looper:beginRecordingTake()
     local pos, n = start, 0
     for _, dir in ipairs(p.dirs) do
@@ -454,7 +447,6 @@ function Lane:stamp(state, track, l1, r1)
     state.flash.X = 1.0
     state.spice, state.spiceKey = {}, nil
     if not running then
-        table.insert(state.history, { entry = entry, events = before, after = track.events, from = from })
         Looper:seekLane(pos)
         self:previewChord(state, track, Chords:chordData(self:chordFor(state, p.dirs[1])))
     end
@@ -539,27 +531,22 @@ function Lane:updateInput(dt, state, track)
 
     if Looper.playing then
         if Input.pressed.B then self:liveChange(state, track) end
-        -- Y: delete the chord playing, then each one reached while held
-        if Input.pressed.Y then
-            local ev = self:targetChord(track)
-            if ev then self:deleteEvent(state, track, ev, true) else Looper:showToast("NO CHORD TO DELETE") end
-            state.deleting = Looper:songTick() + self.LATE
-        elseif Input.down.Y and state.deleting then
-            local a, b = state.deleting, Looper:songTick() + self.LATE
-            if b > a then
-                local laneT = Looper:getLaneTicks()
-                for _, ev in ipairs(chordEvents(track)) do
-                    local d = (ev.tick - a) % laneT
-                    if d > 0 and d <= b - a then self:deleteEvent(state, track, ev, false) end
-                end
-                state.deleting = b
-            end
-        elseif not Input.down.Y then
-            state.deleting = nil
+    end
+    -- Y: clear the box under the playhead; held while running, each box it reaches
+    local box = math_floor(Looper:lanePos() / Looper.BAR_TICKS)
+    if Input.pressed.Y then
+        self:clearBox(state, track, box, true)
+        state.clearing = box
+    elseif Input.down.Y and state.clearing and Looper.playing then
+        if box ~= state.clearing then
+            self:clearBox(state, track, box, false)
+            state.clearing = box
         end
-    else
+    elseif not Input.down.Y then
+        state.clearing = nil
+    end
+    if not Looper.playing then
         if Input.pressed.B then self:stepWrite(state, track) end
-        if Input.pressed.Y then self:takeBack(state, track) end
         if Input.released.L1 and not state.L1used and not Input.down.R1 then self:step(-1) end
         if Input.released.R1 and not state.R1used and not Input.down.L1 then self:step(1) end
     end
@@ -589,7 +576,7 @@ function Lane:updateVisuals(dt, state, controlsBlocked, isActive)
         for k, v in pairs(colouring and WHEEL_LABELS or ROMAN_LABELS) do dpad[k] = v end
     end
     local face = self.VIEW.face
-    face.Y = Looper.playing and "DELETE" or "BACK"
+    face.Y = "CLEAR"
     face.X = "STAMP"
     if wheel then
         self.VIEW.l1, self.VIEW.r1, self.VIEW.both = "PAGE", "PAGE", nil
