@@ -401,8 +401,12 @@ function Lane:step(state, dir)
 end
 
 -- Y: clear box `b` (from 0): the chords that start in it go. A chord
--- carried over from before it keeps playing there.
+-- carried over from before it keeps playing there. `fresh` = the press
+-- itself (not a box reached while Y is held). One undo per press: the entry
+-- goes on with the first box that has something to clear, even when that is
+-- a later box reached while Y is held.
 function Lane:clearBox(state, track, b, fresh)
+    if fresh then state.clearUndone = false end
     local unit = self:unit(state)
     local from, to = b * unit, math_min((b + 1) * unit, Looper:getLaneTicks())
     local out, gone = {}, {}
@@ -418,7 +422,10 @@ function Lane:clearBox(state, track, b, fresh)
         end
         return
     end
-    if fresh then self:pushEdit(track, "CLEAR") end
+    if not state.clearUndone then
+        self:pushEdit(track, "CLEAR")
+        state.clearUndone = true
+    end
     self:setEvents(track, out)
     local names = {}
     for i, ev in ipairs(gone) do names[i] = Theory:chordName(ev.chord) end

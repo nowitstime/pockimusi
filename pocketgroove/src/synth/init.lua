@@ -148,9 +148,11 @@ function Synth:stepPregen(budget)
     end
 end
 
--- Finish the background job now (a half-built patch is needed)
-function Synth:finishPregen()
-    while self.pregen do self:stepPregen(nil) end
+-- Finish only the patch the background job is half way through (it is
+-- needed now); the rest of the queue stays in the background. Each step
+-- with no budget left writes one chunk of samples and hands back.
+function Synth:finishPregenOf(p)
+    while p.building and self.pregen do self:stepPregen(0) end
 end
 
 function Synth:createPool(name, soundData, poolSize, baseDuration)

@@ -71,7 +71,7 @@ return {
         end
     end },
 
-    { "a patch picked while half built is finished at once, with its voices", function()
+    { "a patch picked while half built is finished at once, with its voices (only that one)", function()
         local M, S = bootWithClock(0.0005)
         local first
         for _ = 1, 1000 do
@@ -85,7 +85,11 @@ return {
         S:preparePatch(first, 16)
         local p = S.patches[first]
         H.truthy(p.built and not p.building, "finished")
-        H.falsy(S.pregen, "the rest of the job ran too")
+        local queue = S.pregen and S.pregen.queue
+        H.truthy(queue, "the rest of the job stays in the background")
+        if queue[#queue] ~= first then
+            H.falsy(S.patches[queue[#queue]].built, "the last one queued is not built yet")
+        end
         local n = p.loop and #S.loopPools[p.loop].sources or S.pools[p.attack].size
         H.truthy(n >= 16, "grown to the voices asked for: " .. n)
         H.truthy(p.loop == nil or S.loopPools[p.loop].data.n > 0, "loop filled")

@@ -127,11 +127,19 @@ function Chrome:drawTransportView(track, trackCol, col)
     end
 
     -- Track identity + the active track's timing settings
-    self:drawCapsuleRow(cx, 296, 16, {
-        { string.format("%d - %s", track.slot, track.name), trackCol, nil, trackCol },
-        { "GRID " .. grid.label, col, col, col, 0.16 },
-        { string.format("SWING %d%%", math_floor((track.swing or 0.5) * 100 + 0.5)), col, col, col, 0.16 },
-    })
+    local timing
+    if track.isLane then
+        -- track C has no quantize grid or swing: its box length (GRID row) instead
+        local _, unit = Instruments:getDefinition("lane"):unit(track.state)
+        timing = { { "BOX " .. unit, col, col, col, 0.16 } }
+    else
+        timing = {
+            { "GRID " .. grid.label, col, col, col, 0.16 },
+            { string.format("SWING %d%%", math_floor((track.swing or 0.5) * 100 + 0.5)), col, col, col, 0.16 },
+        }
+    end
+    table.insert(timing, 1, { Looper:slotLabel(track.slot) .. " - " .. track.name, trackCol, nil, trackCol })
+    self:drawCapsuleRow(cx, 296, 16, timing)
 end
 
 function Chrome:drawEraseView(track, def)

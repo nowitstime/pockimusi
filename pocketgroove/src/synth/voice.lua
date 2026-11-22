@@ -120,7 +120,7 @@ end
 function Install.preparePatch(Synth, id, voices)
     local p = Synth.patches[id]
     if not p or p.silent then return p end
-    if p.building then Synth:finishPregen() end    -- half built in the background
+    if p.building then Synth:finishPregenOf(p) end -- half built in the background
     local gen = p.gen
     if gen and not p.built then
         p.built = true
