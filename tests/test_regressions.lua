@@ -161,13 +161,13 @@ return {
     { "Harmony sees an event change made in place once the track is touched", function()
         local M = H.fresh(); local L = M.Looper
         local Harmony = require("src.harmony")
-        L:setTrackInstrument(2, "harp", M.Instruments)
         local chord = { root = 5, third = 4, fifth = 7 }
         local ev = { action = "B", tick = 0, len = 0, vel = 0.8, chord = chord, open = true }
-        L.tracks[2].events = { ev }
+        local lane = L:getLane()
+        lane.events = { ev }
         H.eq(select(2, Harmony:chordAt(0)), "tonic", "a held chord doesn't count yet")
         ev.open = nil
-        L:touch(L.tracks[2])
+        L:touch(lane)
         H.eq(Harmony:chordAt(0), chord, "counts once released")
     end },
 

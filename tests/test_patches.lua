@@ -162,8 +162,7 @@ return {
         H.hold("LEFT"); H.play(0.05); H.tap("B"); H.release("LEFT"); H.play(0.05)
         H.eq(#voicesOf(S, track), 0, "no sound")
         H.eq(track.state.strings[1].energy > 0, true, "the string still moves")
-        H.truthy(track.state.liveChord.roman ~= "I", "the chord is still set")
-        H.truthy(require("src.harmony"):current().roman ~= "I", "followers get the silent harp's chord")
+        H.eq(require("src.harmony"):current().roman, "I", "it doesn't steer the others: track C sets the chords")
     end },
 
     { "the harp's patch is saved and loaded; unknown ids are ignored", function()

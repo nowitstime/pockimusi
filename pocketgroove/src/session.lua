@@ -229,9 +229,23 @@ function Session.restore(data)
     local tracks = type(data.tracks) == "table" and data.tracks or {}
     local maxTake = 0
 
+    local oldChords        -- a retired Chord Track's chords, for track C
+
     for slot = 1, 4 do
         local raw = type(tracks[slot]) == "table" and tracks[slot] or {}
         local instId = raw.instrumentId
+        -- The Chord Track (retired: track C is the only chord source). Its
+        -- chords go to track C below; the slot gets its default instrument.
+        if instId == "chords" and not oldChords and type(raw.events) == "table" then
+            oldChords = {}
+            for _, rawEv in ipairs(raw.events) do
+                local ev = restoreEvent(rawEv, loop)
+                if ev and ev.chord then
+                    oldChords[#oldChords + 1] = ev
+                    if ev.takeId and ev.takeId > maxTake then maxTake = ev.takeId end
+                end
+            end
+        end
         instId = Session.REPLACED[instId] or instId
         -- An instrument that isn't there (a lab experiment since deleted, or
         -- the lab switched off): the slot's default, and none of its notes.
@@ -287,6 +301,10 @@ function Session.restore(data)
                     if ev.takeId and ev.takeId > maxTake then maxTake = ev.takeId end
                 end
             end
+        end
+        if #lane.events == 0 and oldChords and #oldChords > 0 then
+            lane.state.bars = Looper.bars          -- 2 or 4: the loop they were written on
+            lane.events = oldChords
         end
         Looper:touch(lane)
     end

@@ -92,6 +92,17 @@ function Looper:init(Instruments)
     self:initLane(Instruments)
 end
 
+-- After the loop length changes: keep the song position (and so the place
+-- in track C's lane) where it was. `oldSong` = songTick() before the change.
+-- Going 2 -> 4 bars on an odd pass puts the playhead in bars 3-4, which are
+-- a copy of bars 1-2 (or, on undo, the bars that were there), so it sounds
+-- the same.
+function Looper:keepSongPos(oldSong)
+    local loop = self:getLoopTicks()
+    self.pass = math_floor(oldSong / loop)
+    self.tick = oldSong - self.pass * loop
+end
+
 -- Track C: the chord lane. A track object (events, state, rev) like the
 -- others, so pages, undo and Harmony can treat it as one, but it is never
 -- played back and never takes another instrument.
@@ -106,8 +117,9 @@ function Looper:initLane(Instruments)
         muted = false, events = {}, rev = 0, sounding = {},
         state = def:newState(),
     }
+    -- (no Synth:configureTrackFx: the lane's effects are always off, so its
+    -- preview voices never send to them and it needs no effect units)
     self.tracks[self.LANE] = lane
-    Synth:configureTrackFx(lane)
 end
 
 function Looper:getLane()
@@ -413,7 +425,9 @@ function Looper:undo()
             -- 4 -> 2 bars: back to 4 bars with bars 3-4 as they were; notes
             -- recorded since (later takes) stay
             self:silenceAll()
+            local song = self:songTick()
             self.bars = entry.bars
+            self:keepSongPos(song)
             for slot = 1, 4 do
                 local t = self.tracks[slot]
                 local events = entry.tracks[slot]
@@ -452,7 +466,7 @@ function Looper:undo()
             self:showToast(string.format("UNDO: TRACK %d BACK TO %s (%d EVENTS)", entry.trackSlot, entry.name, #entry.events))
             return
         elseif entry.kind == "events" and track then
-            -- an edit that replaced a track's events (Chord Track stamp, delete, colour)
+            -- an edit that replaced a track's events (track C: write, stamp, clear, colour)
             self:silenceTrack(entry.trackSlot)
             track.events = entry.events
             if entry.laneBars then track.state.bars = entry.laneBars end   -- track C's BARS row
@@ -542,6 +556,7 @@ end
 
 function Looper:toggleBars()
     self:silenceAll()
+    local song = self:songTick()
     if self.bars == 2 then
         -- 2 -> 4 bars: bars 1-2 stay where they are and are copied into bars 3-4
         local oldLoop = self:getLoopTicks()
@@ -592,9 +607,9 @@ function Looper:toggleBars()
             end
             self:touch(track)
         end
-        self.tick = self.tick % loop
         self:showToast("LOOP LENGTH: 2 BARS (UNDO BRINGS BARS 3-4 BACK)")
     end
+    self:keepSongPos(song)
     self.prevTick = self.tick
     self:syncPhase()
 end

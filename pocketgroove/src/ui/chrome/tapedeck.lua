@@ -144,21 +144,6 @@ function Chrome:drawTapeDeck()
         self:drawDiamond(lx, cy, isSel and 2.8 or 2.2, tColor)
         self:drawDiamond(lx + lw, cy, isSel and 2.8 or 2.2, tColor)
 
-        -- Chord names along the chord-source lane, at each change (when there's room)
-        if Harmony:source() == track then
-            love.graphics.setFont(self.fontTiny)
-            local lastName, lastX
-            for _, ch in ipairs(Harmony:changes(track)) do
-                local nm = Theory:chordName(ch.chord)
-                local nx = lx + ch.tick / Looper:getLoopTicks() * (lw - 4)
-                if nm ~= lastName and (not lastX or nx - lastX >= 26) then
-                    self:setColor(track.muted and C.DIM or tColor, isSel and 1.0 or 0.75)
-                    love.graphics.print(nm, math_floor(nx + 4), ry - 1)
-                    lastName, lastX = nm, nx
-                end
-            end
-        end
-
         -- Recorded events: beads for hits, ribbons for held notes
         local col = track.muted and C.DIM or tColor
         local loopTicks = Looper:getLoopTicks()

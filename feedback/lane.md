@@ -37,7 +37,7 @@ One box = one `GRID` unit (1/2, 1, 2, 3, 4 bars). The same chord twice in a row 
 - [ ] The chart on the stage: grid as it is, or the "reel" (the bar ahead big in the middle)?
 - [ ] `PREVIEW`: is `STRUM` the right default? Is the sound right?
 - [ ] Live change not recorded (dashed box): useful for jamming, or confusing?
-- [ ] Does the Chord Track still need to be a slot instrument?
+- [x] Does the Chord Track still need to be a slot instrument? No: retired, track C is the only chord source
 - [ ] What should the Harp do now that track C sets the chords?
 
 ---

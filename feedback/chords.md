@@ -1,5 +1,7 @@
 # Chord Track — feedback
 
+> **Retired** (after the Phase K review): track C, the chord lane ([lane.md](lane.md)), is now the only chord source and took over the stamp, colour and spice. This page stays as the record of the experiment.
+
 **Part:** Chords (the chord source, nothing else) · **Feel:** writing the song's changes, not playing them · **Code:** `src/instruments/chords.lua` · **Index:** [feedback/](README.md)
 
 Built after noticing the Chord Harp was mostly used on `SILENT` as a chord picker. This is that job as its own instrument, to find out whether it should stay an instrument or become a feature (a hidden fifth track).

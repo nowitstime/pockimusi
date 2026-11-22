@@ -380,8 +380,13 @@ function handlers.TRANSPORT()
     Input.comboUsed.START = true
     updateSelectTap()
     local tIdx = Looper.activeTrack
+    local lane = Looper.tracks[tIdx] and Looper.tracks[tIdx].isLane
 
-    if Input.down.Y then
+    if Input.down.Y and lane then
+        if Input.pressed.UP or Input.pressed.DOWN then
+            Looper:showToast("TRACK C HAS NO SWING")
+        end
+    elseif Input.down.Y then
         if Input.pressed.UP then
             Looper:adjustSwing(tIdx, 0.02)
         elseif Input.pressed.DOWN then
@@ -403,7 +408,13 @@ function handlers.TRANSPORT()
     end
 
     if Input.pressed.B then Looper:toggleBars() end
-    if Input.pressed.A then Looper:cycleGridMode(tIdx) end
+    if Input.pressed.A then
+        if lane then
+            Looper:showToast("TRACK C: ITS GRID ROW IS ON THE TRACK PAGE (SELECT)")
+        else
+            Looper:cycleGridMode(tIdx)
+        end
+    end
     if Input.pressed.X then Looper:cycleClickMode() end
     return true
 end

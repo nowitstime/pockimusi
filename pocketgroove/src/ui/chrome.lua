@@ -77,7 +77,6 @@ for _, part in ipairs({
     "panels",
     "strum",
     "lead",
-    "chords",
     "lane",
     "pad",
 }) do

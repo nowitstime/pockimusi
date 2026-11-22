@@ -89,7 +89,7 @@ Chrome.FACE_ICONS = {
     end,
     -- Pad: layers as moon phases, swell to full
     SWELL = moonIcon(0.25), HIGH = moonIcon(0.5), OPEN = moonIcon(0.75), FULL = moonIcon(1.0),
-    -- Chord Track: the edits as tools
+    -- Track C: the edits as tools
     STAMP  = function(self, x, y) love.graphics.rectangle("fill", x - 8, y + 2, 16, 4, 1, 1); love.graphics.rectangle("fill", x - 3, y - 6, 6, 8, 1.5, 1.5) end,
     DELETE = function(self, x, y) lw(2.4); love.graphics.line(x - 6, y - 5, x + 6, y + 5); love.graphics.line(x + 6, y - 5, x - 6, y + 5); lw(1) end,
     COLOUR = function(self, x, y)

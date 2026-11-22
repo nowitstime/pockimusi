@@ -14,7 +14,7 @@
 | `L1 + R1` | Wide voicing |
 | Rows | `PATCH` (opens on `HARP`; `SILENT` = a chord track that isn't heard), `COLOUR` (triad, 7th, 9th, sus4, add9) |
 
-The lowest-numbered harp track with chords sets the chord every follower plays over.
+The harp's chords are its own: track C sets the chord every follower plays over (it used to be the lowest-numbered harp with chords).
 
 ---
 

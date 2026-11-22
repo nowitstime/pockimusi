@@ -16,11 +16,11 @@ local function chordEv(M, dir, tick, colour)
     return { tick = tick, len = 0, action = "B", semis = c.notes[1], vel = 0.8, chord = Harp:chordData(c) }
 end
 
--- C - Am - F - G, one chord per half bar (2 bars = 3840 ticks)
+-- C - Am - F - G on track C, one chord per half bar (2 bars = 3840 ticks)
 local function chordLoop(M, L)
-    L.tracks[2].events = {
+    H.laneChords({
         chordEv(M, "NEUTRAL", 0), chordEv(M, "DOWN", 960), chordEv(M, "LEFT", 1920), chordEv(M, "RIGHT", 2880),
-    }
+    })
 end
 
 local function seekTick(L, tick)
@@ -185,7 +185,7 @@ return {
 
     { "pressed just before a late chord: takes it and doesn't flip back", function()
         local M, L, st = boot()
-        L.tracks[2].events = { chordEv(M, "NEUTRAL", 0), chordEv(M, "DOWN", 1020) }
+        H.laneChords({ chordEv(M, "NEUTRAL", 0), chordEv(M, "DOWN", 1020) })
         seekTick(L, 950)
         local seen = {}
         H.hold("B")
@@ -218,7 +218,7 @@ return {
         playTo(L, 3000); H.eq(targets(st.playing), "-5 2 7", "G")
         playTo(L, 3780); H.eq(targets(st.playing), "", "ended")
         -- new chords under the same recording
-        L.tracks[2].events = { chordEv(M, "LEFT", 0) }
+        H.laneChords({ chordEv(M, "LEFT", 0) })
         seekTick(L, 0)
         playTo(L, 300);  H.eq(targets(st.playing), "5 12 17", "F now")
     end },
