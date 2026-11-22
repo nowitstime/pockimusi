@@ -51,6 +51,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | **F** | **Lead / Arp** | Same class as Bass; arp needs the clock-locked scheduling from A |
 | **G** | **Mix & FX finish** — master low-pass, meters, count-in, takes per pass | Most effects already exist |
 | **H** | **Drums pass 2** — Variation, chance, per-pad tune/level | Pass 1 is done and plays fine; randomness and per-pad tune/level land once the mix tools (meters) exist |
+| **K** | **Chord lane** — track C outside the four slots, longer than the loop, written live or with the clock stopped | The Chord Track showed the chord job doesn't need a slot; plan in [PHASE_K.md](PHASE_K.md) |
 | **I** | **Tape deck v2 & visual polish** | Ribbons/bends/chord lane need v2 data; final look across all stages |
 | **J** | **Patterns / song, `.wav` export, sample loading** | Later, once the jam loop is great |
 
@@ -138,6 +139,18 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] New patches: `808`, `KEYS`, `STRINGS`, `NYLON`, `RHODES`, `KALIMBA`, `SILENT`
 - [x] `ODD` group: `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM`
 - [ ] Device listen: every new patch (written without hearing it), levels against the old ones, the hitch when a patch is first selected
+
+## Phase K · Chord lane ✅ (device check pending) — details in [PHASE_K.md](PHASE_K.md)
+
+- [x] K1 The lane in the looper (bars, passes, save, Harmony reads it)
+- [x] K2 Track C on the `SELECT` cycle, its play surface and rows
+- [x] K3 The strip above the tape deck
+- [x] K4 Running controls: next bar line, shoulder lengths, live vs recorded
+- [x] K5 Stopped controls: write and step, take back, preview
+- [x] K6 Stamp: hold `X` for the wheel, tap `X` to place
+- [x] K7 Chord chart stage view
+- [x] K8 `FOLLOW` text and warning (Harp chords still steer when track C is empty: see the Harp pass)
+- [x] K9 SPEC and feedback updates
 
 ## Phase I · Tape deck v2 & visual polish
 

@@ -69,6 +69,6 @@ return {
         H.play(0.05)
         H.play(0.1, { "L2", "R2", "START" })
         H.play(0.5)
-        H.truthy(L.activeTrack >= 1 and L.activeTrack <= 4, "active track valid")
+        H.truthy(L.activeTrack >= 1 and L.activeTrack <= 5, "active track valid (5 = track C)")
     end },
 }

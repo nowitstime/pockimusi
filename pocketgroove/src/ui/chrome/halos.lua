@@ -22,7 +22,7 @@ return function(Chrome)
 Chrome.HALOS = {
     drums = "starburst", hands = "starburst",
     lead = "northstar", slide = "comets", strum = "garland",
-    harp = "constellation", chords = "tiara",
+    harp = "constellation", chords = "tiara", lane = "tiara",
     dial = "bezel", valves = "corona",
     bass = "crescent",
     pad = "clouds",

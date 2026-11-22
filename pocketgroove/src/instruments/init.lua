@@ -11,6 +11,7 @@ local Harp  = require("src.instruments.harp")
 local Bass  = require("src.instruments.bass")
 local Pad   = require("src.instruments.pad")
 local Lead  = require("src.instruments.lead")
+local Lane  = require("src.instruments.lane")    -- track C, never in a slot
 
 local Instruments = {
     -- The library: always in the catalogue, in this order
@@ -53,12 +54,13 @@ function Instruments:buildCatalog()
     for _, inst in ipairs(self.catalog) do
         self.byId[inst.id] = inst
     end
+    self.byId.lane = Lane          -- findable by id, but not offered for a slot
 end
 
 Instruments:buildCatalog()
 
 function Instruments:getDefinition(instrumentId)
-    return self.byId[instrumentId] or Drums
+    return self.byId[instrumentId] or (instrumentId == "lane" and Lane) or Drums
 end
 
 function Instruments:getTrackInstrument(trackSlot)
@@ -83,7 +85,12 @@ function Instruments:getSoundRows(def, state, track)
         local name = def.patchName or def.name
         rows = { { key = "PATCH", label = "PATCH", value = name, items = { { label = name } }, index = 1 } }
     end
-    if track then
+    for _, row in ipairs(rows) do
+        if row.key == "FOLLOW" and row.value == "ON" and not require("src.harmony"):hasChords() then
+            row.note = "NO CHORDS YET"          -- drawn after the value; ON plays as OFF until then
+        end
+    end
+    if track and not def.NO_FX then
         for _, slot in ipairs(Looper.FX_ORDER) do
             local on = track.fx.on[slot]
             rows[#rows + 1] = {
@@ -184,7 +191,7 @@ end
 -- Events carry no track or instrument fields: the track owns them.
 -- ---------------------------------------------------------------------------
 
-Instruments.held = { {}, {}, {}, {} }      -- per track: live held notes
+Instruments.held = { {}, {}, {}, {}, {} }  -- per track (and track C): live held notes
 
 local function defOf(self, track)
     return self:getDefinition(track.instrumentId)
@@ -328,7 +335,7 @@ end
 
 function Instruments:update(dt, controlsBlocked)
     -- Visual animations on all tracks, so background tracks decay smoothly
-    for slot = 1, 4 do
+    for slot = 1, #Looper.tracks do
         local track = Looper.tracks[slot]
         local def = self:getDefinition(track.instrumentId)
         if def.updateVisuals then
@@ -366,7 +373,7 @@ function Instruments:update(dt, controlsBlocked)
     end
 
     -- Sounding notes on all tracks (bass bends, pad chord changes and tone)
-    for slot = 1, 4 do
+    for slot = 1, #Looper.tracks do
         local trk = Looper.tracks[slot]
         local d = self:getDefinition(trk.instrumentId)
         if d.updateVoices then

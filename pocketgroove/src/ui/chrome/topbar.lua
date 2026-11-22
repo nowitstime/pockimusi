@@ -47,7 +47,7 @@ function Chrome:drawTopBar()
 
     self:setColor(C.TEXT)
     love.graphics.setFont(self.fontSmall)
-    love.graphics.print(string.format("%d - %s", sl, track and track.name or "TRK"), 36, 17)
+    love.graphics.print(string.format("%s - %s", Looper:slotLabel(sl), track and track.name or "TRK"), 36, 17)
 
     -- Hairline dividers & Metadata
     self:setColor(C.GRID)
@@ -55,10 +55,18 @@ function Chrome:drawTopBar()
 
     love.graphics.setFont(self.fontTiny)
     self:setColor(C.MUTED)
-    love.graphics.print("GRID", 156, 11)
-    love.graphics.setFont(self.fontSmall)
-    self:setColor((grid.id ~= "FREE") and instCol or C.MUTED)
-    love.graphics.print(grid.label, 156, 21)
+    if track and track.isLane then
+        -- track C has no grid: its lane length instead
+        love.graphics.print("LANE", 156, 11)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(instCol)
+        love.graphics.print(Looper:getLaneBars() .. "B", 156, 21)
+    else
+        love.graphics.print("GRID", 156, 11)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor((grid.id ~= "FREE") and instCol or C.MUTED)
+        love.graphics.print(grid.label, 156, 21)
+    end
 
     self:setColor(C.GRID)
     love.graphics.line(200, 13, 200, 37)
@@ -88,6 +96,12 @@ function Chrome:drawTopBar()
     love.graphics.setFont(self.fontTiny)
     self:setColor(C.MUTED)
     love.graphics.print("CHORD", 408, 11)
+    -- where in track C's lane we are, when it has chords
+    local lane = Looper:getLane()
+    if lane and Harmony:source() == lane then
+        local laneBar = math_floor(Looper:lanePos() / Looper.BAR_TICKS) + 1
+        love.graphics.print(laneBar .. "/" .. Looper:getLaneBars(), 408 + self.fontTiny:getWidth("CHORD") + 6, 11)
+    end
     love.graphics.setFont(self.fontSmall)
     self:setColor(chordFrom == "tonic" and C.MUTED or C.CYAN)
     love.graphics.print(Theory:chordName(chord), 408, 21)

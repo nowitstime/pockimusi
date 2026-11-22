@@ -26,6 +26,7 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | [Drums](drums.md) | Rhythm | — | — | [ ] |
 | [Hand Drums](hands.md) | Rhythm | Felt nice | Nothing specific yet | [ ] |
 | [Chord Harp](harp.md) | Chords | — | — | [ ] |
+| [Track C: chord lane](lane.md) | Chords (the chord source) | New | First pass on the device | [ ] |
 | [Chord Track](chords.md) | Chords | Stamp makes it easy; was confusing | Second pass on the new buttons (write / colour / delete / stamp) | [ ] |
 | [Strum](strum.md) | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
 | [Bass](bass.md) | Bass | — | — | [ ] |

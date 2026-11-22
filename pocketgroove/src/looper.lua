@@ -34,7 +34,12 @@ local Looper = {
     prevPhase = 0.0,
     currentBeat = 1,
     currentStep = 1,
-    activeTrack = 1,   -- Active track slot (1..4)
+    activeTrack = 1,   -- Active track slot (1..4, or LANE = track C)
+    -- Track C: the chord lane (Phase K), kept in tracks[LANE] outside the four
+    -- instrument slots. Its chords live on their own timeline (2..16 bars),
+    -- so the looper counts loop passes to know where in the lane it is.
+    LANE = 5,
+    pass = 0,          -- loop passes since the playhead was reset
     currentTakeId = 0,
     undoStack = {},    -- { kind = "take", takeId, trackSlot }, { kind = "swap", ... }, { kind = "events", trackSlot, events, label },
                        -- { kind = "fresh", tracks } or { kind = "bars", tracks, takeId }
@@ -84,6 +89,77 @@ function Looper:init(Instruments)
         }
         Synth:configureTrackFx(self.tracks[slot])
     end
+    self:initLane(Instruments)
+end
+
+-- Track C: the chord lane. A track object (events, state, rev) like the
+-- others, so pages, undo and Harmony can treat it as one, but it is never
+-- played back and never takes another instrument.
+function Looper:initLane(Instruments)
+    local def = Instruments:getDefinition("lane")
+    local lane = {
+        id = self.LANE, slot = self.LANE, isLane = true,
+        instrumentId = "lane", name = def.name, shortName = def.shortName,
+        gridIndex = 1, volume = 0.8, swing = 0.5,
+        fx = { tone = 0.5, drive = 0.5, echo = 0.4, space = 0.5,
+               on = { tone = false, drive = false, echo = false, space = false } },
+        muted = false, events = {}, rev = 0, sounding = {},
+        state = def:newState(),
+    }
+    self.tracks[self.LANE] = lane
+    Synth:configureTrackFx(lane)
+end
+
+function Looper:getLane()
+    return self.tracks[self.LANE]
+end
+
+-- How a track is named on screen: 1..4, or C for the chord lane
+function Looper:slotLabel(slot)
+    return slot == self.LANE and "C" or tostring(slot)
+end
+
+Looper.BAR_TICKS = 4 * Looper.PPQN
+
+function Looper:getLaneBars()
+    local lane = self.tracks[self.LANE]
+    return (lane and lane.state.bars) or 4
+end
+
+function Looper:getLaneTicks()
+    return self:getLaneBars() * self.BAR_TICKS
+end
+
+-- The song position: ticks since the playhead was reset, counting passes
+function Looper:songTick()
+    return self.pass * self:getLoopTicks() + self.tick
+end
+
+-- The song position of a loop tick near the playhead: a tick far behind the
+-- playhead is in the next pass (the playhead is about to wrap to it), one
+-- far ahead is in the pass before
+function Looper:songTickAt(t)
+    local loop = self:getLoopTicks()
+    local p = self.pass
+    local d = t - self.tick
+    if d < -loop * 0.5 then p = p + 1 elseif d > loop * 0.5 then p = p - 1 end
+    return p * loop + t
+end
+
+-- Where in the lane a song position is (the lane repeats)
+function Looper:lanePos(song)
+    return (song or self:songTick()) % self:getLaneTicks()
+end
+
+-- Move the playhead to a lane position without firing anything (track C
+-- with the clock stopped: the playhead is the cursor)
+function Looper:seekLane(pos)
+    local loop = self:getLoopTicks()
+    pos = pos % self:getLaneTicks()
+    self.pass = math_floor(pos / loop)
+    self.tick = pos % loop
+    self.prevTick = self.tick
+    self:syncPhase()
 end
 
 -- Mark a track's events as changed (anything that adds, removes or edits
@@ -251,6 +327,7 @@ end
 -- Back to bar 1.1; events on the downbeat fire on the next frame
 function Looper:resetPlayhead()
     self.tick, self.prevTick = 0.0, 0.0
+    self.pass = 0
     self.resetPending = true
     self:syncPhase()
 end
@@ -352,9 +429,9 @@ function Looper:undo()
         elseif entry.kind == "fresh" then
             self:silenceAll()
             local total = 0
-            for slot = 1, 4 do
+            for slot = 1, #self.tracks do
                 local t = self.tracks[slot]
-                local saved = entry.tracks[slot]
+                local saved = entry.tracks[slot] or { events = {}, muted = false }
                 -- notes recorded since the fresh start stay, after the restored ones
                 local kept = t.events
                 t.events = saved.events
@@ -378,7 +455,8 @@ function Looper:undo()
             -- an edit that replaced a track's events (Chord Track stamp, delete, colour)
             self:silenceTrack(entry.trackSlot)
             track.events = entry.events
-            self:showToast(string.format("UNDO %s ON TRACK %d", entry.label or "EDIT", entry.trackSlot))
+            if entry.laneBars then track.state.bars = entry.laneBars end   -- track C's BARS row
+            self:showToast(string.format("UNDO %s ON TRACK %s", entry.label or "EDIT", self:slotLabel(entry.trackSlot)))
             return
         elseif entry.kind == "take" and track then
             local removed = 0
@@ -432,7 +510,7 @@ end
 function Looper:freshSession()
     self:silenceAll()
     local saved, total = {}, 0
-    for slot = 1, 4 do
+    for slot = 1, #self.tracks do
         local track = self.tracks[slot]
         saved[slot] = { events = track.events, muted = track.muted }
         total = total + #track.events
@@ -448,7 +526,8 @@ function Looper:clearTrack(trackIdx)
     if track then
         self:silenceTrack(trackIdx)
         track.events = {}
-        self:showToast("CLEARED ALL ON TRACK " .. trackIdx .. " (" .. track.name .. ")")
+        self:touch(track)
+        self:showToast("CLEARED ALL ON TRACK " .. self:slotLabel(trackIdx) .. " (" .. track.name .. ")")
     end
 end
 
@@ -579,10 +658,13 @@ function Looper:update(dt, handler)
             self.prevTick = anchor - 1e-6
             self.tick = anchor + ((nextTick - anchor) % window)
         else
+            if nextTick >= loop then self.pass = self.pass + math_floor(nextTick / loop) end
             self.tick = nextTick % loop
         end
     else
-        self.tick = (self.tick + advance) % loop
+        local nextTick = self.tick + advance
+        if nextTick >= loop then self.pass = self.pass + math_floor(nextTick / loop) end
+        self.tick = nextTick % loop
         self.stutterAnchorTick = math_floor(self.tick / window) * window
     end
 

@@ -74,7 +74,9 @@ function Chrome:drawCenterStage()
     -- Shoulder capsules
     local lOn, rOn = Input.down.L1, Input.down.R1
     local l1Label, r1Label = "L1: -", "R1: +"
-    if mode == "TRACK" then
+    if mode == "TRACK" and track.isLane then
+        l1Label, r1Label = "L1: -", "R1: -"
+    elseif mode == "TRACK" then
         l1Label, r1Label = "L1: < INSTRUMENT", "R1: INSTRUMENT >"
     elseif mode == "TRANSPORT" then
         l1Label, r1Label = "L1: SCALE <", "R1: SCALE >"
@@ -139,7 +141,7 @@ function Chrome:drawCenterStage()
     shoulder(510, r1Label, rOn, true)
 
     local titleStr = def.name
-    if mode == "TRACK" then titleStr = string.format("TRACK %d", sl)
+    if mode == "TRACK" then titleStr = "TRACK " .. Looper:slotLabel(sl)
     elseif mode == "MIX" then titleStr = "MIX"
     elseif mode == "TRANSPORT" then titleStr = "CLOCK"
     elseif mode == "ERASE" then titleStr = "ERASE"
@@ -178,6 +180,7 @@ function Chrome:drawCenterStage()
     local dpadSubtitle = dpadSub[mode] or (def.getDpadSubtitle and def:getDpadSubtitle(state))
         or instSub[def.id] or instSub[kind] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
+    if mode == "TRACK" and def.NO_FX then faceSubtitle = "TRACK C IS SILENT" end
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
     love.graphics.print(dpadSubtitle, math_floor(102 - dsw * 0.5), 296)
@@ -221,6 +224,7 @@ function Chrome:getControlLabels(def, state, mode)
         local fx = Looper.tracks[Looper.activeTrack].fx
         dpadLabels = { UP = "ROW UP", DOWN = "ROW DOWN", LEFT = "VALUE <", RIGHT = "VALUE >" }
         faceLabels = { B = "SPACE", A = "ECHO", Y = "DRIVE", X = "TONE" }
+        if def.NO_FX then faceLabels = { B = "", A = "", Y = "", X = "" } end
         for btn, slot in pairs(Looper.FX_SLOTS) do
             activeMap[btn] = fx.on[slot]
         end

@@ -51,7 +51,7 @@ function Chrome:drawLeadView(def, state, track, col)
     self:drawCapsuleRow(320, 166, 16, {
         { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
         { "ARP " .. rate, state.arpBtn and col or C.GRID, state.arpBtn and col or C.PANEL_HI, state.arpBtn and C.BG or C.MUTED },
-        { state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+        { Harmony:followChip(state.follow),
           C.GRID, C.PANEL_HI, state.follow and C.CYAN or C.DIM },
     })
 

@@ -51,7 +51,7 @@ function Chrome:drawPadView(def, state, track, col, t)
     local patch = def:getPatch(state)
     self:drawCapsuleRow(320, 160, 16, {
         { patch and patch.label or "?", C.GRID, C.PANEL_HI, col },
-        { state.follow and ("FOLLOW " .. Theory:chordName((Harmony:current()))) or "FOLLOW OFF",
+        { Harmony:followChip(state.follow),
           C.GRID, C.PANEL_HI, state.follow and C.CYAN or C.DIM },
     })
 

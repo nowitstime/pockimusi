@@ -161,7 +161,7 @@ function Chrome:drawEraseView(track, def)
     love.graphics.print("START - Clear entire track", 232, 226)
     self:setColor(C.MUTED)
     love.graphics.print("+ hold SELECT - Fresh session", 232, 250)
-    love.graphics.print(string.format("%d EVENTS ON TRACK %d", #track.events, track.slot), 244, 276)
+    love.graphics.print(string.format("%d EVENTS ON TRACK %s", #track.events, Looper:slotLabel(track.slot)), 244, 276)
 end
 
 -- Hold L2 + R2 + SELECT: a ring fills over NEW_HOLD seconds

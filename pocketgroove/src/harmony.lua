@@ -1,12 +1,18 @@
 -- ============================================================================
 -- src/harmony.lua — The current chord at any point in the loop (SPEC §5)
 --
--- 1. The chord source is the lowest-numbered chord track (Chord Harp or
---    Chord Track: SOURCES) that has recorded chords. The current chord is
---    the latest one at or before the position, wrapping (before the loop's first chord, the last carries over).
---    Muting that track doesn't change harmony.
--- 2. No recorded chords: the chord last played live on the lowest chord track.
--- 3. No chord track, or nothing played yet: the tonic (I of the key and scale).
+-- 0. Track C (the chord lane, Looper.LANE) can override for a while: a live
+--    change played without recording (state.override) or a progression
+--    being tried on the stamp wheel (state.preview). Both are in song ticks.
+-- 1. The chord source is track C when it has chords. Its chords sit on the
+--    lane's own timeline (2..16 bars): a loop position is turned into a lane
+--    position with the loop pass (Looper:songTickAt). Otherwise, as before
+--    the lane, the lowest-numbered chord track in a slot (Chord Harp or
+--    Chord Track: SOURCES) with recorded chords; the Harp's role gets its
+--    own pass later. The current chord is the latest one at or before the
+--    position, wrapping (before the first chord, the last carries over).
+-- 2. No recorded chords: the chord last played live on a Harp or Chord Track.
+-- 3. Nothing played yet: the tonic (I of the key and scale).
 --
 -- A source track's state may carry `spice` = { [event] = chord }: chords
 -- coloured differently for this pass of the loop (Chord Track SPICE row).
@@ -27,7 +33,16 @@ local Harmony = {
     cache = nil,     -- { track, events, rev, loop, list = { { tick, chord }, ... } }
     -- Instruments that set the chords (they record `chord` data)
     SOURCES = { harp = true, chords = true },
+    -- Instruments whose live chord counts when nothing is recorded
+    LIVE = { harp = true, chords = true },
 }
+
+local function anyChord(track)
+    for _, ev in ipairs(track.events) do
+        if ev.chord and ev.chord.root and not ev.open then return true end
+    end
+    return false
+end
 
 local function hasChords(track)
     if not Harmony.SOURCES[track.instrumentId] then return false end
@@ -37,8 +52,15 @@ local function hasChords(track)
     return false
 end
 
+-- Track C, the chord lane
+function Harmony:lane()
+    return Looper.tracks[Looper.LANE]
+end
+
 -- The chord-source track (recorded chords), or nil
 function Harmony:source()
+    local lane = self:lane()
+    if lane and anyChord(lane) then return lane end
     for slot = 1, 4 do
         local track = Looper.tracks[slot]
         if track and hasChords(track) then return track end
@@ -51,7 +73,7 @@ end
 function Harmony:liveChord()
     for slot = 1, 4 do
         local track = Looper.tracks[slot]
-        if track and self.SOURCES[track.instrumentId] and track.state.liveChord then
+        if track and self.LIVE[track.instrumentId] and track.state.liveChord then
             return track.state.liveChord
         end
     end
@@ -68,7 +90,7 @@ end
 function Harmony:changes(track)
     local events = track.events
     local c = self.cache
-    local loop = Looper:getLoopTicks()
+    local loop = track.isLane and Looper:getLaneTicks() or Looper:getLoopTicks()
     if c and c.track == track and c.events == events and c.rev == track.rev and c.loop == loop then
         return c.list
     end
@@ -86,11 +108,30 @@ end
 -- The chord at a loop position, and where it came from:
 -- "recorded", "live" or "tonic". `lookahead` (ticks, default LOOKAHEAD):
 -- pass 0 for the chord sounding exactly at `tick` (a held Pad changing chord).
+-- A live change or wheel preview on track C covering song position `song`, or nil
+function Harmony:overrideAt(song)
+    local lane = self:lane()
+    local st = lane and lane.state
+    if not st or not Looper.playing then return nil end
+    local pv = st.preview
+    if pv and song >= pv.start and #pv.chords > 0 then
+        local i = math.floor((song - pv.start) / pv.len) % #pv.chords + 1
+        return pv.chords[i]
+    end
+    local o = st.override
+    if o and song >= o.start and song < o.start + o.len then return o.chord end
+    return nil
+end
+
 function Harmony:chordAt(tick, lookahead)
+    local la = lookahead or self.LOOKAHEAD
+    local song = Looper:songTickAt(tick) + la
+    local over = self:overrideAt(song)
+    if over then return over, "live" end
     local track = self:source()
     if track then
         local list = self:changes(track)
-        local pos = (tick + (lookahead or self.LOOKAHEAD)) % Looper:getLoopTicks()
+        local pos = track.isLane and Looper:lanePos(song) or ((tick + la) % Looper:getLoopTicks())
         local found = list[#list]                 -- wrap: the loop's last chord carries over
         for i = 1, #list do
             if list[i].tick <= pos then found = list[i] else break end
@@ -104,6 +145,20 @@ function Harmony:chordAt(tick, lookahead)
     local live = self:liveChord()
     if live then return live, "live" end
     return self:tonic(), "tonic"
+end
+
+-- Is anything setting chords (recorded, live, or a live change on track C)?
+-- With nothing, FOLLOW ON plays exactly as FOLLOW OFF: everything is in the key.
+function Harmony:hasChords()
+    if self:source() or self:liveChord() then return true end
+    return self:overrideAt(Looper:songTick()) ~= nil
+end
+
+-- The FOLLOW chip on a follower's stage: what it follows
+function Harmony:followChip(on)
+    if not on then return "FOLLOW OFF" end
+    if not self:hasChords() then return "FOLLOW - NO CHORDS" end
+    return "FOLLOW " .. Theory:chordName((self:current()))
 end
 
 -- The chord at the playhead

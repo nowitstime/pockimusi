@@ -44,6 +44,7 @@ Chrome.FOOTER_HINTS = {
     REC_HOLD  = { { "key", { "L2" }, "LET GO: STOP" }, { "key", { "L2" }, "QUICK TAP: LATCH" } },
     TRACK     = { { "dpad", "UD", "ROW" }, { "dpad", "LR", "CHANGE" }, { "key", { "L1", "R1" }, "INSTRUMENT" },
                   { "face", "XYAB", "FX ON/OFF" } },
+    TRACK_LANE = { { "dpad", "UD", "ROW" }, { "dpad", "LR", "CHANGE" } },
     MIX       = { { "dpad", "LR", "TRACK" }, { "dpad", "UD", "LEVEL" }, { "face", "XYAB", "MUTE" }, { "key", { "L1", "R1" }, "MASTER" } },
     TRANSPORT = { { "dpad", "UD", "BPM" }, { "dpad", "LR", "KEY" }, { "key", { "L1", "R1" }, "SCALE" },
                   { "face", "A", "GRID" }, { "face", "Y", "+UP/DN SWING" }, { "face", "X", "CLICK" } },
@@ -269,6 +270,7 @@ function Chrome:drawFooterStrip(def)
     end
 
     local hints = self.FOOTER_HINTS[mode] or self.FOOTER_HINTS.NORMAL
+    if mode == "TRACK" and def and def.NO_FX then hints = self.FOOTER_HINTS.TRACK_LANE end
     local col = (mode == "NORMAL") and C.MUTED or (Config.MODE_COLORS[mode] or C.MUTED)
     local x = 18
     local tag = self.FOOTER_TAGS[mode]

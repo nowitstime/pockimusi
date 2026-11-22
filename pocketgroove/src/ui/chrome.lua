@@ -78,6 +78,7 @@ for _, part in ipairs({
     "strum",
     "lead",
     "chords",
+    "lane",
     "pad",
 }) do
     require("src.ui.chrome." .. part)(Chrome)

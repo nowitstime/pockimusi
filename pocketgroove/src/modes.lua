@@ -145,11 +145,26 @@ local function updateRecPass()
     end
 end
 
+-- Recording on a track whose FOLLOW is off while chords are set: its notes
+-- won't move with the chords. A warning, or nil.
+function Modes:followWarning()
+    local def, state, track = Instruments:getTrackInstrument(Looper.activeTrack)
+    if not state or state.follow ~= false or not track or track.isLane then return nil end
+    local hasRow = false
+    for _, row in ipairs(Instruments:getSoundRows(def, state)) do
+        if row.key == "FOLLOW" then hasRow = true end
+    end
+    if not hasRow or not require("src.harmony"):source() then return nil end
+    return "FOLLOW OFF - THESE NOTES STAY PUT WHEN THE CHORDS CHANGE"
+end
+
 local function updateRecord()
     updateCountIn()
     updateRecPass()
     if Input.pressed.L2 then
         Looper:beginRecordingTake()
+        Modes.warned = Modes:followWarning()
+        if Modes.warned then Looper:showToast(Modes.warned) end
     end
     if not Input.released.L2 then return end
 
@@ -161,7 +176,7 @@ local function updateRecord()
             startCountIn()
         else
             Input.recLatched = not Input.recLatched
-            Looper:showToast(Input.recLatched and "[REC] RECORD LATCHED (TAP L2 TO STOP)" or "RECORD STOPPED")
+            Looper:showToast(Input.recLatched and (Modes.warned or "[REC] RECORD LATCHED (TAP L2 TO STOP)") or "RECORD STOPPED")
         end
     elseif Input.recLatched and Input.l2HoldTime >= Modes.TAP_MAX then
         -- Releasing a held punch-in also clears the latch
@@ -290,8 +305,11 @@ function handlers.TRACK(ctx, dt)
     end
     page.row = clamp(page.row, 1, #rows)
 
-    -- Instrument: L1 / R1 only preview; the swap happens on SELECT release
-    if Input.pressed.L1 or Input.pressed.R1 then
+    -- Instrument: L1 / R1 only preview; the swap happens on SELECT release.
+    -- Track C is always the chord lane.
+    if track.isLane and (Input.pressed.L1 or Input.pressed.R1) then
+        Looper:showToast("TRACK C IS ALWAYS THE CHORDS")
+    elseif Input.pressed.L1 or Input.pressed.R1 then
         local from = page.pending or track.instrumentId
         local nextId = Instruments:stepInstrumentId(from, Input.pressed.L1 and -1 or 1)
         page.picker, page.previewIn = nil, nil
@@ -309,7 +327,7 @@ function handlers.TRACK(ctx, dt)
 
     -- Effects on the face buttons: on / off, and the cursor goes to its row
     for _, btn in ipairs({ "X", "Y", "A", "B" }) do
-        if Input.pressed[btn] then
+        if Input.pressed[btn] and not def.NO_FX then
             local slot = Looper.FX_SLOTS[btn]
             Looper:toggleTrackFx(Looper.activeTrack, slot)
             for i, row in ipairs(rows) do
@@ -404,9 +422,14 @@ end
 function updateSelectTap()
     if not Input.released.SELECT then return end
     if not Input.comboUsed.SELECT and not Input.comboUsed.L2 and Input.selectHoldTime < Modes.TAP_MAX then
-        Looper.activeTrack = (Looper.activeTrack % 4) + 1
+        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> 1
+        Looper.activeTrack = (Looper.activeTrack % #Looper.tracks) + 1
         local nextTrack = Looper.tracks[Looper.activeTrack]
-        Looper:showToast(string.format("TRACK %d: %s", Looper.activeTrack, nextTrack and nextTrack.name or ""))
+        if nextTrack and nextTrack.isLane then
+            Looper:showToast("TRACK C: CHORDS - " .. (Looper.playing and "B CHANGES ON THE BAR LINE" or "B WRITES AND STEPS ON"))
+        else
+            Looper:showToast(string.format("TRACK %d: %s", Looper.activeTrack, nextTrack and nextTrack.name or ""))
+        end
     end
 end
 
