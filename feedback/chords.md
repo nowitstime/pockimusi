@@ -89,6 +89,8 @@ Not possible with the nine chords yet: anything with a major III or II (secondar
 
 ## Decided
 
+- **It becomes a feature: track C**, a silent built-in lane after track 4, longer than the loop (2–16 bars), shown as a thin strip above the tape deck. Writing: the playhead is the cursor; running, `B` lands on the next bar line; stopped, `B` writes and steps on. Stamp: hold `X` for a progression wheel, tap `X` to place it. Full plan: [PHASE_K.md](../PHASE_K.md).
+
 ## Next
 
 - [ ] First pass.
