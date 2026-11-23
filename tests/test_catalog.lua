@@ -367,6 +367,20 @@ return {
         end
     end },
 
+    { "the swap card names the previewed instrument's group", function()
+        local M, frame = bootCapturing()
+        local page = require("src.modes").trackPage
+        H.hold("SELECT"); H.play(0.3)
+        for _ = 1, #M.Instruments.catalog - 1 do
+            H.tap("R1")
+            local inst = M.Instruments.byId[page.pending]
+            local seen = frame()
+            H.truthy(seen[inst.name], "the name: " .. inst.name)
+            H.truthy(seen[M.Instruments:groupOf(inst).id], inst.id .. " shows its group " .. M.Instruments:groupOf(inst).id)
+        end
+        H.release("SELECT"); H.play(0.1)
+    end },
+
     { "the outer tabs fade", function()
         local M = bootSession()
         setCatalog(M.Instruments, 10)
