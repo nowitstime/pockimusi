@@ -376,7 +376,40 @@ end
 -- Hold START: Transport = timing. A SELECT tap still changes track here, so
 -- grid and swing can be set for each track without leaving the page.
 local updateSelectTap
-function handlers.TRANSPORT()
+-- Tempo: a press steps 5 BPM; held, it keeps stepping after TEMPO_REPEAT[1]
+-- seconds, every TEMPO_REPEAT[2] seconds, and twice as fast after
+-- TEMPO_REPEAT[3] seconds, so 60 -> 240 is a short hold, not 36 presses
+Modes.TEMPO_REPEAT = { 0.4, 0.12, 1.5 }
+Modes.tempoHold = { dir = 0, held = 0.0, next = 0.0 }
+
+local function stepTempo(dir)
+    Looper.bpm = clamp(Looper.bpm + dir * 5, Config.MIN_BPM, Config.MAX_BPM)
+    Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
+end
+
+local function updateTempo(dt)
+    local th = Modes.tempoHold
+    if Input.pressed.UP or Input.pressed.DOWN then
+        th.dir = Input.pressed.UP and 1 or -1
+        th.held, th.next = 0.0, Modes.TEMPO_REPEAT[1]
+        stepTempo(th.dir)
+        return
+    end
+    if th.dir == 0 then return end
+    if not Input.down[th.dir > 0 and "UP" or "DOWN"] then
+        th.dir = 0
+        return
+    end
+    th.held = th.held + (dt or 0)
+    while th.held >= th.next do
+        stepTempo(th.dir)
+        local rate = Modes.TEMPO_REPEAT[2]
+        if th.held >= Modes.TEMPO_REPEAT[3] then rate = rate * 0.5 end
+        th.next = th.next + rate
+    end
+end
+
+function handlers.TRANSPORT(ctx, dt)
     Input.comboUsed.START = true
     updateSelectTap()
     local tIdx = Looper.activeTrack
@@ -387,14 +420,14 @@ function handlers.TRANSPORT()
             Looper:showToast("TRACK C HAS NO SWING")
         end
     elseif Input.down.Y then
+        Modes.tempoHold.dir = 0
         if Input.pressed.UP then
             Looper:adjustSwing(tIdx, 0.02)
         elseif Input.pressed.DOWN then
             Looper:adjustSwing(tIdx, -0.02)
         end
-    elseif Input.pressed.UP or Input.pressed.DOWN then
-        Looper.bpm = clamp(Looper.bpm + (Input.pressed.UP and 5 or -5), Config.MIN_BPM, Config.MAX_BPM)
-        Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
+    else
+        updateTempo(dt)
     end
 
     if Input.pressed.LEFT or Input.pressed.RIGHT then
