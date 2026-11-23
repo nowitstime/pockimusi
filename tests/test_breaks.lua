@@ -108,7 +108,7 @@ return {
         H.release("B"); frames(0.05)
         local kicks, snares = {}, {}
         for _, e in ipairs(log) do
-            if e.sound == "kick_acoustic" then kicks[#kicks + 1] = e.tick end
+            if e.sound == "kick_funk" then kicks[#kicks + 1] = e.tick end
             if e.sound == "snare_funk" and e.vol > 0.7 then snares[#snares + 1] = e.tick end
         end
         H.truthy(#kicks >= 2, "kicks: " .. #kicks)
@@ -124,7 +124,7 @@ return {
         local M, L, st, log = boot("two_step")
         seekTick(L, 470)                                  -- just before beat 2
         H.hold("B"); frames(0.1); H.release("B"); frames(0.05)
-        H.eq(count(log, "kick_acoustic"), 0, "no kick (beat 1 is past)")
+        H.eq(count(log, "kick_funk"), 0, "no kick (beat 1 is past)")
         H.truthy(count(log, "snare_funk") >= 1, "the snare on 2")
     end },
 
@@ -162,7 +162,7 @@ return {
         seekTick(L, 0)
         H.hold("A"); frames(H.loopSeconds(L) * 0.25); H.release("A"); frames(0.05)
         -- a 1/16 chunk from the kick: only kicks, every 1/16
-        H.truthy(count(log, "kick_acoustic") >= 6, "the kick repeats: " .. count(log, "kick_acoustic"))
+        H.truthy(count(log, "kick_funk") >= 6, "the kick repeats: " .. count(log, "kick_funk"))
         H.eq(count(log, "snare_funk"), 0, "never reaches the snare")
     end },
 
@@ -175,7 +175,7 @@ return {
         -- from just past beat 2 backwards: the snare first, then the hats before it, then the kick
         H.eq(s[1], "snare_funk", "the snare first")
         local sawKick = false
-        for _, x in ipairs(s) do if x == "kick_acoustic" then sawKick = true end end
+        for _, x in ipairs(s) do if x == "kick_funk" then sawKick = true end end
         H.truthy(sawKick, "back to the kick on 1")
     end },
 
@@ -240,7 +240,7 @@ return {
         for i = #log, 1, -1 do log[i] = nil end
         seekTick(L, L:getLoopTicks() - 30)
         frames(H.loopSeconds(L) * 0.5)
-        H.truthy(count(log, "kick_acoustic") >= 2 and count(log, "snare_funk") >= 2, "plays back: " .. #log)
+        H.truthy(count(log, "kick_funk") >= 2 and count(log, "snare_funk") >= 2, "plays back: " .. #log)
     end },
 
     { "a recorded performance replays on another break and kit", function()

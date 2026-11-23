@@ -52,7 +52,7 @@ local Drums = {
         { name = "LATIN",       pads = { B = "perc_conga",    Y = "perc_wood",    A = "perc_shaker", X = "perc_cowbell" } },
         { name = "INDUSTRIAL",  pads = { B = "kick_gabber",   Y = "snare_gated",  A = "hat_tick",    X = "fx_zap"       } },
         -- for jungle, drum and bass and the breaks (PHASE_L L7)
-        { name = "FUNK BREAKS", pads = { B = "kick_acoustic", Y = "snare_funk",   A = "hat_acoustic", X = "hat_half"    } },
+        { name = "FUNK BREAKS", pads = { B = "kick_funk",     Y = "snare_funk",   A = "hat_acoustic", X = "hat_half"    } },
         { name = "JUNGLE",      pads = { B = "kick_808",      Y = "snare_funk",   A = "cym_ride_ac", X = "fx_revsnare"  } },
         { name = "LATIN BREAKS", pads = { B = "bongo_low",    Y = "bongo_high",   A = "perc_tamb",   X = "tom_low"      } },
         { name = "NEURO",       pads = { B = "kick_909",      Y = "snare_gated",  A = "hat_tick",    X = "hat_open"     } },

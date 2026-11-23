@@ -114,7 +114,7 @@ end
 -- Kits: which sound plays each role. { sound, tune (semitones), vel (level) }
 Breaks.KITS = {
     { name = "FUNK BREAKS", roles = {
-        kick = { "kick_acoustic" }, snare = { "snare_funk" }, ghost = { "snare_funk", 0, 0.9 },
+        kick = { "kick_funk" }, snare = { "snare_funk" }, ghost = { "snare_funk", 0, 0.9 },
         hat = { "hat_acoustic" }, hat_open = { "hat_half" }, pedal = { "hat_pedal" },
         ride = { "cym_ride_ac" }, crash = { "cym_crash_ac" }, perc1 = { "perc_tamb" }, perc2 = { "tom_low" } } },
     { name = "JUNGLE", roles = {
@@ -123,7 +123,7 @@ Breaks.KITS = {
         hat = { "hat_acoustic", 2 }, hat_open = { "hat_half", 2 }, pedal = { "hat_pedal" },
         ride = { "cym_ride_ac", 1 }, crash = { "cym_crash_ac" }, perc1 = { "fx_revsnare" }, perc2 = { "tom_high" } } },
     { name = "LATIN BREAKS", roles = {
-        kick = { "kick_acoustic" }, snare = { "snare_funk" }, ghost = { "snare_funk", 0, 0.9 },
+        kick = { "kick_funk" }, snare = { "snare_funk" }, ghost = { "snare_funk", 0, 0.9 },
         hat = { "perc_tamb", 0, 0.8 }, hat_open = { "hat_half" }, pedal = { "hat_pedal" },
         ride = { "cym_ride_ac" }, crash = { "cym_crash_ac" }, perc1 = { "bongo_high" }, perc2 = { "bongo_low" } } },
     { name = "NEURO", roles = {
