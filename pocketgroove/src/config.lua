@@ -14,7 +14,7 @@ local Config = {
     TWO_PI = math_pi * 2.0,
 
     -- Test screens: with this off, every instrument marked `dev = true`
-    -- (the FINGERS and FILTER TEST screens) leaves the catalogue
+    -- (the FINGERS screen) leaves the catalogue
     DEV_TOOLS = true,
 
     COLORS = {

@@ -40,7 +40,7 @@ local FILES = {
 -- Instruments.ORDER (src/instruments/init.lua) without a file listed above.
 local ORDER = {
     "drums", "hands", "breaks", "bass", "roller", "wobble", "harp", "strum",
-    "pad", "lead", "dial", "slide", "valves", "fingers", "filtertest",
+    "pad", "lead", "dial", "slide", "valves", "fingers",
 }
 local listed = {}
 for _, f in ipairs(FILES) do listed[f] = true end

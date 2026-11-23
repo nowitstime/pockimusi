@@ -21,7 +21,7 @@ local Instruments = {
         "harp", "strum",                     -- CHORDS
         "pad",                               -- TEXTURE
         "lead", "dial", "slide", "valves",   -- LEAD
-        "fingers", "filtertest",             -- test screens (dev)
+        "fingers",                           -- test screen (dev)
     },
     -- The groups, in tab order, with the colour of their mark and swap card
     GROUPS = {
