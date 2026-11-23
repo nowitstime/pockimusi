@@ -78,6 +78,7 @@ function Session.snapshot()
             gridIndex = track.gridIndex,
             swing = track.swing,
             volume = track.volume,
+            pump = track.pump,
             muted = track.muted,
             fx = copyPlain(track.fx, 0),
             events = events,
@@ -262,6 +263,7 @@ function Session.restore(data)
         track.gridIndex = int(raw.gridIndex, 1, #Looper.GRID_MODES, track.gridIndex)
         track.swing = num(raw.swing, 0.50, 0.75, 0.50)
         track.volume = num(raw.volume, 0.0, 1.0, track.volume)
+        track.pump = int(raw.pump, 1, #Synth.PUMP_LEVELS, 1)
         track.muted = (raw.muted == true)
 
         local fx = type(raw.fx) == "table" and raw.fx or {}

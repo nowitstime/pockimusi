@@ -24,6 +24,7 @@ local FILES = {
     "test_patches",
     "test_pregen",
     "test_mix",
+    "test_pump",
     "test_drums",
     "test_session",
     "test_lane",

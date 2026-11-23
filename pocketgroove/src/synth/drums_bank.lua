@@ -305,6 +305,9 @@ function DrumsBank.build(Synth, whiteNoise)
 
     Synth.drumCatalog = catalog
     for _, item in ipairs(catalog) do
+        if item.cat == "KICK" then Synth.KICK_SOUNDS[item.id] = true end
+    end
+    for _, item in ipairs(catalog) do
         Synth:createPool(item.id, item.sd, 8, item.dur)
     end
 end

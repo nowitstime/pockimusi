@@ -115,6 +115,15 @@ function Instruments:getSoundRows(def, state, track)
         end
     end
     if track and not def.NO_FX then
+        -- PUMP: duck under the kick (PHASE_L L3), kept with the track like its effects
+        local Synth = require("src.synth")
+        local items = {}
+        for i, lvl in ipairs(Synth.PUMP_LEVELS) do items[i] = { label = lvl.label } end
+        local pi = track.pump or 1
+        if def.group ~= "RHYTHM" then         -- the rhythm instruments are what it listens to
+            rows[#rows + 1] = { key = "PUMP", label = "PUMP", kind = "setting", value = items[pi].label,
+                                items = items, index = pi }
+        end
         for _, slot in ipairs(Looper.FX_ORDER) do
             local on = track.fx.on[slot]
             rows[#rows + 1] = {
@@ -135,6 +144,10 @@ function Instruments:cycleRow(def, state, rowIdx, delta, track, quiet)
     if not row then return end
     if row.kind == "fx" then
         Looper:adjustTrackFx(track.slot, row.slot, delta * 0.1)
+    elseif row.key == "PUMP" and track then
+        local n = #require("src.synth").PUMP_LEVELS
+        track.pump = (((track.pump or 1) - 1 + delta) % n) + 1
+        Looper:showToast("PUMP: " .. require("src.synth").PUMP_LEVELS[track.pump].label)
     elseif row.kind == "setting" then
         if def.cycleSetting then def:cycleSetting(state, row.key, delta) end
     elseif def.cycleRowSound then

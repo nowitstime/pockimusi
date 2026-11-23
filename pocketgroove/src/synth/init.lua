@@ -39,6 +39,66 @@ local Synth = {
 Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat" }
 Synth.CHOKEABLE   = { hat_open = true }
 
+-- ============================================================================
+-- Pump (sidechain, PHASE_L L3): a kick on any track ducks the other tracks
+-- whose PUMP row is on; the level drops at once and curves back up over the
+-- level's recovery time. With no kick for a while (and the clock running),
+-- it pumps on every beat instead. The kick's own track never pumps from it.
+-- ============================================================================
+Synth.PUMP_LEVELS = {
+    { label = "OFF" },
+    { label = "LIGHT",  depth = 0.35, recover = 0.16 },
+    { label = "MEDIUM", depth = 0.60, recover = 0.24 },
+    { label = "HARD",   depth = 0.85, recover = 0.32 },
+}
+Synth.PUMP_FALLBACK_BEATS = 2.0    -- no kick for this many beats: pump on the beat
+Synth.KICK_SOUNDS = {}             -- sound ids in the KICK category (drums bank)
+Synth.kickAge = { math.huge, math.huge, math.huge, math.huge }
+Synth.lastKick = -math.huge        -- Synth.clock of the last kick on any track
+Synth.pumpNow = { 1.0, 1.0, 1.0, 1.0 }
+
+-- A kick sounded on `track`: the others start pumping
+function Synth:noteKick(track)
+    local slot = track and track.slot
+    if not slot then return end
+    for s = 1, 4 do
+        if s ~= slot then self.kickAge[s] = 0.0 end
+    end
+    self.lastKick = self.clock
+end
+
+-- The pump gain for a track this frame (1 = no duck)
+function Synth:pumpGain(track)
+    local slot = track and track.slot
+    return slot and self.pumpNow[slot] or 1.0
+end
+
+function Synth:updatePump(dt)
+    local Looper = package.loaded["src.looper"]
+    local tps = Looper and Looper.getTicksPerSecond and Looper:getTicksPerSecond() or 0
+    local beatSec = tps > 0 and (480 / tps) or 0.5
+    local fallback = (self.clock - self.lastKick) > math.max(0.5, beatSec * self.PUMP_FALLBACK_BEATS)
+    local beatAge = (fallback and Looper and Looper.playing and tps > 0) and ((Looper.tick % 480) / tps) or nil
+    for s = 1, 4 do
+        self.kickAge[s] = self.kickAge[s] + dt
+        local track = Looper and Looper.tracks and Looper.tracks[s]
+        local lvl = track and self.PUMP_LEVELS[track.pump or 1]
+        local g = 1.0
+        if lvl and lvl.depth then
+            local age, recover = self.kickAge[s], lvl.recover
+            if fallback then
+                age = beatAge
+                recover = math_min(recover, beatSec * 0.9)
+            end
+            if age then
+                local x = clamp(age / recover, 0.0, 1.0)
+                g = 1.0 - lvl.depth * (1.0 - x) * (1.0 - x)
+            end
+        end
+        self.pumpNow[s] = g
+    end
+end
+
 -- Sustained voices: patches, loop pools, noteOn / updateVoices (voice.lua)
 Voice.install(Synth)
 
@@ -341,6 +401,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
     local pool = self.pools[soundName]
     if not pool then return nil end
     self:choke(soundName)
+    if self.KICK_SOUNDS[soundName] then self:noteKick(track) end
 
     local src = pool.voices[pool.cursor]
     pool.cursor = (pool.cursor % pool.size) + 1
@@ -361,7 +422,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
         volume = math_min(1.0, volume * (1.0 + track.fx.drive * 0.5))
     end
 
-    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope, 0.0, 1.0)
+    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope * self:pumpGain(track), 0.0, 1.0)
     local startSemis = glideFromSemis or pitchSemis
     local pitchRatio = clamp(2.0 ^ ((startSemis + fxPitchOffset) / 12.0), 0.125, 8.0)
 
@@ -398,6 +459,7 @@ end
 
 function Synth:update(dt)
     self.clock = self.clock + dt
+    self:updatePump(dt)
     self:updateVoices(dt)
     if #self.scheduled > 0 then
         local due = {}
@@ -457,7 +519,8 @@ function Synth:update(dt)
 
             local remaining = v.maxLife - v.elapsed
             local fade = (remaining < 0.04) and (remaining / 0.04) or 1.0
-            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * fade * self.duckEnvelope, 0.0, 1.0))
+            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * fade * self.duckEnvelope
+                * self:pumpGain(v.track), 0.0, 1.0))
         end
     end
 

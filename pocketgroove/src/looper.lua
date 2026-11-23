@@ -78,6 +78,7 @@ function Looper:init(Instruments)
             shortName = instDef.shortName,
             gridIndex = instDef.defaultGridIndex or 3,
             volume = 0.80,
+            pump = 1,          -- PUMP row: index into Synth.PUMP_LEVELS (1 = off)
             swing = 0.50,      -- 0.50 = straight .. 0.75 = heavy (applied at playback)
             fx = { tone = 0.5, drive = 0.5, echo = 0.4, space = 0.5,
                    on = { tone = false, drive = false, echo = false, space = false } },
