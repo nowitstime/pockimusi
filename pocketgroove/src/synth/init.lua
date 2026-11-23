@@ -44,6 +44,9 @@ Synth.CHOKEABLE   = { hat_open = true, hat_half = true }
 -- in turn. [sound id] = { pool names }
 Synth.VARIANTS = {}
 Synth.variantTurn = {}
+-- Drum sounds built after boot (drums bank): [id] = builder, in build order
+Synth.lazyDrums = {}
+Synth.lazyOrder = {}
 Synth.sourceTone = setmetatable({}, { __mode = "k" })   -- [source] = tone below 1 (initTrackFx renews it)
 
 -- ============================================================================
@@ -166,25 +169,60 @@ end
 -- ============================================================================
 Synth.PREGEN_BUDGET = 0.002
 
+-- Build a drum sound now if it is still waiting to be built (a sound the
+-- background job is half way through is finished first)
+function Synth:ensureDrum(id)
+    local build = self.lazyDrums[id]
+    if not build then return end
+    if self.drumBuilding == id then
+        while self.drumBuilding == id and self.pregen do self:stepPregen(0) end
+        return
+    end
+    self.lazyDrums[id] = nil
+    build()
+end
+
+-- Build every drum sound still waiting (tools and tests)
+function Synth:ensureAllDrums()
+    for _, id in ipairs(self.lazyOrder) do self:ensureDrum(id) end
+end
+
 function Synth:startPregen()
+    local drums = {}
+    for _, id in ipairs(self.lazyOrder) do
+        if self.lazyDrums[id] then drums[#drums + 1] = id end
+    end
     local queue = {}
     for _, id in ipairs(self.patchOrder) do
         local p = self.patches[id]
         if not p.built and not p.silent then queue[#queue + 1] = id end
     end
-    if #queue == 0 then return end
+    if #queue == 0 and #drums == 0 then return end
     self.pregen = {
         queue = queue,
+        drums = drums,
         deadline = 0.0,
         running = false,      -- inside the coroutine: may yield
         started = love.timer.getTime(),
         co = coroutine.create(function()
+            -- the drum sounds first: a kit may want them any moment
+            for _, id in ipairs(drums) do
+                local build = self.lazyDrums[id]
+                if build then
+                    self.lazyDrums[id] = nil
+                    self.drumBuilding = id
+                    build()
+                    self.drumBuilding = nil
+                end
+            end
             for _, id in ipairs(queue) do self:preparePatch(id) end
         end),
     }
 end
 
 function Synth:stopPregen()
+    -- a drum sound half built is finished, so it is never left without a pool
+    while self.drumBuilding and self.pregen do self:stepPregen(0) end
     self.pregen = nil
 end
 
@@ -210,8 +248,8 @@ function Synth:stepPregen(budget)
     end
     if coroutine.status(job.co) == "dead" then
         self.pregen = nil
-        print(string.format("[PocketGroove] pre-generated %d patches in the background (%.1fs)",
-            #job.queue, love.timer.getTime() - job.started))
+        print(string.format("[PocketGroove] pre-generated %d drum sounds and %d patches in the background (%.1fs)",
+            #job.drums, #job.queue, love.timer.getTime() - job.started))
     end
 end
 
@@ -410,6 +448,7 @@ end
 -- (a soft drum hit). A sound with variants (Synth.VARIANTS) takes the next
 -- one in turn, so repeated hits are never quite the same.
 function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+    if self.lazyDrums[soundName] then self:ensureDrum(soundName) end
     local variants = self.VARIANTS[soundName]
     if variants then
         local n = (self.variantTurn[soundName] or 0) % #variants + 1

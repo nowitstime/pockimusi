@@ -35,6 +35,7 @@ H.captureSamples = true
 M = H.fresh({ realSynth = true })
 S = M.Synth
 S:init()
+S:ensureAllDrums()
 
 local function samples(sd)
     local out, n = {}, sd.n

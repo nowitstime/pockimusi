@@ -1,5 +1,5 @@
 -- ============================================================================
--- src/synth/drums_bank.lua — 24 Procedural Drum & Percussion Sound Generators
+-- src/synth/drums_bank.lua — 39 Procedural Drum & Percussion Sound Generators
 -- ============================================================================
 
 local Config      = require("src.config")
@@ -35,15 +35,31 @@ function DrumsBank.build(Synth, whiteNoise)
     if not ok then error(err, 0) end
 
     for _, item in ipairs(Synth.drumCatalog) do
-        local how = made[item.sd]
+        local sd = item.sd
+        local how = sd and (sd.lazy and { sd.dur, sd.fn } or made[sd])
+        local count = 1
         if how and (item.variants or DrumsBank.VARIANT_CATS[item.cat]) and item.variants ~= false then
+            count = item.variants or DrumsBank.VARIANT_COUNT
             local names = { item.id }
-            for k = 2, item.variants or DrumsBank.VARIANT_COUNT do
-                local name = item.id .. "#" .. k
-                Synth:createPool(name, createBuffer(Synth, how[1], how[2]), 8, item.dur)
-                names[#names + 1] = name
-            end
+            for k = 2, count do names[k] = item.id .. "#" .. k end
             Synth.VARIANTS[item.id] = names
+        end
+        local function buildVariants()
+            for k = 2, count do
+                Synth:createPool(item.id .. "#" .. k, createBuffer(Synth, how[1], how[2]), 8, item.dur)
+            end
+        end
+        if sd and sd.lazy then
+            -- built later: the pool, then its versions
+            Synth.lazyDrums[item.id] = function()
+                Synth:createPool(item.id, createBuffer(Synth, sd.dur, sd.fn), 8, item.dur)
+                item.sd = Synth.pools[item.id].data
+                buildVariants()
+            end
+            Synth.lazyOrder[#Synth.lazyOrder + 1] = item.id
+        else
+            Synth:createPool(item.id, sd, 8, item.dur)
+            buildVariants()
         end
     end
 end
@@ -310,6 +326,237 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
         return tanh_approx(s * 1.35) * 0.84
     end)
 
+
+    -- =======================================================================
+    -- ACOUSTIC KIT (PHASE_L L7): the sounds of the famous funk breaks, a
+    -- drummer in a room rather than a drum machine. Filtered noise and
+    -- inharmonic partials; every generator resets its state at t = 0, so the
+    -- versions rendered for Synth.VARIANTS each start clean.
+    -- =======================================================================
+    local SR = Config.SAMPLE_RATE
+
+    -- These are built after boot, in the background (Synth:startPregen),
+    -- or at once if one is hit first: lazy() stands in for createBuffer
+    local function lazy(dur, fn) return { lazy = true, dur = dur, fn = fn } end
+    local math_cos = math.cos
+
+    -- A biquad filter (RBJ cookbook): kind "bp" (0 dB peak), "hp" or "lp"
+    local function biquad(kind, f, q)
+        local w0 = TWO_PI * f / SR
+        local cs, sn = math_cos(w0), math_sin(w0)
+        local alpha = sn / (2.0 * q)
+        local b0, b1, b2
+        if kind == "bp" then
+            b0, b1, b2 = alpha, 0.0, -alpha
+        elseif kind == "hp" then
+            b0, b1, b2 = (1 + cs) * 0.5, -(1 + cs), (1 + cs) * 0.5
+        else
+            b0, b1, b2 = (1 - cs) * 0.5, 1 - cs, (1 - cs) * 0.5
+        end
+        local a0 = 1 + alpha
+        b0, b1, b2 = b0 / a0, b1 / a0, b2 / a0
+        local a1, a2 = -2 * cs / a0, (1 - alpha) / a0
+        local x1, x2, y1, y2 = 0.0, 0.0, 0.0, 0.0
+        return function(x, reset)
+            if reset then x1, x2, y1, y2 = 0.0, 0.0, 0.0, 0.0 end
+            local y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2
+            x2, x1, y2, y1 = x1, x, y1, y
+            return y
+        end
+    end
+
+    -- Sum of inharmonic sine partials { freq, amp, decay } at time t
+    local function partials(list, t)
+        local s = 0.0
+        for i = 1, #list do
+            local p = list[i]
+            s = s + math_sin(TWO_PI * p[1] * t) * p[2] * math_exp(-t * p[3])
+        end
+        return s
+    end
+
+    -- 25. FUNK SNARE (0.32s): stick crack, a ringing shell (~200 Hz and its
+    -- second mode), and the wires' rattle, which starts a moment late
+    local fsCrack, fsWire, fsP1, fsP2 = biquad("hp", 2200, 0.7), biquad("bp", 4800, 0.6), 0.0, 0.0
+    local snareFunkSD = lazy(0.32, function(t)
+        local first = (t == 0)
+        if first then fsP1, fsP2 = 0.0, 0.0 end
+        local n = whiteNoise()
+        local drop = math_exp(-t * 60.0)
+        fsP1 = fsP1 + TWO_PI * (196.0 + 30.0 * drop) / SR
+        fsP2 = fsP2 + TWO_PI * (338.0 + 40.0 * drop) / SR
+        local shell = (math_sin(fsP1) * 0.8 + math_sin(fsP2) * 0.45) * math_exp(-t * 26.0)
+        local crack = fsCrack(n, first) * math_exp(-t * 110.0) * 1.3
+        local wireEnv = clamp((t - 0.0015) / 0.004, 0.0, 1.0) * (0.75 * math_exp(-t * 15.0) + 0.25 * math_exp(-t * 6.0))
+        local wire = fsWire(n, first) * wireEnv * 2.4
+        local env = clamp(t / 0.0007, 0.0, 1.0) * clamp((0.32 - t) / 0.03, 0.0, 1.0)
+        return tanh_approx((shell + crack + wire) * env * 1.35) * 0.70
+    end)
+
+    -- 26. STICK HAT (0.12s): a stick tip on closed hats: a click, then a
+    -- short bright "tss" with a little metal in it
+    local shHp, shBp = biquad("hp", 7000, 0.7), biquad("bp", 9500, 1.2)
+    local hatMetal = { { 3150, 0.10, 60 }, { 4790, 0.08, 70 }, { 6820, 0.07, 80 }, { 8340, 0.06, 90 } }
+    local hatAcousticSD = lazy(0.12, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local tss = shHp(n, first) * math_exp(-t * 52.0) * 0.9
+        local tip = shBp(n, first) * math_exp(-t * 380.0) * 2.0
+        local metal = partials(hatMetal, t)
+        local env = clamp(t / 0.0005, 0.0, 1.0) * clamp((0.12 - t) / 0.02, 0.0, 1.0)
+        return clamp((tss + tip + metal) * env * 0.70, -0.95, 0.95)
+    end)
+
+    -- 27. HALF HAT (0.30s): half-open hats, loose and "sloshy": the plates
+    -- rattle against each other while the wash dies away
+    local hhHp, hhBp = biquad("hp", 5500, 0.6), biquad("bp", 8200, 0.9)
+    local halfMetal = { { 3420, 0.08, 14 }, { 5130, 0.07, 16 }, { 7260, 0.06, 18 }, { 9010, 0.05, 20 } }
+    local hatHalfSD = lazy(0.30, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local slosh = 1.0 + 0.35 * math_sin(TWO_PI * 26.0 * t) * math_exp(-t * 6.0)
+        local wash = (hhHp(n, first) * 0.75 + hhBp(n, first) * 0.9) * slosh
+        local env = clamp(t / 0.002, 0.0, 1.0) * (0.6 * math_exp(-t * 16.0) + 0.4 * math_exp(-t * 7.0))
+            * clamp((0.30 - t) / 0.04, 0.0, 1.0)
+        return clamp((wash + partials(halfMetal, t)) * env * 0.50, -0.95, 0.95)
+    end)
+
+    -- 28. HAT PEDAL (0.09s): the foot closing the hats: a soft "chick"
+    local hpBp, hpHp = biquad("bp", 1700, 1.1), biquad("hp", 6000, 0.7)
+    local hatPedalSD = lazy(0.09, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local chick = hpBp(n, first) * 1.6 + hpHp(n, first) * 0.45
+        local env = clamp(t / 0.003, 0.0, 1.0) * math_exp(-t * 62.0) * clamp((0.09 - t) / 0.015, 0.0, 1.0)
+        return clamp(chick * env * 1.3, -0.95, 0.95)
+    end)
+
+    -- 29. ACOUSTIC RIDE (0.90s): the stick's ping on the bow and a long wash
+    local arHp = biquad("hp", 5200, 0.7)
+    local rideMetal = { { 3080, 0.22, 5.0 }, { 4270, 0.18, 5.5 }, { 5410, 0.15, 6.0 }, { 6620, 0.12, 7.0 },
+                        { 7890, 0.10, 8.0 }, { 2310, 0.10, 4.0 }, { 9350, 0.06, 9.0 } }
+    local rideAcousticSD = lazy(0.90, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local ping = partials(rideMetal, t)
+        local wash = arHp(n, first) * (0.10 * math_exp(-t * 3.2) + 0.22 * math_exp(-t * 40.0))
+        local env = clamp(t / 0.0008, 0.0, 1.0) * clamp((0.90 - t) / 0.1, 0.0, 1.0)
+        return clamp((ping + wash) * env * 0.82, -0.95, 0.95)
+    end)
+
+    -- 30. RIDE BELL (0.80s): the bell of the ride: clear, loud, ringing
+    local bellMetal = { { 812, 0.45, 3.5 }, { 1243, 0.30, 4.0 }, { 2297, 0.26, 4.5 }, { 3412, 0.16, 5.5 },
+                        { 4630, 0.10, 7.0 } }
+    local rbHp = biquad("hp", 6000, 0.7)
+    local rideBellSD = lazy(0.80, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local env = clamp(t / 0.0006, 0.0, 1.0) * clamp((0.80 - t) / 0.1, 0.0, 1.0)
+        return clamp((partials(bellMetal, t) + rbHp(n, first) * 0.25 * math_exp(-t * 30.0)) * env * 0.65, -0.95, 0.95)
+    end)
+
+    -- 31-32. TOMS (high 0.36s, low 0.48s): a skin that drops a little in
+    -- pitch, its inharmonic second mode, and the stick
+    local function tom(f0, dur, decay)
+        local p1, p2 = 0.0, 0.0
+        local stick = biquad("bp", 2600, 0.8)
+        return lazy(dur, function(t)
+            local first = (t == 0)
+            if first then p1, p2 = 0.0, 0.0 end
+            local drop = math_exp(-t * 18.0)
+            p1 = p1 + TWO_PI * f0 * (1.0 + 0.12 * drop) / SR
+            p2 = p2 + TWO_PI * f0 * 1.59 * (1.0 + 0.08 * drop) / SR
+            local skin = math_sin(p1) * math_exp(-t * decay) + math_sin(p2) * 0.3 * math_exp(-t * decay * 1.8)
+            local hit = stick(whiteNoise(), first) * math_exp(-t * 90.0) * 1.2
+            local env = clamp(t / 0.0008, 0.0, 1.0) * clamp((dur - t) / 0.05, 0.0, 1.0)
+            return tanh_approx((skin + hit) * env * 1.3) * 0.86
+        end)
+    end
+    local tomHighSD = tom(196.0, 0.36, 9.0)
+    local tomLowSD = tom(108.0, 0.48, 7.0)
+
+    -- 33-34. BONGOS (high 0.16s, low 0.20s): small, tight, high skins and a
+    -- slap of the fingers
+    local function bongo(f0, dur)
+        local p = 0.0
+        local slap = biquad("bp", 3200, 1.0)
+        return lazy(dur, function(t)
+            local first = (t == 0)
+            if first then p = 0.0 end
+            p = p + TWO_PI * f0 * (1.0 + 0.10 * math_exp(-t * 40.0)) / SR
+            local skin = (math_sin(p) + 0.25 * math_sin(p * 2.3) * math_exp(-t * 40.0)) * math_exp(-t * 22.0)
+            local hit = slap(whiteNoise(), first) * math_exp(-t * 160.0) * 1.4
+            local env = clamp(t / 0.0006, 0.0, 1.0) * clamp((dur - t) / 0.03, 0.0, 1.0)
+            return tanh_approx((skin + hit) * env * 1.3) * 0.84
+        end)
+    end
+    local bongoHighSD = bongo(432.0, 0.16)
+    local bongoLowSD = bongo(298.0, 0.20)
+
+    -- 35. TAMBOURINE (0.24s): jingles: a few quick metal bursts as the
+    -- zils shake, high and bright
+    local tbBp = biquad("bp", 7600, 1.4)
+    local zil = { { 5230, 0.10, 18 }, { 6870, 0.09, 20 }, { 8410, 0.08, 22 }, { 10120, 0.06, 26 } }
+    local tambSD = lazy(0.24, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local shake = math_exp(-t * 16.0) + 0.6 * math_exp(-math.max(0, t - 0.011) * 30.0) * ((t > 0.011) and 1 or 0)
+            + 0.4 * math_exp(-math.max(0, t - 0.024) * 34.0) * ((t > 0.024) and 1 or 0)
+        local s = (tbBp(n, first) * 1.6 + partials(zil, t)) * shake
+        local env = clamp(t / 0.001, 0.0, 1.0) * clamp((0.24 - t) / 0.03, 0.0, 1.0)
+        return clamp(s * env * 0.55, -0.95, 0.95)
+    end)
+
+    -- 36. SIDESTICK (0.12s): the stick laid across the rim: a dry, woody knock
+    local ssBp = biquad("bp", 1600, 2.5)
+    local sidestickSD = lazy(0.12, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local knock = math_sin(TWO_PI * 520.0 * t) * math_exp(-t * 48.0) * 0.5
+                    + math_sin(TWO_PI * 1140.0 * t) * math_exp(-t * 70.0) * 0.35
+        local click = ssBp(n, first) * math_exp(-t * 120.0) * 2.0
+        local env = clamp(t / 0.0004, 0.0, 1.0) * clamp((0.12 - t) / 0.02, 0.0, 1.0)
+        return tanh_approx((knock + click) * env * 1.4) * 0.84
+    end)
+
+    -- 37. ACOUSTIC CRASH (1.30s): a real crash: a splash of noise and many
+    -- clashing partials that bloom and fade slowly
+    local acHp, acBp = biquad("hp", 3800, 0.6), biquad("bp", 6500, 0.7)
+    local crashMetal = { { 2210, 0.08, 3.2 }, { 3170, 0.08, 3.0 }, { 4350, 0.07, 3.4 }, { 5480, 0.07, 3.6 },
+                         { 6730, 0.06, 3.8 }, { 7910, 0.05, 4.2 }, { 9260, 0.04, 4.6 }, { 2780, 0.06, 2.8 } }
+    local crashAcousticSD = lazy(1.30, function(t)
+        local first = (t == 0)
+        local n = whiteNoise()
+        local splash = acHp(n, first) * 0.55 + acBp(n, first) * 0.8
+        local env = clamp(t / 0.003, 0.0, 1.0) * (0.55 * math_exp(-t * 6.0) + 0.45 * math_exp(-t * 2.2))
+            * clamp((1.30 - t) / 0.15, 0.0, 1.0)
+        return clamp((splash + partials(crashMetal, t)) * env * 0.62, -0.95, 0.95)
+    end)
+
+    -- 38. REVERSE SNARE (0.50s): the funk snare backwards, a swell into a
+    -- hard stop, the classic jungle lead-in. Press early: it peaks at the end
+    local rsWire = biquad("bp", 4200, 0.6)
+    local revSnareSD = lazy(0.50, function(t)
+        local first = (t == 0)
+        local r = 0.50 - t                         -- the snare's own clock, running backwards
+        local n = whiteNoise()
+        local shell = math_sin(TWO_PI * 200.0 * r) * math_exp(-r * 20.0) * 0.7
+        local wire = rsWire(n, first) * (0.7 * math_exp(-r * 9.0) + 0.3 * math_exp(-r * 3.5)) * 2.2
+        local env = clamp(t / 0.02, 0.0, 1.0) * clamp(r / 0.004, 0.0, 1.0)
+        return tanh_approx((shell + wire) * env * 1.3) * 0.84
+    end)
+
+    -- 39. REVERSE CYMBAL (1.10s): a crash backwards: a rising swoosh into
+    -- the downbeat
+    local rcHp = biquad("hp", 4200, 0.6)
+    local revCymbalSD = lazy(1.10, function(t)
+        local first = (t == 0)
+        local r = 1.10 - t
+        local n = whiteNoise()
+        local env = (0.6 * math_exp(-r * 4.5) + 0.4 * math_exp(-r * 1.8)) * clamp(t / 0.05, 0.0, 1.0) * clamp(r / 0.006, 0.0, 1.0)
+        return clamp((rcHp(n, first) * 0.9 + partials(crashMetal, r) * 0.8) * env * 0.85, -0.95, 0.95)
+    end)
+
     local catalog = {
         { id = "kick_808",      cat = "KICK",  short = "808 KICK",   full = "01. 808 SUB KICK",   sd = kick808SD,      dur = 0.42 },
         { id = "kick_909",      cat = "KICK",  short = "909 KICK",   full = "02. 909 PUNCH KCK",  sd = kick909SD,      dur = 0.30 },
@@ -335,14 +582,42 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
         { id = "perc_cowbell",  cat = "BELL",  short = "COWBELL",    full = "22. 808 COWBELL",    sd = percCowbellSD,  dur = 0.24 },
         { id = "perc_agogo",    cat = "BELL",  short = "AGOGO BELL", full = "23. FM AGOGO BELL",  sd = percAgogoSD,    dur = 0.20 },
         { id = "fx_zap",        cat = "FX",    short = "LASER ZAP",  full = "24. LASER ZAP",      sd = fxZapSD,        dur = 0.18 },
+        -- the acoustic kit (PHASE_L L7)
+        { id = "snare_funk",    cat = "SNARE", short = "FUNK SNARE", full = "25. FUNK SNARE",     sd = snareFunkSD,    dur = 0.32 },
+        { id = "hat_acoustic",  cat = "HAT",   short = "STICK HAT",  full = "26. STICK HAT",      sd = hatAcousticSD,  dur = 0.12 },
+        { id = "hat_half",      cat = "HAT",   short = "HALF HAT",   full = "27. HALF-OPEN HAT",  sd = hatHalfSD,      dur = 0.30 },
+        { id = "hat_pedal",     cat = "HAT",   short = "HAT PEDAL",  full = "28. HAT PEDAL",      sd = hatPedalSD,     dur = 0.09 },
+        { id = "cym_ride_ac",   cat = "CYM",   short = "AC RIDE",    full = "29. ACOUSTIC RIDE",  sd = rideAcousticSD, dur = 0.90, variants = 2 },
+        { id = "cym_bell",      cat = "CYM",   short = "RIDE BELL",  full = "30. RIDE BELL",      sd = rideBellSD,     dur = 0.80 },
+        { id = "tom_high",      cat = "TOM",   short = "HIGH TOM",   full = "31. HIGH TOM",       sd = tomHighSD,      dur = 0.36 },
+        { id = "tom_low",       cat = "TOM",   short = "LOW TOM",    full = "32. LOW TOM",        sd = tomLowSD,       dur = 0.48 },
+        { id = "bongo_high",    cat = "TOM",   short = "HI BONGO",   full = "33. HIGH BONGO",     sd = bongoHighSD,    dur = 0.16, variants = 2 },
+        { id = "bongo_low",     cat = "TOM",   short = "LO BONGO",   full = "34. LOW BONGO",      sd = bongoLowSD,     dur = 0.20, variants = 2 },
+        { id = "perc_tamb",     cat = "PERC",  short = "TAMBOURINE", full = "35. TAMBOURINE",     sd = tambSD,         dur = 0.24, variants = 3 },
+        { id = "perc_sidestick", cat = "PERC", short = "SIDESTICK",  full = "36. SIDESTICK",      sd = sidestickSD,    dur = 0.12 },
+        { id = "cym_crash_ac",  cat = "CYM",   short = "AC CRASH",   full = "37. ACOUSTIC CRASH", sd = crashAcousticSD, dur = 1.30 },
+        { id = "fx_revsnare",   cat = "FX",    short = "REV SNARE",  full = "38. REVERSE SNARE",  sd = revSnareSD,     dur = 0.50 },
+        { id = "fx_revcym",     cat = "FX",    short = "REV CYMBAL", full = "39. REVERSE CYMBAL", sd = revCymbalSD,    dur = 1.10 },
     }
+
+    -- The picker lists the sounds category by category, in the order each
+    -- category first appears; the number in the long name follows that order
+    local catOrder, rank = {}, {}
+    for i, item in ipairs(catalog) do
+        if not catOrder[item.cat] then catOrder[item.cat] = i end
+        rank[item] = i
+    end
+    table.sort(catalog, function(a, b)
+        if a.cat ~= b.cat then return catOrder[a.cat] < catOrder[b.cat] end
+        return rank[a] < rank[b]
+    end)
+    for i, item in ipairs(catalog) do
+        item.full = string.format("%02d. %s", i, item.full:gsub("^%d+%.%s*", ""))
+    end
 
     Synth.drumCatalog = catalog
     for _, item in ipairs(catalog) do
         if item.cat == "KICK" then Synth.KICK_SOUNDS[item.id] = true end
-    end
-    for _, item in ipairs(catalog) do
-        Synth:createPool(item.id, item.sd, 8, item.dur)
     end
 end
 

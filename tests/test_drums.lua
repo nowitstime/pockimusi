@@ -352,6 +352,7 @@ return {
         local M = H.fresh({ realSynth = true })
         local S = M.Synth
         S:init()
+        S:ensureAllDrums()
         for _, item in ipairs(S.drumCatalog) do
             local v = S.VARIANTS[item.id]
             if item.cat == "SNARE" or item.cat == "HAT" or item.cat == "CLAP" then
@@ -383,5 +384,39 @@ return {
         S:update(0.05)
         S:trigger("hat_closed", 0, 0.8, 1.0)
         H.truthy(open.maxLife <= open.elapsed + 0.031, "the open hat is choked")
+    end },
+
+    { "the acoustic sounds are built after boot, at once when hit first, and in the background", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        H.truthy(#S.lazyOrder >= 15, "the acoustic sounds wait: " .. #S.lazyOrder)
+        H.falsy(S.pools.snare_funk, "not built at boot")
+        local v = S:trigger("snare_funk", 0, 0.8, 1.0)
+        H.truthy(v and S.pools.snare_funk, "a hit builds it at once and plays")
+        H.truthy(S.pools["snare_funk#3"], "with its versions")
+        S:startPregen()
+        local guard = 0
+        while S.pregen and guard < 100000 do S:stepPregen(0.001); guard = guard + 1 end
+        for _, id in ipairs(S.lazyOrder) do H.truthy(S.pools[id], id .. " built in the background") end
+    end },
+
+    { "the catalogue runs category by category, numbered in order; every kit's sound exists", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        local seen, last = {}, nil
+        for i, item in ipairs(S.drumCatalog) do
+            if item.cat ~= last then
+                H.falsy(seen[item.cat], item.cat .. " in one piece")
+                seen[item.cat], last = true, item.cat
+            end
+            H.eq(item.full:sub(1, 3), string.format("%02d.", i), item.id .. " numbered")
+        end
+        local ids = {}
+        for _, item in ipairs(S.drumCatalog) do ids[item.id] = true end
+        for _, kit in ipairs(require("src.instruments.drums").KITS) do
+            for pad, id in pairs(kit.pads) do H.truthy(ids[id], kit.name .. " " .. pad .. ": " .. id) end
+        end
     end },
 }
