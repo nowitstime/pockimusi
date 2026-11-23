@@ -14,7 +14,41 @@ local math_pi  = math.pi
 
 local DrumsBank = {}
 
+-- Sounds made in more than one version (PHASE_L L6): the generators draw
+-- fresh noise each time, so a second render of a snare or hat is a slightly
+-- different hit. Synth:trigger takes the versions in turn.
+DrumsBank.VARIANT_COUNT = 3
+DrumsBank.VARIANT_CATS = { SNARE = true, HAT = true, CLAP = true }
+
 function DrumsBank.build(Synth, whiteNoise)
+    -- Remember how each buffer was made, so variants can be rendered again
+    local made = {}
+    local createBuffer = Synth.createBuffer
+    local function record(self, dur, fn)
+        local sd = createBuffer(self, dur, fn)
+        made[sd] = { dur, fn }
+        return sd
+    end
+    Synth.createBuffer = record
+    local ok, err = pcall(DrumsBank.buildSounds, Synth, whiteNoise)
+    Synth.createBuffer = createBuffer
+    if not ok then error(err, 0) end
+
+    for _, item in ipairs(Synth.drumCatalog) do
+        local how = made[item.sd]
+        if how and (item.variants or DrumsBank.VARIANT_CATS[item.cat]) and item.variants ~= false then
+            local names = { item.id }
+            for k = 2, item.variants or DrumsBank.VARIANT_COUNT do
+                local name = item.id .. "#" .. k
+                Synth:createPool(name, createBuffer(Synth, how[1], how[2]), 8, item.dur)
+                names[#names + 1] = name
+            end
+            Synth.VARIANTS[item.id] = names
+        end
+    end
+end
+
+function DrumsBank.buildSounds(Synth, whiteNoise)
     -- 1. 808 SUB KICK (0.42s): Deep booming sine sweep 135Hz -> 38Hz
     local k808Phase = 0.0
     local kick808SD = Synth:createBuffer(0.42, function(t)

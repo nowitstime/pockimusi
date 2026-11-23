@@ -408,12 +408,20 @@ function Drums.random()
     return love.math.random()
 end
 
+-- How bright a hit of velocity `vel` is (1 = as generated): a softer stick
+-- loses the crack, so quiet hits (ghosts) are darker as well as quieter
+-- (PHASE_L L6). Applied as a low-pass on the voice where EFX exists.
+function Drums.velTone(vel)
+    return clamp(0.22 + 0.78 * (vel - 0.2) / 0.6, 0.22, 1.0)
+end
+
 -- One hit, with its pad's tune and level
 function Drums:hit(ev, state, track, vel, decay)
     local pad = ev.action
     local tune = state.padTune[pad] or 0
     local level = state.padLevel[pad] or 1.0
-    Synth:trigger(ev.soundId, (ev.semis or 0) + tune, clamp(vel * level, 0.0, 1.0), decay, nil, track.volume, track)
+    Synth:trigger(ev.soundId, (ev.semis or 0) + tune, clamp(vel * level, 0.0, 1.0), decay, nil, track.volume, track,
+        Drums.velTone(vel))
 end
 
 -- Does a recorded hit play on this pass? Chance hits are rolled once per

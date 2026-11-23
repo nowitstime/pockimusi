@@ -36,8 +36,15 @@ local Synth = {
 
 -- Choke groups: triggering any sound in a group cuts ringing voices of the
 -- listed "chokeable" sounds in the same group (closed hat cuts open hat).
-Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat" }
-Synth.CHOKEABLE   = { hat_open = true }
+Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat",
+                      hat_acoustic = "hat", hat_half = "hat", hat_pedal = "hat" }
+Synth.CHOKEABLE   = { hat_open = true, hat_half = true }
+
+-- Sounds generated more than once (drums bank): a hit takes the next version
+-- in turn. [sound id] = { pool names }
+Synth.VARIANTS = {}
+Synth.variantTurn = {}
+Synth.sourceTone = setmetatable({}, { __mode = "k" })   -- [source] = tone below 1 (initTrackFx renews it)
 
 -- ============================================================================
 -- Pump (sidechain, PHASE_L L3): a kick on any track ducks the other tracks
@@ -269,6 +276,7 @@ Synth.FX_SEND_ORDER = { "space", "echo", "drive" } -- priority when sends are li
 
 function Synth:initTrackFx()
     self.sourceFx = setmetatable({}, { __mode = "k" })
+    self.sourceTone = setmetatable({}, { __mode = "k" })
     self.fxSupported = false
     self.maxSends = 0
     if love.audio.isEffectsSupported and love.audio.isEffectsSupported() then
@@ -305,11 +313,12 @@ Synth.METER_FALL  = 2.5      -- level per second
 Synth.METER_HOLD  = 0.8      -- seconds the peak mark stays
 Synth.METER_HOT   = 0.9      -- master estimate above this is likely to clip
 
--- The low-pass on one source: the track's TONE times the master sweep
+-- The low-pass on one source: the track's TONE times the master sweep, times
+-- the source's own tone (a soft drum hit is darker: Synth.sourceTone)
 function Synth:applyFilter(src, track)
     if not self.fxSupported then return end
     local fx = track and track.fx
-    local high = 1.0
+    local high = self.sourceTone[src] or 1.0
     if fx and fx.on.tone then high = math.max(0.03, 1.0 - fx.tone * 0.97) end
     high = high * (1.0 - self.lpEnvelope * self.LP_DEPTH)
     if high < 0.999 then
@@ -397,12 +406,32 @@ function Synth:choke(soundName)
     end
 end
 
-function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track)
+-- `tone` (optional, 0..1): how bright this hit is; below 1 it is low-passed
+-- (a soft drum hit). A sound with variants (Synth.VARIANTS) takes the next
+-- one in turn, so repeated hits are never quite the same.
+function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+    local variants = self.VARIANTS[soundName]
+    if variants then
+        local n = (self.variantTurn[soundName] or 0) % #variants + 1
+        self.variantTurn[soundName] = n
+        local name = variants[n]
+        if self.pools[name] then
+            if self.KICK_SOUNDS[soundName] then self:noteKick(track) end
+            self:choke(soundName)
+            return self:triggerPool(name, soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+        end
+    end
     local pool = self.pools[soundName]
     if not pool then return nil end
     self:choke(soundName)
     if self.KICK_SOUNDS[soundName] then self:noteKick(track) end
+    return self:triggerPool(soundName, soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+end
 
+-- Play one voice from pool `poolName`; `soundName` is the sound it stands
+-- for (choke groups and the voice record use it)
+function Synth:triggerPool(poolName, soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+    local pool = self.pools[poolName]
     local src = pool.voices[pool.cursor]
     pool.cursor = (pool.cursor % pool.size) + 1
 
@@ -435,6 +464,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
     end
 
     src:stop()
+    self.sourceTone[src] = (tone and tone < 0.999) and tone or nil
     self:applyTrackFx(src, track)
     src:setPitch(pitchRatio)
     src:setVolume(effectiveVolume)
