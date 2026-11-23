@@ -68,4 +68,81 @@ function Chrome:drawPanel_roller(def, state, col, x, y, w, h)
     end
 end
 
+
+-- ============================================================================
+-- BREAKS VIEW: the break as a ring of eight slices (the D-pad's directions),
+-- its hits as beads round it (inner = kick, then snare, hats, cymbals and
+-- percussion outwards), the playhead lit, the move and speed underneath
+-- ============================================================================
+local RING_OF = { kick = 0, snare = 1, ghost = 1, hat = 2, pedal = 2, hat_open = 2, ride = 3, crash = 3, perc1 = 3, perc2 = 3 }
+
+function Chrome:drawBreaksView(def, state, track, col)
+    local C = Config.COLORS
+    local brk = def:getBreak(state)
+    local cx, cy, r0, gap = 320, 238, 22, 10
+    -- name and the move
+    love.graphics.setFont(self.fontLarge)
+    self:setColor(C.TEXT)
+    love.graphics.print(brk.name, math_floor(cx - self.fontLarge:getWidth(brk.name) * 0.5), 104)
+    local move = "HOLD B TO PLAY"
+    if state.viewMode then
+        local sp = state.want and state.want.speed or 1
+        move = ({ play = "PLAYING", stutter = "STUTTER", reverse = "REVERSE", roll = "SNARE ROLL" })[state.viewMode] or "PLAYING"
+        if sp == 0.5 then move = move .. "  -  HALF" elseif sp == 2 then move = move .. "  -  DOUBLE" end
+    end
+    if state.pendingSlice then move = move .. "  -  TO " .. state.pendingSlice end
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(state.viewMode and col or C.MUTED)
+    love.graphics.print(move, math_floor(cx - self.fontSmall:getWidth(move) * 0.5), 126)
+    self:drawCapsuleRow(cx, 142, 14, {
+        { def:kitName(state), C.GRID, C.PANEL_HI, col },
+        { brk.bars .. (brk.bars == 1 and " BAR" or " BARS"), C.GRID, C.PANEL_HI, C.MUTED },
+    })
+
+    -- the slices
+    local slices = 8
+    local outer = r0 + 3 * gap + 6
+    for i = 0, slices - 1 do
+        local a = -math_pi * 0.5 + i / slices * math_pi * 2
+        self:setColor(C.GRID)
+        love.graphics.line(cx + math_cos(a) * (r0 - 6), cy + math_sin(a) * (r0 - 6),
+                           cx + math_cos(a) * outer, cy + math_sin(a) * outer)
+        local lx, ly = cx + math_cos(a + math_pi / slices) * (outer + 7), cy + math_sin(a + math_pi / slices) * (outer + 7)
+        local label = tostring(i + 1)
+        love.graphics.setFont(self.fontTiny)
+        local lit = state.viewPos and math_floor(state.viewPos * slices) == i
+        self:setColor(lit and C.TEXT or C.DIM)
+        love.graphics.print(label, math_floor(lx - self.fontTiny:getWidth(label) * 0.5), math_floor(ly - 5))
+    end
+    for k = 0, 3 do
+        self:setColor(C.GRID, 0.6)
+        love.graphics.circle("line", cx, cy, r0 + k * gap)
+    end
+
+    -- the hits
+    local hits = def:hitList(state, track)
+    local total = brk.ticks
+    for _, h in ipairs(hits) do
+        local a = -math_pi * 0.5 + (h.tick / total) * math_pi * 2
+        local rr = r0 + (RING_OF[h.role] or 3) * gap
+        local f = state.flash[h.role] or 0
+        self:setColor(col, 0.35 + 0.65 * h.vel)
+        love.graphics.circle("fill", cx + math_cos(a) * rr, cy + math_sin(a) * rr, 1.2 + h.vel * 2.0 + f * 0.8)
+    end
+
+    -- the playhead
+    if state.viewPos then
+        local a = -math_pi * 0.5 + state.viewPos * math_pi * 2
+        self:setColor(C.TEXT)
+        love.graphics.setLineWidth(1.6)
+        love.graphics.line(cx + math_cos(a) * (r0 - 8), cy + math_sin(a) * (r0 - 8),
+                           cx + math_cos(a) * (outer + 2), cy + math_sin(a) * (outer + 2))
+        love.graphics.setLineWidth(1)
+        self:drawStarGlint(cx + math_cos(a) * (outer + 2), cy + math_sin(a) * (outer + 2), 5, C.TEXT, 1.0)
+    end
+    -- the centre: a flash on the kick and snare
+    local k = math_max(state.flash.kick or 0, (state.flash.snare or 0) * 0.8)
+    self:setColor(col, 0.15 + 0.6 * k)
+    love.graphics.circle("fill", cx, cy, 8 + k * 5)
+end
 end

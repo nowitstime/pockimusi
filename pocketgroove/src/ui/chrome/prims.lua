@@ -138,7 +138,8 @@ end
 -- Which stage view draws an instrument: its `viewKind` ("drums", "bass",
 -- "lab"), or the view that goes with its id. An instrument with neither gets
 -- the plain lab view.
-Chrome.VIEW_KINDS = { drums = true, harp = true, bass = true, lead = true, pad = true, strum = true, lane = true, lab = true }
+Chrome.VIEW_KINDS = { drums = true, harp = true, bass = true, lead = true, pad = true, strum = true, lane = true, lab = true,
+                      breaks = true }
 
 function Chrome:viewKind(def)
     local kind = def.viewKind or def.id

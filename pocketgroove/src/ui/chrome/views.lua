@@ -98,6 +98,9 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
     elseif kind == "strum" then
         self:drawStrumView(def, state, track, col, t)
 
+    elseif kind == "breaks" then
+        self:drawBreaksView(def, state, track, col)
+
     else
         self:drawLabView(def, state, track, col)
     end
