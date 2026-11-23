@@ -8,6 +8,8 @@ Part of [ROADMAP.md](ROADMAP.md). Background: the brainstorm on jungle, drum and
 
 **Rule for every step:** one step = one or a few commits, app playable, tests green. 📱 = check on the RG35XX.
 
+**Status:** L0–L9 built, tests green (502). Every 📱 check is still to do. Where the build differs from the plan below, see *What changed from the plan* at the end.
+
 ---
 
 ## Decisions
@@ -39,45 +41,45 @@ Part of [ROADMAP.md](ROADMAP.md). Background: the brainstorm on jungle, drum and
 
 ---
 
-## L0 · The lab goes
+## L0 · The lab goes ✅
 
-- [ ] One catalogue: `LIBRARY` and `LAB_IDS` become one list, **ordered by group** (above). The rule "an instrument is added by adding its file" stays
-- [ ] `Config.LAB` → `Config.DEV_TOOLS` and covers only test screens (FINGERS)
-- [ ] Docs: the ROADMAP's "Lab wave 1" becomes an ordinary section; `lab/` stays as each instrument's design notes (renamed in the docs as "design notes", not "the lab"); FUTURE_INSTRUMENTS stays the ideas file
-- [ ] Tests: `test_lab.lua` checks the single catalogue and the order
+- [x] One catalogue: `LIBRARY` and `LAB_IDS` become one list, **ordered by group** (above). The rule "an instrument is added by adding its file" stays
+- [x] `Config.LAB` → `Config.DEV_TOOLS` and covers only test screens (FINGERS)
+- [x] Docs: the ROADMAP's "Lab wave 1" becomes an ordinary section; `lab/` stays as each instrument's design notes (renamed in the docs as "design notes", not "the lab"); FUTURE_INSTRUMENTS stays the ideas file
+- [x] Tests: `test_lab.lua` checks the single catalogue and the order
 
-## L1 · Groups on the swap card
+## L1 · Groups on the swap card ✅
 
-- [ ] Each instrument declares `group = "RHYTHM"` etc.
-- [ ] The swap card shows the group name above the instrument name (`RHYTHM · BREAKS`), and the card is tinted in the group's colour
-- [ ] The tab carousel: a small group-colour mark under each tab, and a gap where one group ends and the next begins
+- [x] Each instrument declares `group = "RHYTHM"` etc.
+- [x] The swap card shows the group name above the instrument name (`RHYTHM · BREAKS`), and the card is tinted in the group's colour
+- [x] The tab carousel: a small group-colour mark under each tab, and a gap where one group ends and the next begins
 - [ ] 📱 Colours against the four slot colours, legibility of the group name
 
-## L2 · Tempo up to 240
+## L2 · Tempo up to 240 ✅
 
-- [ ] `MAX_BPM = 240`; saves load the new range
-- [ ] Hold `UP / DOWN` on the Transport page to keep stepping, faster the longer it is held
+- [x] `MAX_BPM = 240`; saves load the new range
+- [x] Hold `UP / DOWN` on the Transport page to keep stepping, faster the longer it is held
 - [ ] 📱 At 240: drum ratchets, note repeat at 1/16, Lead's arp at rate ×2 (1/32 notes at 31 ms, close to two frames). If they wobble, cap the fastest rates rather than the tempo
 
-## L3 · Pump
+## L3 · Pump ✅
 
-- [ ] A kick fired on any track (live or playback; the sound's category is `KICK`) restarts a **per-track pump envelope**: a fast drop, then a curved recovery
-- [ ] `PUMP` row on every pitched instrument: `OFF` / `LIGHT` / `MEDIUM` / `HARD` (depth and recovery time). Default `OFF`
-- [ ] No kick in the loop: pump on every beat (the "fake sidechain"), so a breakdown still breathes
-- [ ] The kick's own track never pumps; the duck from `R2 + ←` still works on top
-- [ ] The envelope is applied in the same per-frame volume pass as `duckEnvelope` (`synth/init.lua`), for held and one-shot voices
-- [ ] Tests: a kick event starts the envelope on the other tracks only; the fallback follows the beat
+- [x] A kick fired on any track (live or playback; the sound's category is `KICK`) restarts a **per-track pump envelope**: a fast drop, then a curved recovery
+- [x] `PUMP` row on every pitched instrument: `OFF` / `LIGHT` / `MEDIUM` / `HARD` (depth and recovery time). Default `OFF`
+- [x] No kick in the loop: pump on every beat (the "fake sidechain"), so a breakdown still breathes
+- [x] The kick's own track never pumps; the duck from `R2 + ←` still works on top
+- [x] The envelope is applied in the same per-frame volume pass as `duckEnvelope` (`synth/init.lua`), for held and one-shot voices
+- [x] Tests: a kick event starts the envelope on the other tracks only; the fallback follows the beat
 - [ ] 📱 Does `MEDIUM` sound like drum and bass, `HARD` like EDM? Clicks on fast recovery?
 
-## L4 · Electronic patches + filter test
+## L4 · Electronic patches + filter test ✅
 
-- [ ] **BASS:** `REESE` (detuned saws beating, looped the way `SWARM` is), `DNB SUB` (pure sine with a fast click, nothing soft at the start), `NEURO` (FM growl with a vowel-like bright layer), `HOOVER` (detuned pulse with a pitch dip on the attack)
-- [ ] **LEAD / PLUCK:** `RAVE STAB` (organ / house piano, one-hit chords), `SUPERSAW` (a lead `SWARM`, brighter, less sub)
-- [ ] **PAD:** `ATMOS` (airy, noise in the bright layer), `VOX` (short, breathy "ah / oh")
-- [ ] Listen before the device: render each patch to a `.wav` with a small tool in `tools/`
+- [x] **BASS:** `REESE` (detuned saws beating, looped the way `SWARM` is), `DNB SUB` (pure sine with a fast click, nothing soft at the start), `NEURO` (FM growl with a vowel-like bright layer), `HOOVER` (detuned pulse with a pitch dip on the attack)
+- [x] **LEAD / PLUCK:** `RAVE STAB` (organ / house piano, one-hit chords), `SUPERSAW` (a lead `SWARM`, brighter, less sub)
+- [x] **PAD:** `ATMOS` (airy, noise in the bright layer), `VOX` (short, breathy "ah / oh")
+- [x] Listen before the device: render each patch to a `.wav` with a small tool in `tools/`
 - [ ] 📱 **Wobble filter test:** a test screen (`DEV_TOOLS`) that changes the low-pass filter of 4–6 held voices every frame. Measure the frame rate. This decides L9
 
-## L5 · Roller
+## L5 · Roller ✅
 
 **Feel:** pitched note repeat. Hold a button and the note fires again on every step; move the D-pad while it rolls and the next repeat takes the new note. Rolling drum and bass basslines, EDM 1/16 plucks, trance gates on a single note. The arp chooses notes for you; Roller leaves every note to your hand and keeps only the rhythm.
 
@@ -97,28 +99,28 @@ Part of [ROADMAP.md](ROADMAP.md). Background: the brainstorm on jungle, drum and
 - **Mono or overlapping** comes from the patch, as on Bass.
 - **Stage view:** the roll as a strip of beads at its rate, the current degree lit, accents taller.
 - **Tests:** press → repeats on the grid; D-pad and shoulder changes land on the next repeat; double rate; recorded notes replay as played.
-- [ ] L5a Instrument, input → events, rows
-- [ ] L5b Stage view
-- [ ] L5c Tests, then a feedback file `feedback/roller.md` with questions for the pass
+- [x] L5a Instrument, input → events, rows
+- [x] L5b Stage view
+- [x] L5c Tests, then a feedback file `feedback/roller.md` with questions for the pass
 - [ ] 📱 Can you play a rolling drum and bass line at 174 that changes notes in time? Is `X`'s accent pattern the right one?
 
-## L6 · Drums sound real
+## L6 · Drums sound real ✅
 
 Engine work that helps every kit, and that the breaks need.
 
-- [ ] **Quiet hits sound darker:** hits below full velocity get a low-pass filter (`setFilter`) as well as lower volume, so ghost notes lose the crack like real ones. No EFX: volume only, as today
-- [ ] **Variation between hits:** 2–3 slightly different versions of each snare and hat are made at startup; hits alternate between them
-- [ ] **Hat choke group:** the hat pedal and half-open hat also cut a ringing open hat
+- [x] **Quiet hits sound darker:** hits below full velocity get a low-pass filter (`setFilter`) as well as lower volume, so ghost notes lose the crack like real ones. No EFX: volume only, as today
+- [x] **Variation between hits:** 2–3 slightly different versions of each snare and hat are made at startup; hits alternate between them
+- [x] **Hat choke group:** the hat pedal and half-open hat also cut a ringing open hat
 - [ ] 📱 Boot time with the extra versions; ghosts against accents
 
-## L7 · Acoustic drums and new kits
+## L7 · Acoustic drums and new kits ✅
 
-- [ ] **Sounds (12):** funk snare (crack, ~200 Hz ring, wire rattle, ~0.3 s), acoustic closed hat, half-open hat, hat pedal, acoustic ride, ride bell, high and low acoustic tom, high and low bongo, tambourine, sidestick, acoustic crash, reverse snare, reverse cymbal
-- [ ] **Kits:** `FUNK BREAKS`, `JUNGLE` (tighter, higher snare and the reverse hits), `LATIN BREAKS` (bongos, toms, conga, tambourine), `NEURO` (hard snare with a noise tail, punchy short kick, metallic hats), `LIQUID` (soft snare, shaker, tambourine)
-- [ ] Render a test pattern per kit to a `.wav` before the device
+- [x] **Sounds (12):** funk snare (crack, ~200 Hz ring, wire rattle, ~0.3 s), acoustic closed hat, half-open hat, hat pedal, acoustic ride, ride bell, high and low acoustic tom, high and low bongo, tambourine, sidestick, acoustic crash, reverse snare, reverse cymbal
+- [x] **Kits:** `FUNK BREAKS`, `JUNGLE` (tighter, higher snare and the reverse hits), `LATIN BREAKS` (bongos, toms, conga, tambourine), `NEURO` (hard snare with a noise tail, punchy short kick, metallic hats), `LIQUID` (soft snare, shaker, tambourine)
+- [x] Render a test pattern per kit to a `.wav` before the device
 - [ ] 📱 Levels against the old kits; does `FUNK BREAKS` sound like a drummer?
 
-## L8 · Breaks
+## L8 · Breaks ✅
 
 **Feel:** a famous break plays itself and you rearrange it live: jump to a slice, stutter it, reverse it, cut it, drop it to half time. The machine decides what is in each slice; you decide the order and the edits.
 
@@ -139,15 +141,15 @@ Engine work that helps every kit, and that the breaks need.
 - **Pump:** the break's kicks are `KICK` sounds, so other tracks pump with it automatically.
 - **Stage view:** the break's 8 slices as a ring (matching the D-pad), the playing slice lit, its hits as beads; stutter, reverse and half / double shown on the ring.
 - **Later ❓:** real audio slicing (render each break to one buffer at startup and play slices from an offset, pitched up like an old sampler). That also brings back the parked Slicer idea without loading samples.
-- [ ] L8a Break library + transcriptions, checked by rendering each break to a `.wav`
-- [ ] L8b Instrument: play, jump, stutter, reverse, choke
-- [ ] L8c Half / double time and the snare roll
-- [ ] L8d Recording moves and re-playing them on another break or kit
-- [ ] L8e Stage view
-- [ ] L8f Tests, `feedback/breaks.md`
+- [x] L8a Break library + transcriptions, checked by rendering each break to a `.wav`
+- [x] L8b Instrument: play, jump, stutter, reverse, choke
+- [x] L8c Half / double time and the snare roll
+- [x] L8d Recording moves and re-playing them on another break or kit
+- [x] L8e Stage view
+- [x] L8f Tests, `feedback/breaks.md`
 - [ ] 📱 Does the Amen sound like the Amen? Can you play a recognisable jungle chop in two minutes?
 
-## L9 · Wobble (only if the L4 filter test passes)
+## L9 · Wobble (only if the L4 filter test passes) ✅
 
 **Feel:** neuro, dubstep and EDM basses. The right thumb holds notes; the D-pad sets **how fast the tone moves, locked to the beat**. Rocking between directions while holding makes the bass talk.
 
@@ -162,9 +164,9 @@ Engine work that helps every kit, and that the breaks need.
 
 - **Engine:** per-voice low-pass (and the bright-layer level) moved every frame, timed by the clock. Rate changes are recorded as keyframes, like bends.
 - **Rows:** `PATCH` (opens on `NEURO`), `SHAPE` (sine / saw / square / stepped), `DEPTH`, `FOLLOW`, `PUMP`.
-- [ ] L9a Engine: clock-timed filter movement and its keyframes
-- [ ] L9b Instrument and rows
-- [ ] L9c Stage view, tests, `feedback/wobble.md`
+- [x] L9a Engine: clock-timed filter movement and its keyframes
+- [x] L9b Instrument and rows
+- [x] L9c Stage view, tests, `feedback/wobble.md`
 - [ ] 📱 Frame rate with four wobbling voices; does it talk?
 
 ---
@@ -176,6 +178,16 @@ Engine work that helps every kit, and that the breaks need.
 - Risers and drops as recordable `R2` effects (with Phase G's recordable punch-ins)
 - Drums `FEEL` row: half time without changing the tempo
 - Step input with the clock stopped (acid basslines), the way track C is written
+
+## What changed from the plan
+
+- **L1 colours:** RHYTHM `#FF8A4A`, BASS `#8C6CFF`, CHORDS `#FFD84D`, TEXTURE `#4FD8C4`, LEAD `#FF7AC6` (`Instruments.GROUPS`), still to be checked on the device. The swap card's capsule and hint take the group colour too. Instead of a gap between groups, a hairline marks where a group ends (the ring's spacing stays even).
+- **L3:** `PUMP` is on every instrument outside the RHYTHM group (not only "pitched" ones), so Strum, Dial, Slide and Valves have it too.
+- **L4:** the filter test screen was dropped. Wobble moves the patch's **bright layer** (a volume, set every frame like any voice), so it works with or without EFX; the low-pass is only added on top when EFX is there. `RAVE STAB` is `STAB` in the `PLUCK` group (it rings out).
+- **L6:** the versions are made by rendering the same generator again (fresh noise each time), not by detuning one buffer.
+- **L7:** the 15 new sounds are built in the background after boot (or at once when hit first), so boot time stayed where it was. The drum catalogue is now sorted by category and renumbered.
+- **L8:** a break plays while **any** of `B` / `A` / `Y` is held (`A` and `Y` are triggers that stutter or reverse, not modifiers of `B`). Always **8 slices**; no `SLICES` row (open question 3). No `SWING` row: the track's swing from the Clock page pushes the break's odd 1/16s late. The `KIT` row lists six **break kits** that fill the ten drum roles (`FUNK BREAKS`, `JUNGLE`, `LATIN BREAKS`, `NEURO`, `808`, `LO-FI`); each break opens on its own kit. A live press in time with the clock also plays the hits of the last 45 ms (the arp's snap window), so pressing just after beat 1 still gets the kick.
+- **L9:** the plan gave Wobble no way to choose a note. The notes are on the face buttons (`B` root, `Y` 3rd, `X` 5th, `A` octave, clockwise = up; a new note while one is held glides), so "one wobble per note" and "the filter opens on each note" were dropped; `SHAPE` (`SINE`, `SAW`, `SQUARE`, `STEPPED`) covers those sounds. `L1 + R1` = OPEN. Only patches with a bright layer are offered (`NEEDS_BRIGHT`).
 
 ## Open questions
 

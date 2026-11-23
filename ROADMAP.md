@@ -23,7 +23,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Topic | Decision |
 | :-- | :-- |
 | Tracks | **Four**, fixed. Instruments are swappable per slot |
-| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp**, and from lab wave 1 **Hand Drums, Strum, Slide, Dial, Valves**: ten, all ordinary instruments while the app is in testing. Sample chop parked |
+| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp**, from lab wave 1 **Hand Drums, Strum, Slide, Dial, Valves**, and from Phase L **Breaks, Roller, Wobble**: thirteen, one catalogue in group order (no lab split). Sample chop parked |
 | Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
 | Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `LEFT / RIGHT` change the value. A new option costs a row, not a button |
 | Instrument swap | Preview with `LEFT/RIGHT`, apply on `SELECT` release, **undoable** |
@@ -161,18 +161,19 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] Shape cues besides colour; 12 px+ text (check the 9 px font on device); legibility pass
 - [ ] Final pass on all five stage views
 
-## Phase L · Electronic — details in [PHASE_L.md](PHASE_L.md)
+## Phase L · Electronic ✅ (device checks pending) — details in [PHASE_L.md](PHASE_L.md)
 
-- [ ] L0 The lab split goes: one catalogue ordered by group; `Config.LAB` → `Config.DEV_TOOLS` (test screens only)
-- [ ] L1 Groups (RHYTHM · BASS · CHORDS · TEXTURE · LEAD) with a name and colour on the swap card and tabs
-- [ ] L2 Tempo 60–240, hold to keep stepping
-- [ ] L3 `PUMP` row: any `KICK` sound ducks the other tracks; pumps on every beat with no kick
-- [ ] L4 Patches `REESE`, `DNB SUB`, `NEURO`, `HOOVER`, `RAVE STAB`, `SUPERSAW`, `ATMOS`, `VOX`; 📱 filter test for Wobble
-- [ ] L5 **Roller**: pitched note repeat
-- [ ] L6 Drums sound real: darker quiet hits, varied hits, wider hat choke
-- [ ] L7 Acoustic drums (12 sounds) and kits `FUNK BREAKS`, `JUNGLE`, `LATIN BREAKS`, `NEURO`, `LIQUID`
-- [ ] L8 **Breaks**: famous breaks rearranged live (Two Step, Amen, Think, Funky Drummer, Apache, Hot Pants, Cold Sweat)
-- [ ] L9 **Wobble** (if the filter test passes)
+- [x] L0 The lab split goes: one catalogue ordered by group; `Config.LAB` → `Config.DEV_TOOLS` (test screens only)
+- [x] L1 Groups (RHYTHM · BASS · CHORDS · TEXTURE · LEAD) with a name and colour on the swap card and tabs
+- [x] L2 Tempo 60–240, hold to keep stepping
+- [x] L3 `PUMP` row: any `KICK` sound ducks the other tracks; pumps on every beat with no kick
+- [x] L4 Patches `REESE`, `DNB SUB`, `NEURO`, `HOOVER`, `STAB`, `SUPERSAW`, `ATMOS`, `VOX`; `tools/render.py` (the filter test was dropped: Wobble moves the bright layer)
+- [x] L5 **Roller**: pitched note repeat
+- [x] L6 Drums sound real: darker quiet hits, varied hits, wider hat choke
+- [x] L7 Acoustic drums (12 sounds) and kits `FUNK BREAKS`, `JUNGLE`, `LATIN BREAKS`, `NEURO`, `LIQUID`
+- [x] L8 **Breaks**: famous breaks rearranged live (Two Step, Amen, Think, Funky Drummer, Apache, Hot Pants, Cold Sweat)
+- [x] L9 **Wobble**: face buttons hold chord notes, the D-pad sets the wobble rate
+- [ ] Device check: tempo 240 timing, Pump depth and clicks, the new patches and drum levels (all written without a listen), boot time, Breaks and Wobble feel, group colours
 
 ## Phase J · Later
 

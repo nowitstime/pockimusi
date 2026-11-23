@@ -25,11 +25,14 @@ A question that's been answered can be ticked (`- [x]`) with the answer after it
 | :-- | :-- | :-- | :-- | :-- |
 | [Drums](drums.md) | Rhythm | — | — | [ ] |
 | [Hand Drums](hands.md) | Rhythm | Felt nice | Nothing specific yet | [ ] |
+| [Breaks](breaks.md) | Rhythm | New (Phase L) | First pass; the transcriptions need checking by ear | [ ] |
 | [Chord Harp](harp.md) | Chords | — | — | [ ] |
 | [Track C: chord lane](lane.md) | Chords (the chord source) | New | First pass on the device | [ ] |
 | [Chord Track](chords.md) | Chords | **Retired**: track C took its job | — | [x] |
 | [Strum](strum.md) | Chords | Could be good | Could set the chords, as the Harp does | [ ] |
 | [Bass](bass.md) | Bass | — | — | [ ] |
+| [Roller](roller.md) | Bass | New (Phase L) | First pass on the device | [ ] |
+| [Wobble](wobble.md) | Bass | New (Phase L) | First pass on the device | [ ] |
 | [Pad](pad.md) | Texture | — | — | [ ] |
 | [Lead / Arp](lead.md) | Lead | Fun; easiest to get going, most fully featured | Slower rate (`1/4`); loops get sloppy; everything sounds like boss music | [x] |
 | [Dial](dial.md) | Lead | ★ Most fun | Moving round is too quiet: wants a re-strike, not only a glide | [ ] |
