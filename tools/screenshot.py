@@ -23,6 +23,7 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
+    "roller": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "roller"); H.tap("SELECT"); H.tap("SELECT"); H.hold("X"); H.play(0.4); H.hold("UP"); H.play(0.3); H.hold("R1"); H.play(0.2)',
     "swap-card": 'H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.tap("R1"); H.tap("R1"); H.play(0.4)',
     "lane-stopped": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 8; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
                     ' H.tap("X"); H.play(0.05, { "LEFT", "B" }); H.play(0.05); H.hold("DOWN"); H.play(0.1)',

@@ -314,6 +314,7 @@ function Chrome:getInstrumentLabels(def, state)
         dpadLabels = view.dpad or dpadLabels
         faceLabels = view.face or faceLabels
     end
+    if def.getActiveButtons then activeMap = def:getActiveButtons(state) end
 
     return dpadLabels, faceLabels, flashMap, activeMap
 end
