@@ -23,6 +23,7 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
+    "wobble": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "wobble"); H.tap("SELECT"); H.tap("SELECT"); H.hold("UP_RIGHT" and "UP"); H.hold("RIGHT"); H.hold("B"); H.play(0.6); H.release("RIGHT"); H.hold("UP"); H.play(0.6)',
     "breaks": 'local I = require("src.instruments"); I:swapTrackInstrument(1, "breaks"); local st = require("src.looper").tracks[1].state; st.breakId = "amen"; H.hold("B"); H.play(0.6); H.hold("RIGHT"); H.play(0.3)',
     "roller": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "roller"); H.tap("SELECT"); H.tap("SELECT"); H.hold("X"); H.play(0.4); H.hold("UP"); H.play(0.3); H.hold("R1"); H.play(0.2)',
     "swap-card": 'H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.tap("R1"); H.tap("R1"); H.play(0.4)',

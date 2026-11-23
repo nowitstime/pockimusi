@@ -145,4 +145,36 @@ function Chrome:drawBreaksView(def, state, track, col)
     self:setColor(col, 0.15 + 0.6 * k)
     love.graphics.circle("fill", cx, cy, 8 + k * 5)
 end
+
+-- ============================================================================
+-- WOBBLE (inside the Bass view): the tone over the last 1.2 s as a filled
+-- band (high = open), newest on the right; the rate and shape in the corner
+-- ============================================================================
+function Chrome:drawPanel_wobble(def, state, col, x, y, w, h)
+    local C = Config.COLORS
+    self:drawSunkenPanel(x, y, w, h)
+    local hist = state.history or {}
+    local n = #hist
+    local base = y + h - 5
+    local span = h - 18
+    if n > 1 then
+        for i = 1, n do
+            local b = hist[i]
+            if b then
+                local px = x + 6 + (i - 1) / 71 * (w - 12)
+                self:setColor(col, 0.25 + 0.75 * b)
+                love.graphics.line(px, base, px, base - b * span)
+            end
+        end
+    end
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(C.DIM)
+    local label = (state.open and "OPEN" or state.rate) .. "  " .. state.shape .. "  " .. state.depth
+    love.graphics.print(label, x + 5, y + 3)
+    if n == 0 or not hist[n] then
+        self:setColor(C.DIM)
+        local t = "HOLD A NOTE: THE D-PAD MOVES THE TONE"
+        love.graphics.print(t, math_floor(x + (w - self.fontTiny:getWidth(t)) * 0.5), y + h * 0.5 - 2)
+    end
+end
 end

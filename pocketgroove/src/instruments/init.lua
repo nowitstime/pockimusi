@@ -293,7 +293,8 @@ function Handle:bend(fields)
     local dt = math.floor(e + 0.5)
     rec.bend = rec.bend or {}
     local kf = { dt = dt, degree = fields.degree, octave = fields.octave, semis = fields.semis,
-                 acc = fields.acc, bright = fields.bright, move = fields.move }
+                 acc = fields.acc, bright = fields.bright, move = fields.move,
+                 rate = fields.rate, open = fields.open }
     local last = rec.bend[#rec.bend]
     if last and last.dt == dt then
         rec.bend[#rec.bend] = kf                 -- several changes in one tick: keep the latest
