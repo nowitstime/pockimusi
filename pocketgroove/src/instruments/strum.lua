@@ -31,6 +31,7 @@ local math_min   = math.min
 
 local Strum = {
     id = "strum",
+    group = "CHORDS",
     name = "STRUM",
     shortName = "STRUM",
     viewKind = "strum",        -- its own stage view (Chrome:drawStrumView)

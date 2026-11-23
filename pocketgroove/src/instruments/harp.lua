@@ -20,6 +20,7 @@ local math_max   = math.max
 
 local Harp = {
     id = "harp",
+    group = "CHORDS",
     name = "CHORD HARP",
     shortName = "HARP",
     defaultGridIndex = 5, -- FREE

@@ -25,6 +25,7 @@ local math_sqrt = math.sqrt
 
 local Pad = {
     id = "pad",
+    group = "TEXTURE",
     name = "PAD",
     shortName = "PAD",
     defaultGridIndex = 5, -- FREE

@@ -12,16 +12,21 @@ local function boot()
 end
 
 return {
-    { "FINGERS is in the catalogue as a lab instrument, after the library", function()
+    { "FINGERS is in the catalogue as a test screen, after the instruments", function()
         local M = H.fresh()
         local def = M.Instruments.byId.fingers
         H.truthy(def, "registered")
-        H.truthy(def.lab, "marked lab")
+        H.truthy(def.dev, "marked as a test screen")
         H.eq(def.viewKind, "lab", "drawn by the plain view")
-        H.eq(M.Instruments.catalog[#M.Instruments.catalog], def, "last tab")
-        M.Config.LAB = false
+        H.eq(M.Instruments:groupOf(def).id, "TEST", "in the TEST group")
+        for i, inst in ipairs(M.Instruments.catalog) do
+            if inst == def then break end
+            H.falsy(inst.dev and inst ~= def and false, "")
+            H.truthy(inst.dev or M.Instruments:groupOf(inst).id ~= "TEST", inst.id .. ": instruments come first")
+        end
+        M.Config.DEV_TOOLS = false
         M.Instruments:buildCatalog()
-        H.falsy(M.Instruments.byId.fingers, "gone with the lab off")
+        H.falsy(M.Instruments.byId.fingers, "gone with DEV_TOOLS off")
     end },
 
     { "a clean press of each of the nine is counted once", function()

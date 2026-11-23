@@ -29,6 +29,7 @@ local math_floor = math.floor
 
 local Valves = setmetatable({
     id = "valves",
+    group = "LEAD",
     name = "VALVES",
     shortName = "VALVES",
     viewKind = "bass",

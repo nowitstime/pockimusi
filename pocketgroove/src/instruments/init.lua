@@ -6,29 +6,39 @@ local Config = require("src.config")
 local Input  = require("src.input")
 local Looper = require("src.looper")
 
-local Drums = require("src.instruments.drums")
-local Harp  = require("src.instruments.harp")
-local Bass  = require("src.instruments.bass")
-local Pad   = require("src.instruments.pad")
-local Lead  = require("src.instruments.lead")
 local Lane  = require("src.instruments.lane")    -- track C, never in a slot
 
 local Instruments = {
-    -- The library: always in the catalogue, in this order
-    LIBRARY = { Drums, Harp, Bass, Pad, Lead },
-    -- The instruments added after the library (lab/README.md), in tab order.
-    -- Each is the module src/instruments/<id>.lua; an id whose module isn't
-    -- there is skipped, so an instrument is added by adding its file. Only a
-    -- module marked `lab = true` (a test tool such as FINGERS) depends on
-    -- Config.LAB.
-    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" },
+    -- The catalogue, in order: grouped by the part each plays in a song
+    -- (MUSICAL_PARTS.md §1), so the Track page's tabs run group by group.
+    -- Each id is the module src/instruments/<id>.lua; an id whose module
+    -- isn't there is skipped, so an instrument is added by adding its file
+    -- (and its id here). A module marked `dev = true` (a test screen such as
+    -- FINGERS) is in the catalogue only while Config.DEV_TOOLS is on.
+    ORDER = {
+        "drums", "hands", "breaks",          -- RHYTHM
+        "bass", "roller", "wobble",          -- BASS
+        "harp", "strum",                     -- CHORDS
+        "pad",                               -- TEXTURE
+        "lead", "dial", "slide", "valves",   -- LEAD
+        "fingers", "filtertest",             -- test screens (dev)
+    },
+    -- The groups, in tab order, with the colour of their mark and swap card
+    GROUPS = {
+        { id = "RHYTHM",  color = "FF8A4A" },
+        { id = "BASS",    color = "8C6CFF" },
+        { id = "CHORDS",  color = "FFD84D" },
+        { id = "TEXTURE", color = "4FD8C4" },
+        { id = "LEAD",    color = "FF7AC6" },
+        { id = "TEST",    color = "9A98AE" },
+    },
     catalog = {},
     byId = {},
 }
 
--- A lab instrument's module, or nil if there is no such file. A module that
+-- An instrument's module, or nil if there is no such file. A module that
 -- is there but fails to load is an error, not a missing instrument.
-local function loadLab(id)
+local function loadModule(id)
     local name = "src.instruments." .. id
     local ok, mod = pcall(require, name)
     if ok then return mod end
@@ -38,16 +48,13 @@ local function loadLab(id)
     error(mod, 0)
 end
 
--- (Re)build the catalogue: the library, then the added instruments that
--- exist (those marked `lab` only while Config.LAB is on)
+-- (Re)build the catalogue: every instrument in ORDER that exist (test
+-- screens only while Config.DEV_TOOLS is on)
 function Instruments:buildCatalog()
     self.catalog, self.byId = {}, {}
-    for _, inst in ipairs(self.LIBRARY) do
-        self.catalog[#self.catalog + 1] = inst
-    end
-    for _, id in ipairs(self.LAB_IDS) do
-        local inst = loadLab(id)
-        if inst and (Config.LAB or not inst.lab) then
+    for _, id in ipairs(self.ORDER) do
+        local inst = loadModule(id)
+        if inst and (Config.DEV_TOOLS or not inst.dev) then
             self.catalog[#self.catalog + 1] = inst
         end
     end
@@ -57,15 +64,32 @@ function Instruments:buildCatalog()
     self.byId.lane = Lane          -- findable by id, but not offered for a slot
 end
 
+-- An instrument's group ({ id, color }); test screens and unknown ones are TEST
+local groupById
+function Instruments:groupOf(inst)
+    if not groupById then
+        groupById = {}
+        for i, g in ipairs(self.GROUPS) do
+            local h = g.color
+            g.rgb = { tonumber(h:sub(1, 2), 16) / 255, tonumber(h:sub(3, 4), 16) / 255,
+                      tonumber(h:sub(5, 6), 16) / 255, 1.0 }
+            g.index = i
+            groupById[g.id] = g
+        end
+    end
+    local id = inst and (inst.dev and "TEST" or inst.group) or "TEST"
+    return groupById[id] or groupById.TEST
+end
+
 Instruments:buildCatalog()
 
 function Instruments:getDefinition(instrumentId)
-    return self.byId[instrumentId] or (instrumentId == "lane" and Lane) or Drums
+    return self.byId[instrumentId] or (instrumentId == "lane" and Lane) or self.byId.drums
 end
 
 function Instruments:getTrackInstrument(trackSlot)
     local track = Looper.tracks[trackSlot or Looper.activeTrack]
-    if not track then return Drums, nil, nil end
+    if not track then return self.byId.drums, nil, nil end
     local def = self:getDefinition(track.instrumentId)
     return def, track.state, track
 end

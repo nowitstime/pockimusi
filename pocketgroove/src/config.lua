@@ -10,12 +10,12 @@ local Config = {
     SAMPLE_RATE = 44100,
     DEFAULT_BPM = 115,
     MIN_BPM = 60,
-    MAX_BPM = 180,
+    MAX_BPM = 240,
     TWO_PI = math_pi * 2.0,
 
-    -- Lab tools (lab/README.md): with this off, every instrument marked
-    -- `lab = true` (today only the FINGERS test screen) leaves the catalogue
-    LAB = true,
+    -- Test screens: with this off, every instrument marked `dev = true`
+    -- (the FINGERS and FILTER TEST screens) leaves the catalogue
+    DEV_TOOLS = true,
 
     COLORS = {
         BG         = { 0x08 / 255, 0x08 / 255, 0x0B / 255, 1.0 }, -- #08080B (near-black ground)

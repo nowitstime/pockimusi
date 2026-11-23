@@ -35,7 +35,7 @@ return {
         local M = H.fresh()
         local def = M.Instruments.byId.hands
         H.truthy(def, "registered")
-        H.falsy(def.lab, "an ordinary instrument")
+        H.falsy(def.dev, "an ordinary instrument")
         H.eq(def.shortName, "HANDS", "short name")
         H.eq(def.viewKind, "drums", "the four lanes")
         H.eq(def.eventClass, "drums", "the Drums' event class")
@@ -43,7 +43,7 @@ return {
         local Chrome = require("src.ui.chrome")
         local dpad = Chrome:getInstrumentLabels(def, def:newState())
         H.eq(dpad.UP, "X", "D-pad labels name the pads"); H.eq(dpad.RIGHT, "A", "D-pad labels name the pads")
-        M.Config.LAB = false
+        M.Config.DEV_TOOLS = false
         M.Instruments:buildCatalog()
         H.truthy(M.Instruments.byId.hands, "stays with the lab off")
     end },

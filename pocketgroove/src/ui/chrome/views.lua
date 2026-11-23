@@ -104,7 +104,7 @@ function Chrome:drawInstrumentVisualizer(def, state, track, col, t)
 end
 
 -- ============================================================================
--- LAB VIEW: the plain view for an instrument without one of its own.
+-- PLAIN VIEW (viewKind "lab"): the plain view for an instrument without one of its own.
 -- def:getReadout(state) -> a large line, a small line, and (optional) a list
 -- of further lines
 -- ============================================================================
@@ -133,7 +133,7 @@ function Chrome:drawLabView(def, state, track, col)
     local items = {}
     local patch = def.getPatch and def:getPatch(state)
     if patch then items[#items + 1] = { patch.label or "?", C.GRID, C.PANEL_HI, col } end
-    items[#items + 1] = { "LAB", C.GRID, C.PANEL_HI, C.MUTED }
+    items[#items + 1] = { Instruments:groupOf(def).id, C.GRID, C.PANEL_HI, C.MUTED }
     self:drawCapsuleRow(320, 166, 16, items)
 
     if type(lines) == "table" then

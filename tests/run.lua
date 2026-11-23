@@ -28,21 +28,27 @@ local FILES = {
     "test_session",
     "test_lane",
     "test_autosave",
-    "test_lab",
+    "test_catalog",
     "test_display",
     "test_regressions",
     "test_smoke",
 }
 
--- Lab instruments (lab/README.md): test_<id>.lua runs when the file exists,
--- so an instrument adds its tests by adding the file. The ids are those in
--- Instruments.LAB_IDS (src/instruments/init.lua).
-local LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" }
-for _, id in ipairs(LAB_IDS) do
-    local f = io.open("tests/test_" .. id .. ".lua", "r")
+-- Every other instrument: test_<id>.lua runs when the file exists, so an
+-- instrument adds its tests by adding the file. The ids are those in
+-- Instruments.ORDER (src/instruments/init.lua) without a file listed above.
+local ORDER = {
+    "drums", "hands", "breaks", "bass", "roller", "wobble", "harp", "strum",
+    "pad", "lead", "dial", "slide", "valves", "fingers", "filtertest",
+}
+local listed = {}
+for _, f in ipairs(FILES) do listed[f] = true end
+for _, id in ipairs(ORDER) do
+    local name = "test_" .. id
+    local f = not listed[name] and io.open("tests/" .. name .. ".lua", "r")
     if f then
         f:close()
-        table.insert(FILES, #FILES, "test_" .. id)      -- before the smoke test
+        table.insert(FILES, #FILES, name)      -- before the smoke test
     end
 end
 

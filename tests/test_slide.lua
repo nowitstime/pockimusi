@@ -74,7 +74,7 @@ return {
     { "SLIDE is an instrument on the Bass view with PATCH, SPEED and SNAP rows", function()
         local M, st, def = boot()
         H.truthy(def, "registered")
-        H.falsy(def.lab, "an ordinary instrument")
+        H.falsy(def.dev, "an ordinary instrument")
         H.eq(def.viewKind, "bass", "drawn by the Bass view")
         local rows = M.Instruments:getSoundRows(def, st)
         H.eq(#rows, 4, "four rows")

@@ -158,7 +158,7 @@ return {
             },
         })
         H.truthy(ok, "restored anyway")
-        H.eq(L.bpm, 180, "tempo clamped")
+        H.eq(L.bpm, require("src.config").MAX_BPM, "tempo clamped")
         H.eq(L.bars, 2, "bars default")
         H.falsy(L.clickOn, "click only if exactly true")
         H.eq(L.activeTrack, 5, "active track clamped (5 = track C)")

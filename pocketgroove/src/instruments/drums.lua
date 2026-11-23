@@ -19,6 +19,7 @@ local math_max   = math.max
 
 local Drums = {
     id = "drums",
+    group = "RHYTHM",
     name = "DRUMS",
     shortName = "DRUMS",
     defaultGridIndex = 3, -- 1/16

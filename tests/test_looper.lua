@@ -385,7 +385,7 @@ return {
     { "instrument steps wrap around the catalog", function()
         local M = setup(GRID.S)
         local I = M.Instruments
-        H.eq(I:stepInstrumentId("drums", 1), "harp", "next")
+        H.eq(I:stepInstrumentId("drums", 1), I.catalog[2].id, "next")
         H.eq(I:stepInstrumentId("drums", -1), I.catalog[#I.catalog].id, "previous wraps")
     end },
 
