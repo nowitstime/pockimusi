@@ -36,8 +36,78 @@ local Synth = {
 
 -- Choke groups: triggering any sound in a group cuts ringing voices of the
 -- listed "chokeable" sounds in the same group (closed hat cuts open hat).
-Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat" }
-Synth.CHOKEABLE   = { hat_open = true }
+Synth.CHOKE_GROUP = { hat_closed = "hat", hat_tick = "hat", hat_open = "hat",
+                      hat_acoustic = "hat", hat_half = "hat", hat_pedal = "hat" }
+Synth.CHOKEABLE   = { hat_open = true, hat_half = true }
+
+-- Sounds generated more than once (drums bank): a hit takes the next version
+-- in turn. [sound id] = { pool names }
+Synth.VARIANTS = {}
+Synth.variantTurn = {}
+-- Drum sounds built after boot (drums bank): [id] = builder, in build order
+Synth.lazyDrums = {}
+Synth.lazyOrder = {}
+Synth.sourceTone = setmetatable({}, { __mode = "k" })   -- [source] = tone below 1 (initTrackFx renews it)
+
+-- ============================================================================
+-- Pump (sidechain, PHASE_L L3): a kick on any track ducks the other tracks
+-- whose PUMP row is on; the level drops at once and curves back up over the
+-- level's recovery time. With no kick for a while (and the clock running),
+-- it pumps on every beat instead. The kick's own track never pumps from it.
+-- ============================================================================
+Synth.PUMP_LEVELS = {
+    { label = "OFF" },
+    { label = "LIGHT",  depth = 0.35, recover = 0.16 },
+    { label = "MEDIUM", depth = 0.60, recover = 0.24 },
+    { label = "HARD",   depth = 0.85, recover = 0.32 },
+}
+Synth.PUMP_FALLBACK_BEATS = 2.0    -- no kick for this many beats: pump on the beat
+Synth.KICK_SOUNDS = {}             -- sound ids in the KICK category (drums bank)
+Synth.kickAge = { math.huge, math.huge, math.huge, math.huge }
+Synth.lastKick = -math.huge        -- Synth.clock of the last kick on any track
+Synth.pumpNow = { 1.0, 1.0, 1.0, 1.0 }
+
+-- A kick sounded on `track`: the others start pumping
+function Synth:noteKick(track)
+    local slot = track and track.slot
+    if not slot then return end
+    for s = 1, 4 do
+        if s ~= slot then self.kickAge[s] = 0.0 end
+    end
+    self.lastKick = self.clock
+end
+
+-- The pump gain for a track this frame (1 = no duck)
+function Synth:pumpGain(track)
+    local slot = track and track.slot
+    return slot and self.pumpNow[slot] or 1.0
+end
+
+function Synth:updatePump(dt)
+    local Looper = package.loaded["src.looper"]
+    local tps = Looper and Looper.getTicksPerSecond and Looper:getTicksPerSecond() or 0
+    local beatSec = tps > 0 and (480 / tps) or 0.5
+    local fallback = (self.clock - self.lastKick) > math.max(0.5, beatSec * self.PUMP_FALLBACK_BEATS)
+    local beatAge = (fallback and Looper and Looper.playing and tps > 0) and ((Looper.tick % 480) / tps) or nil
+    for s = 1, 4 do
+        self.kickAge[s] = self.kickAge[s] + dt
+        local track = Looper and Looper.tracks and Looper.tracks[s]
+        local lvl = track and self.PUMP_LEVELS[track.pump or 1]
+        local g = 1.0
+        if lvl and lvl.depth then
+            local age, recover = self.kickAge[s], lvl.recover
+            if fallback then
+                age = beatAge
+                recover = math_min(recover, beatSec * 0.9)
+            end
+            if age then
+                local x = clamp(age / recover, 0.0, 1.0)
+                g = 1.0 - lvl.depth * (1.0 - x) * (1.0 - x)
+            end
+        end
+        self.pumpNow[s] = g
+    end
+end
 
 -- Sustained voices: patches, loop pools, noteOn / updateVoices (voice.lua)
 Voice.install(Synth)
@@ -99,25 +169,60 @@ end
 -- ============================================================================
 Synth.PREGEN_BUDGET = 0.002
 
+-- Build a drum sound now if it is still waiting to be built (a sound the
+-- background job is half way through is finished first)
+function Synth:ensureDrum(id)
+    local build = self.lazyDrums[id]
+    if not build then return end
+    if self.drumBuilding == id then
+        while self.drumBuilding == id and self.pregen do self:stepPregen(0) end
+        return
+    end
+    self.lazyDrums[id] = nil
+    build()
+end
+
+-- Build every drum sound still waiting (tools and tests)
+function Synth:ensureAllDrums()
+    for _, id in ipairs(self.lazyOrder) do self:ensureDrum(id) end
+end
+
 function Synth:startPregen()
+    local drums = {}
+    for _, id in ipairs(self.lazyOrder) do
+        if self.lazyDrums[id] then drums[#drums + 1] = id end
+    end
     local queue = {}
     for _, id in ipairs(self.patchOrder) do
         local p = self.patches[id]
         if not p.built and not p.silent then queue[#queue + 1] = id end
     end
-    if #queue == 0 then return end
+    if #queue == 0 and #drums == 0 then return end
     self.pregen = {
         queue = queue,
+        drums = drums,
         deadline = 0.0,
         running = false,      -- inside the coroutine: may yield
         started = love.timer.getTime(),
         co = coroutine.create(function()
+            -- the drum sounds first: a kit may want them any moment
+            for _, id in ipairs(drums) do
+                local build = self.lazyDrums[id]
+                if build then
+                    self.lazyDrums[id] = nil
+                    self.drumBuilding = id
+                    build()
+                    self.drumBuilding = nil
+                end
+            end
             for _, id in ipairs(queue) do self:preparePatch(id) end
         end),
     }
 end
 
 function Synth:stopPregen()
+    -- a drum sound half built is finished, so it is never left without a pool
+    while self.drumBuilding and self.pregen do self:stepPregen(0) end
     self.pregen = nil
 end
 
@@ -143,8 +248,8 @@ function Synth:stepPregen(budget)
     end
     if coroutine.status(job.co) == "dead" then
         self.pregen = nil
-        print(string.format("[PocketGroove] pre-generated %d patches in the background (%.1fs)",
-            #job.queue, love.timer.getTime() - job.started))
+        print(string.format("[PocketGroove] pre-generated %d drum sounds and %d patches in the background (%.1fs)",
+            #job.drums, #job.queue, love.timer.getTime() - job.started))
     end
 end
 
@@ -209,6 +314,7 @@ Synth.FX_SEND_ORDER = { "space", "echo", "drive" } -- priority when sends are li
 
 function Synth:initTrackFx()
     self.sourceFx = setmetatable({}, { __mode = "k" })
+    self.sourceTone = setmetatable({}, { __mode = "k" })
     self.fxSupported = false
     self.maxSends = 0
     if love.audio.isEffectsSupported and love.audio.isEffectsSupported() then
@@ -245,11 +351,12 @@ Synth.METER_FALL  = 2.5      -- level per second
 Synth.METER_HOLD  = 0.8      -- seconds the peak mark stays
 Synth.METER_HOT   = 0.9      -- master estimate above this is likely to clip
 
--- The low-pass on one source: the track's TONE times the master sweep
+-- The low-pass on one source: the track's TONE times the master sweep, times
+-- the source's own tone (a soft drum hit is darker: Synth.sourceTone)
 function Synth:applyFilter(src, track)
     if not self.fxSupported then return end
     local fx = track and track.fx
-    local high = 1.0
+    local high = self.sourceTone[src] or 1.0
     if fx and fx.on.tone then high = math.max(0.03, 1.0 - fx.tone * 0.97) end
     high = high * (1.0 - self.lpEnvelope * self.LP_DEPTH)
     if high < 0.999 then
@@ -337,11 +444,33 @@ function Synth:choke(soundName)
     end
 end
 
-function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track)
+-- `tone` (optional, 0..1): how bright this hit is; below 1 it is low-passed
+-- (a soft drum hit). A sound with variants (Synth.VARIANTS) takes the next
+-- one in turn, so repeated hits are never quite the same.
+function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+    if self.lazyDrums[soundName] then self:ensureDrum(soundName) end
+    local variants = self.VARIANTS[soundName]
+    if variants then
+        local n = (self.variantTurn[soundName] or 0) % #variants + 1
+        self.variantTurn[soundName] = n
+        local name = variants[n]
+        if self.pools[name] then
+            if self.KICK_SOUNDS[soundName] then self:noteKick(track) end
+            self:choke(soundName)
+            return self:triggerPool(name, soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+        end
+    end
     local pool = self.pools[soundName]
     if not pool then return nil end
     self:choke(soundName)
+    if self.KICK_SOUNDS[soundName] then self:noteKick(track) end
+    return self:triggerPool(soundName, soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+end
 
+-- Play one voice from pool `poolName`; `soundName` is the sound it stands
+-- for (choke groups and the voice record use it)
+function Synth:triggerPool(poolName, soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
+    local pool = self.pools[poolName]
     local src = pool.voices[pool.cursor]
     pool.cursor = (pool.cursor % pool.size) + 1
 
@@ -361,7 +490,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
         volume = math_min(1.0, volume * (1.0 + track.fx.drive * 0.5))
     end
 
-    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope, 0.0, 1.0)
+    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope * self:pumpGain(track), 0.0, 1.0)
     local startSemis = glideFromSemis or pitchSemis
     local pitchRatio = clamp(2.0 ^ ((startSemis + fxPitchOffset) / 12.0), 0.125, 8.0)
 
@@ -374,6 +503,7 @@ function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, 
     end
 
     src:stop()
+    self.sourceTone[src] = (tone and tone < 0.999) and tone or nil
     self:applyTrackFx(src, track)
     src:setPitch(pitchRatio)
     src:setVolume(effectiveVolume)
@@ -398,6 +528,7 @@ end
 
 function Synth:update(dt)
     self.clock = self.clock + dt
+    self:updatePump(dt)
     self:updateVoices(dt)
     if #self.scheduled > 0 then
         local due = {}
@@ -457,7 +588,8 @@ function Synth:update(dt)
 
             local remaining = v.maxLife - v.elapsed
             local fade = (remaining < 0.04) and (remaining / 0.04) or 1.0
-            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * fade * self.duckEnvelope, 0.0, 1.0))
+            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * fade * self.duckEnvelope
+                * self:pumpGain(v.track), 0.0, 1.0))
         end
     end
 

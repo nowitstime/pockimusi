@@ -321,4 +321,102 @@ return {
         for i = 1, 12 do H.truthy(seen[i], "row " .. i) end
         H.release("SELECT"); H.play(0.1)
     end },
+
+    -- ------------------------------------------------------------------
+    -- PHASE_L L6: quiet hits darker, variants, the hat choke group
+    -- ------------------------------------------------------------------
+    { "quiet hits are darker: velocity sets the hit's tone, with EFX a low-pass on the voice", function()
+        local Drums = require("src.instruments.drums")
+        H.near(Drums.velTone(0.85), 1.0, "a normal hit is as generated")
+        H.truthy(Drums.velTone(0.4) < 0.55, "a ghost is darker")
+        H.truthy(Drums.velTone(0.05) >= 0.2, "never fully muffled")
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        S.fxSupported = true
+        local seen = {}
+        for _, pool in pairs(S.pools) do
+            for _, src in ipairs(pool.voices) do
+                src.setFilter = function(self, f) seen[#seen + 1] = f or false end
+            end
+        end
+        local track = M.Looper.tracks[1]
+        S:trigger("snare_analog", 0, 0.4, 1.0, nil, 1.0, track, Drums.velTone(0.4))
+        local f = seen[#seen]
+        H.truthy(f and f.highgain and f.highgain < 0.6, "soft hit low-passed: " .. tostring(f and f.highgain))
+        S:trigger("snare_analog", 0, 0.9, 1.0, nil, 1.0, track, Drums.velTone(0.9))
+        H.eq(seen[#seen], false, "a full hit is not filtered")
+    end },
+
+    { "snares, hats and claps come in three versions, played in turn; kicks in one", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        S:ensureAllDrums()
+        for _, item in ipairs(S.drumCatalog) do
+            local v = S.VARIANTS[item.id]
+            if item.cat == "SNARE" or item.cat == "HAT" or item.cat == "CLAP" then
+                H.eq(v and #v, 3, item.id .. " has three versions")
+                for _, name in ipairs(v) do H.truthy(S.pools[name], name .. " pool") end
+            elseif item.cat == "KICK" then
+                H.falsy(v, item.id .. " has one")
+            end
+        end
+        local used = {}
+        local pools = S.VARIANTS.snare_tight
+        for k = 1, 6 do
+            local v = S:trigger("snare_tight", 0, 0.8, 1.0)
+            for i, name in ipairs(pools) do
+                for _, src in ipairs(S.pools[name].voices) do
+                    if src == v.source then used[k] = i end
+                end
+            end
+        end
+        H.eq(table.concat(used, " "), "1 2 3 1 2 3", "in turn")
+        H.eq(S.activeVoices[#S.activeVoices].soundName, "snare_tight", "the voice is still the snare (choke, meters)")
+    end },
+
+    { "a closed hat cuts an open hat whichever version is playing", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        local open = S:trigger("hat_open", 0, 0.8, 1.0)
+        S:update(0.05)
+        S:trigger("hat_closed", 0, 0.8, 1.0)
+        H.truthy(open.maxLife <= open.elapsed + 0.031, "the open hat is choked")
+    end },
+
+    { "the acoustic sounds are built after boot, at once when hit first, and in the background", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        H.truthy(#S.lazyOrder >= 15, "the acoustic sounds wait: " .. #S.lazyOrder)
+        H.falsy(S.pools.snare_funk, "not built at boot")
+        local v = S:trigger("snare_funk", 0, 0.8, 1.0)
+        H.truthy(v and S.pools.snare_funk, "a hit builds it at once and plays")
+        H.truthy(S.pools["snare_funk#3"], "with its versions")
+        S:startPregen()
+        local guard = 0
+        while S.pregen and guard < 100000 do S:stepPregen(0.001); guard = guard + 1 end
+        for _, id in ipairs(S.lazyOrder) do H.truthy(S.pools[id], id .. " built in the background") end
+    end },
+
+    { "the catalogue runs category by category, numbered in order; every kit's sound exists", function()
+        local M = H.fresh({ realSynth = true })
+        local S = M.Synth
+        S:init()
+        local seen, last = {}, nil
+        for i, item in ipairs(S.drumCatalog) do
+            if item.cat ~= last then
+                H.falsy(seen[item.cat], item.cat .. " in one piece")
+                seen[item.cat], last = true, item.cat
+            end
+            H.eq(item.full:sub(1, 3), string.format("%02d.", i), item.id .. " numbered")
+        end
+        local ids = {}
+        for _, item in ipairs(S.drumCatalog) do ids[item.id] = true end
+        for _, kit in ipairs(require("src.instruments.drums").KITS) do
+            for pad, id in pairs(kit.pads) do H.truthy(ids[id], kit.name .. " " .. pad .. ": " .. id) end
+        end
+    end },
 }

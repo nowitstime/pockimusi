@@ -23,7 +23,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Topic | Decision |
 | :-- | :-- |
 | Tracks | **Four**, fixed. Instruments are swappable per slot |
-| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp**, and from lab wave 1 **Hand Drums, Strum, Slide, Dial, Valves**: ten, all ordinary instruments while the app is in testing. Sample chop parked |
+| Instruments | Drums, Chord Harp, Bass, **Pad** (replaces Grain), **Lead/Arp**, from lab wave 1 **Hand Drums, Strum, Slide, Dial, Valves**, and from Phase L **Breaks, Roller, Wobble**: thirteen, one catalogue in group order (no lab split). Sample chop parked |
 | Page roles | `SELECT` = sound (rows, instrument, effects); `START` = timing (tempo, key, scale, bars, grid, swing) |
 | Settings space | New per-track options are **setting rows** on the Track page under the sound rows; `LEFT / RIGHT` change the value. A new option costs a row, not a button |
 | Instrument swap | Preview with `LEFT/RIGHT`, apply on `SELECT` release, **undoable** |
@@ -53,6 +53,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | **H** | **Drums pass 2** — Variation, chance, per-pad tune/level | Pass 1 is done and plays fine; randomness and per-pad tune/level land once the mix tools (meters) exist |
 | **K** | **Chord lane** — track C outside the four slots, longer than the loop, written live or with the clock stopped | The Chord Track showed the chord job doesn't need a slot; plan in [PHASE_K.md](PHASE_K.md) |
 | **I** | **Tape deck v2 & visual polish** | Ribbons/bends/chord lane need v2 data; final look across all stages |
+| **L** | **Electronic** — no more lab split, grouped instrument picker, tempo to 240, Pump, electronic sounds and acoustic break kits, **Roller**, **Breaks**, **Wobble** | Jungle, drum and bass and EDM; plan in [PHASE_L.md](PHASE_L.md) |
 | **J** | **Patterns / song, `.wav` export, sample loading** | Later, once the jam loop is great |
 
 Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of **every** phase, not as a separate one.
@@ -159,6 +160,20 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] Hints only for the held modifier; ❓ learn-mode toggle
 - [ ] Shape cues besides colour; 12 px+ text (check the 9 px font on device); legibility pass
 - [ ] Final pass on all five stage views
+
+## Phase L · Electronic ✅ (device checks pending) — details in [PHASE_L.md](PHASE_L.md)
+
+- [x] L0 The lab split goes: one catalogue ordered by group; `Config.LAB` → `Config.DEV_TOOLS` (test screens only)
+- [x] L1 Groups (RHYTHM · BASS · CHORDS · TEXTURE · LEAD) with a name and colour on the swap card and tabs
+- [x] L2 Tempo 60–240, hold to keep stepping
+- [x] L3 `PUMP` row: any `KICK` sound ducks the other tracks; pumps on every beat with no kick
+- [x] L4 Patches `REESE`, `DNB SUB`, `NEURO`, `HOOVER`, `STAB`, `SUPERSAW`, `ATMOS`, `VOX`; `tools/render.py` (the filter test was dropped: Wobble moves the bright layer)
+- [x] L5 **Roller**: pitched note repeat
+- [x] L6 Drums sound real: darker quiet hits, varied hits, wider hat choke
+- [x] L7 Acoustic drums (12 sounds) and kits `FUNK BREAKS`, `JUNGLE`, `LATIN BREAKS`, `NEURO`, `LIQUID`
+- [x] L8 **Breaks**: famous breaks rearranged live (Two Step, Amen, Think, Funky Drummer, Apache, Hot Pants, Cold Sweat)
+- [x] L9 **Wobble**: face buttons hold chord notes, the D-pad sets the wobble rate
+- [ ] Device check: tempo 240 timing, Pump depth and clicks, the new patches and drum levels (all written without a listen), boot time, Breaks and Wobble feel, group colours
 
 ## Phase J · Later
 

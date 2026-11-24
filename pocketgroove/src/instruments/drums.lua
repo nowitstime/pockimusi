@@ -19,6 +19,7 @@ local math_max   = math.max
 
 local Drums = {
     id = "drums",
+    group = "RHYTHM",
     name = "DRUMS",
     shortName = "DRUMS",
     defaultGridIndex = 3, -- 1/16
@@ -50,6 +51,12 @@ local Drums = {
         { name = "ACOUSTIC",    pads = { B = "kick_acoustic", Y = "snare_brush",  A = "cym_ride",    X = "perc_wood"    } },
         { name = "LATIN",       pads = { B = "perc_conga",    Y = "perc_wood",    A = "perc_shaker", X = "perc_cowbell" } },
         { name = "INDUSTRIAL",  pads = { B = "kick_gabber",   Y = "snare_gated",  A = "hat_tick",    X = "fx_zap"       } },
+        -- for jungle, drum and bass and the breaks (PHASE_L L7)
+        { name = "FUNK BREAKS", pads = { B = "kick_funk",     Y = "snare_funk",   A = "hat_acoustic", X = "hat_half"    } },
+        { name = "JUNGLE",      pads = { B = "kick_808",      Y = "snare_funk",   A = "cym_ride_ac", X = "fx_revsnare"  } },
+        { name = "LATIN BREAKS", pads = { B = "bongo_low",    Y = "bongo_high",   A = "perc_tamb",   X = "tom_low"      } },
+        { name = "NEURO",       pads = { B = "kick_909",      Y = "snare_gated",  A = "hat_tick",    X = "hat_open"     } },
+        { name = "LIQUID",      pads = { B = "kick_acoustic", Y = "perc_sidestick", A = "perc_shaker", X = "perc_tamb"  } },
     },
 }
 
@@ -407,12 +414,20 @@ function Drums.random()
     return love.math.random()
 end
 
+-- How bright a hit of velocity `vel` is (1 = as generated): a softer stick
+-- loses the crack, so quiet hits (ghosts) are darker as well as quieter
+-- (PHASE_L L6). Applied as a low-pass on the voice where EFX exists.
+function Drums.velTone(vel)
+    return clamp(0.22 + 0.78 * (vel - 0.2) / 0.6, 0.22, 1.0)
+end
+
 -- One hit, with its pad's tune and level
 function Drums:hit(ev, state, track, vel, decay)
     local pad = ev.action
     local tune = state.padTune[pad] or 0
     local level = state.padLevel[pad] or 1.0
-    Synth:trigger(ev.soundId, (ev.semis or 0) + tune, clamp(vel * level, 0.0, 1.0), decay, nil, track.volume, track)
+    Synth:trigger(ev.soundId, (ev.semis or 0) + tune, clamp(vel * level, 0.0, 1.0), decay, nil, track.volume, track,
+        Drums.velTone(vel))
 end
 
 -- Does a recorded hit play on this pass? Chance hits are rolled once per

@@ -24,6 +24,7 @@ end
 
 local Bass = {
     id = "bass",
+    group = "BASS",
     name = "BASS",
     shortName = "BASS",
     eventClass = "mono",     -- Bass and Lead play each other's notes (kept on a swap)

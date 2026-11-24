@@ -346,6 +346,7 @@ function Install.updateVoices(Synth, dt)
             local pitch = v.currentSemis + v.shift + vib + drift + fxPitch + v.patch.tune
             local level = v:envelope()
             local gain = level * v.vel * v.trackVolume * Synth.masterVolume * Synth.duckEnvelope
+                * Synth:pumpGain(v.track)
             if v.loopSrc then
                 v.loopSrc:setPitch(semisToRatio(pitch))
                 v.loopSrc:setVolume(clamp(gain, 0.0, 1.0))

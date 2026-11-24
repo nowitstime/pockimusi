@@ -102,7 +102,7 @@ The same layout on every instrument:
 | :-- | :-- |
 | `UP / DOWN` | Move the row cursor |
 | `LEFT / RIGHT` | Previous / next value for the selected row; holding repeats. A press previews a sound at once; held scrolling previews once it settles ✅ |
-| `L1 / R1` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release. The instruments are a carousel across the top of the page: the selected one in the centre, the rest a ring that fades towards the edges, lab instruments dotted ✅ |
+| `L1 / R1` | Preview the previous / next instrument for this slot (§7); applied on `SELECT` release. The instruments are a carousel across the top of the page: the selected one in the centre, the rest a ring that fades towards the edges. The catalogue runs group by group (RHYTHM, BASS, CHORDS, TEXTURE, LEAD); each tab has a bar in its group's colour and a hairline marks where a group ends; the swap card is tinted in the group's colour and names the group ✅ (Phase L) |
 | Face tap | Effect on / off: `X` tone, `Y` drive, `A` echo, `B` space. The cursor jumps to that effect's row ✅ |
 | `SELECT` tap (< 0.25 s, no combo) | Next track 1 → 2 → 3 → 4 → C (the chord lane, §5.1) → 1 ✅ |
 
@@ -127,7 +127,7 @@ The same layout on every instrument:
 | List (sounds, kits, patches, colour, follow, glide, ...) | `items` (label, optional `group` and `full` name) and `index` | The **picker**: a shelf over the tape deck while the row is being changed |
 | Number (`TUNE`, `LEVEL`, the four effects) | `amount` 0..1 | A bar in the row; no picker |
 
-The picker shows group tabs when the list has groups (the 24 drum sounds: kick, snare, hat, ...), the current group's items as chips (a list without groups shows up to five around the current item), and a bottom line with the full name, a map of the whole list and the position. It closes 1.2 s after the last change, or when the cursor moves.
+The picker shows group tabs when the list has groups (the 39 drum sounds: kick, snare, hat, ...), the current group's items as chips (a list without groups shows up to five around the current item), and a bottom line with the full name, a map of the whole list and the position. It closes 1.2 s after the last change, or when the cursor moves.
 
 The list shows six rows at a time and scrolls with the cursor (marks show when there is more above or below). ✅ Timing settings (grid, swing) stay on the Transport page.
 
@@ -137,7 +137,7 @@ The list shows six rows at a time and scrolls with the cursor (marks show when t
 
 | Control | Job |
 | :-- | :-- |
-| `UP / DOWN` | BPM ±5 (60–180) |
+| `UP / DOWN` | BPM ±5 (60–240); held, it keeps stepping, faster after 1.5 s ✅ |
 | `LEFT / RIGHT` | Key (root) |
 | `L1 / R1` | Scale |
 | `B` | Bars 2 / 4 |
@@ -241,15 +241,15 @@ Clearing track C makes followers fall back to the tonic; nothing breaks.
 
 Two shared pools:
 
-1. **One-shot pool** — drum hits, perc, FX. Any drum pad can hold any one-shot. ✅ 24-sound catalogue and six kits (808 Classic, 909 House, Lo-Fi, Acoustic, Latin, Industrial; a changed pad marks the kit with `*`).
+1. **One-shot pool** — drum hits, perc, FX. Any drum pad can hold any one-shot. ✅ 39-sound catalogue, sorted by category, and eleven kits (808 Classic, 909 House, Lo-Fi, Acoustic, Latin, Industrial, Funk Breaks, Jungle, Latin Breaks, Neuro, Liquid; a changed pad marks the kit with `*`). The acoustic sounds (funk snare, stick / half-open / pedal hats, acoustic ride and bell, toms, bongos, tambourine, sidestick, acoustic crash, reverse snare and cymbal) are built in the background after boot. Snares, hats and claps are rendered three times and played in turn; a soft hit is low-passed as well as quieter (with EFX). ✅ (Phase L)
 2. **Pitched patch pool** ✅ — one catalogue (`src/synth/synths_bank.lua`) shared by Chord Harp, Bass, Pad and Lead/Arp. A patch has an *attack one-shot*, a *seamless loop*, or both (§9.2), and each instrument's `PATCH` row lists the whole pool with its own group first.
 
    | Group | Patches |
    | :-- | :-- |
-   | `BASS` | `SAW`, `SUB`, `PLUCK`, `808` |
-   | `LEAD` | `SQUARE`, `SAW`, `PLUCK`, `KEYS` |
-   | `PAD` | `WARM`, `BELL`, `CHOIR`, `DRONE`, `STRINGS` |
-   | `PLUCK` | `HARP`, `NYLON`, `RHODES`, `KALIMBA`, `SILENT` |
+   | `BASS` | `SAW`, `SUB`, `PLUCK`, `808`, `REESE`, `DNB SUB`, `NEURO`, `HOOVER` |
+   | `LEAD` | `SQUARE`, `SAW`, `PLUCK`, `KEYS`, `SUPERSAW` |
+   | `PAD` | `WARM`, `BELL`, `CHOIR`, `DRONE`, `STRINGS`, `ATMOS`, `VOX` |
+   | `PLUCK` | `HARP`, `NYLON`, `RHODES`, `KALIMBA`, `STAB`, `SILENT` |
    | `ODD` | `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM` |
 
    - **Restrictions come from what a patch has, not from who owns it.** The Pad needs a loop, so it skips the one-shot patches (`HARP`, `NYLON`, `KALIMBA`, `GONG`, `REVERSE`). `SILENT` is offered only to chord instruments (the Chord Harp): the chords still drive the followers. A patch without a bright layer plays on the Pad with the brightness control doing nothing.
@@ -265,7 +265,7 @@ Goal: swapping the patch changes how the part sits with the drums **without chan
 
 ## 7. Instruments
 
-Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library: Drums, Chord Harp, Bass, Pad, Lead/Arp, plus the five from lab wave 1 (§7.6). Each must be a *different way of playing*, not a different sound.
+Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. One catalogue, in group order (`Instruments.ORDER`): RHYTHM Drums, Hand Drums, Breaks · BASS Bass, Roller, Wobble · CHORDS Chord Harp, Strum · TEXTURE Pad · LEAD Lead/Arp, Dial, Slide, Valves (§7.6, §7.7). There is no lab split any more; only test screens (FINGERS) sit behind `Config.DEV_TOOLS`. Each must be a *different way of playing*, not a different sound.
 
 ### 7.1 Drums ✅ / 📐
 
@@ -314,7 +314,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. The library:
 - ✅ Follow lookahead is under half a 1/32 for the Lead (a 1/16 for the Bass), so the arp step before a chord change keeps the old chord.
 - ❓ Arp latch; note length as a row; vibrato on long notes. 📐 Strumming stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)).
 
-### 7.6 From lab wave 1 ✅ (plans in [lab/](lab/README.md))
+### 7.6 From lab wave 1 ✅ (design notes in [lab/](lab/README.md))
 
 Ordinary instruments while the app is in testing; each gets a pass ([feedback/](feedback/README.md)). The part each plays and what it still needs: [MUSICAL_PARTS.md](MUSICAL_PARTS.md).
 
@@ -326,7 +326,18 @@ Ordinary instruments while the app is in testing; each gets a pass ([feedback/](
 | Dial | Lead | Roll the right thumb round eight positions to walk the scale | [lab/DIAL.md](lab/DIAL.md) |
 | Valves | Lead | D-pad open note, face buttons valves, shoulders breath | [lab/VALVES.md](lab/VALVES.md) |
 
-### 7.7 Parked ideas
+### 7.7 Phase L: electronic ✅ (details: [PHASE_L.md](PHASE_L.md))
+
+| Instrument | Part | Way of playing | Feedback |
+| :-- | :-- | :-- | :-- |
+| Breaks | Rhythm | A famous break plays while a face button is held (`B` play in time, `A` stutter, `Y` reverse, `X` choke); the D-pad jumps to one of 8 slices at the next 1/8 line; `L1` / `R1` half / double time, both a snare roll into the bar line. Records the moves, so a take replays on another break or kit. Rows `BREAK`, `KIT` | [feedback/breaks.md](feedback/breaks.md) |
+| Roller | Bass | Pitched note repeat: hold `B` 1/16, `A` 1/8, `Y` 1/8T, `X` 1/16 with accented off-beats; the D-pad and shoulders set the next repeat's note; both shoulders double the rate. Rows `PATCH` (`REESE`), `FOLLOW`, `LENGTH` | [feedback/roller.md](feedback/roller.md) |
+| Wobble | Bass | `B` root, `Y` 3rd, `X` 5th, `A` octave of the chord; the D-pad sets how fast the tone (the patch's bright layer) moves, locked to the beat (`↓` closed); both shoulders open it fully. Only patches with a bright layer. Rows `PATCH` (`NEURO`), `SHAPE`, `DEPTH`, `GLIDE`, `FOLLOW` | [feedback/wobble.md](feedback/wobble.md) |
+
+- **Pump** ✅: a `PUMP` row (`OFF` / `LIGHT` / `MEDIUM` / `HARD`) on every track that isn't a rhythm instrument, saved with the track. Any sound in the `KICK` category on another track ducks it at once and it curves back up; with no kick for two beats (clock running) it pumps on every beat. §9.3.
+- The `.wav` render tool (`tools/render.py`) writes patches, drum sounds and breaks to `renders/` to listen to without the device.
+
+### 7.8 Parked ideas
 
 - Sample chop instrument (needs `.wav` loading; not planned).
 - Separate Perc/FX instrument — superseded by Drums Variation.
@@ -401,6 +412,7 @@ Event = {
 - ✅ Per-track and master volume.
 - ✅ **Per-track FX** (set-and-forget, Track page): tone = low-pass filter on each voice; drive (distortion), echo and space (reverb) = per-track OpenAL EFX sends. Without EFX, drive falls back to a gain push. ❓ Check EFX support and CPU cost on the RG35XX.
 - ✅ Swing per track (§8.1). ✅ Humanize = Drums `VARIATION` (§7.1).
+- ✅ **Pump** (sidechain): per-track gain envelope restarted by any `KICK` sound on another track, applied in the same per-frame volume pass as the duck, for one-shot and sustained voices (`Synth:pumpGain`). §7.7.
 - ✅ **Master low-pass** on `R2 + ←`: closes in about 0.2 s while held and opens on release, applied to every sounding source with the same filter as tone (the two multiply). Without EFX it falls back to the old volume duck.
 - ✅ **Meters** are estimated from the sounding voices (each voice's gain and envelope, added per track as power), since LÖVE can't read the output. They fall at 2.5 per second with a peak mark held 0.8 s. Shown at the right of each tape-deck lane and beside each Mix page fader; the master's turns red above 0.9, where the sum is likely to clip.
 
@@ -461,7 +473,10 @@ Principles: show mode in the same place always; hints for the held modifier only
 | slide | SLIDE | SLIDE |
 | dial | DIAL | DIAL |
 | valves | VALVES | VALVES |
-| fingers (lab tool) | FINGERS | FINGER |
+| breaks | BREAKS | BRKS |
+| roller | ROLLER | ROLL |
+| wobble | WOBBLE | WOB |
+| fingers (test screen) | FINGERS | FINGER |
 
 Internally the Clock page is still the `TRANSPORT` mode and the Fresh page is `NEW`.
 

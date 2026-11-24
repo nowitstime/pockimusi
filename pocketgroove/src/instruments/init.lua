@@ -6,29 +6,39 @@ local Config = require("src.config")
 local Input  = require("src.input")
 local Looper = require("src.looper")
 
-local Drums = require("src.instruments.drums")
-local Harp  = require("src.instruments.harp")
-local Bass  = require("src.instruments.bass")
-local Pad   = require("src.instruments.pad")
-local Lead  = require("src.instruments.lead")
 local Lane  = require("src.instruments.lane")    -- track C, never in a slot
 
 local Instruments = {
-    -- The library: always in the catalogue, in this order
-    LIBRARY = { Drums, Harp, Bass, Pad, Lead },
-    -- The instruments added after the library (lab/README.md), in tab order.
-    -- Each is the module src/instruments/<id>.lua; an id whose module isn't
-    -- there is skipped, so an instrument is added by adding its file. Only a
-    -- module marked `lab = true` (a test tool such as FINGERS) depends on
-    -- Config.LAB.
-    LAB_IDS = { "hands", "strum", "slide", "dial", "valves", "fingers" },
+    -- The catalogue, in order: grouped by the part each plays in a song
+    -- (MUSICAL_PARTS.md §1), so the Track page's tabs run group by group.
+    -- Each id is the module src/instruments/<id>.lua; an id whose module
+    -- isn't there is skipped, so an instrument is added by adding its file
+    -- (and its id here). A module marked `dev = true` (a test screen such as
+    -- FINGERS) is in the catalogue only while Config.DEV_TOOLS is on.
+    ORDER = {
+        "drums", "hands", "breaks",          -- RHYTHM
+        "bass", "roller", "wobble",          -- BASS
+        "harp", "strum",                     -- CHORDS
+        "pad",                               -- TEXTURE
+        "lead", "dial", "slide", "valves",   -- LEAD
+        "fingers",                           -- test screen (dev)
+    },
+    -- The groups, in tab order, with the colour of their mark and swap card
+    GROUPS = {
+        { id = "RHYTHM",  color = "FF8A4A" },
+        { id = "BASS",    color = "8C6CFF" },
+        { id = "CHORDS",  color = "FFD84D" },
+        { id = "TEXTURE", color = "4FD8C4" },
+        { id = "LEAD",    color = "FF7AC6" },
+        { id = "TEST",    color = "9A98AE" },
+    },
     catalog = {},
     byId = {},
 }
 
--- A lab instrument's module, or nil if there is no such file. A module that
+-- An instrument's module, or nil if there is no such file. A module that
 -- is there but fails to load is an error, not a missing instrument.
-local function loadLab(id)
+local function loadModule(id)
     local name = "src.instruments." .. id
     local ok, mod = pcall(require, name)
     if ok then return mod end
@@ -38,16 +48,13 @@ local function loadLab(id)
     error(mod, 0)
 end
 
--- (Re)build the catalogue: the library, then the added instruments that
--- exist (those marked `lab` only while Config.LAB is on)
+-- (Re)build the catalogue: every instrument in ORDER that exist (test
+-- screens only while Config.DEV_TOOLS is on)
 function Instruments:buildCatalog()
     self.catalog, self.byId = {}, {}
-    for _, inst in ipairs(self.LIBRARY) do
-        self.catalog[#self.catalog + 1] = inst
-    end
-    for _, id in ipairs(self.LAB_IDS) do
-        local inst = loadLab(id)
-        if inst and (Config.LAB or not inst.lab) then
+    for _, id in ipairs(self.ORDER) do
+        local inst = loadModule(id)
+        if inst and (Config.DEV_TOOLS or not inst.dev) then
             self.catalog[#self.catalog + 1] = inst
         end
     end
@@ -57,15 +64,32 @@ function Instruments:buildCatalog()
     self.byId.lane = Lane          -- findable by id, but not offered for a slot
 end
 
+-- An instrument's group ({ id, color }); test screens and unknown ones are TEST
+local groupById
+function Instruments:groupOf(inst)
+    if not groupById then
+        groupById = {}
+        for i, g in ipairs(self.GROUPS) do
+            local h = g.color
+            g.rgb = { tonumber(h:sub(1, 2), 16) / 255, tonumber(h:sub(3, 4), 16) / 255,
+                      tonumber(h:sub(5, 6), 16) / 255, 1.0 }
+            g.index = i
+            groupById[g.id] = g
+        end
+    end
+    local id = inst and (inst.dev and "TEST" or inst.group) or "TEST"
+    return groupById[id] or groupById.TEST
+end
+
 Instruments:buildCatalog()
 
 function Instruments:getDefinition(instrumentId)
-    return self.byId[instrumentId] or (instrumentId == "lane" and Lane) or Drums
+    return self.byId[instrumentId] or (instrumentId == "lane" and Lane) or self.byId.drums
 end
 
 function Instruments:getTrackInstrument(trackSlot)
     local track = Looper.tracks[trackSlot or Looper.activeTrack]
-    if not track then return Drums, nil, nil end
+    if not track then return self.byId.drums, nil, nil end
     local def = self:getDefinition(track.instrumentId)
     return def, track.state, track
 end
@@ -91,6 +115,15 @@ function Instruments:getSoundRows(def, state, track)
         end
     end
     if track and not def.NO_FX then
+        -- PUMP: duck under the kick (PHASE_L L3), kept with the track like its effects
+        local Synth = require("src.synth")
+        local items = {}
+        for i, lvl in ipairs(Synth.PUMP_LEVELS) do items[i] = { label = lvl.label } end
+        local pi = track.pump or 1
+        if def.group ~= "RHYTHM" then         -- the rhythm instruments are what it listens to
+            rows[#rows + 1] = { key = "PUMP", label = "PUMP", kind = "setting", value = items[pi].label,
+                                items = items, index = pi }
+        end
         for _, slot in ipairs(Looper.FX_ORDER) do
             local on = track.fx.on[slot]
             rows[#rows + 1] = {
@@ -111,6 +144,10 @@ function Instruments:cycleRow(def, state, rowIdx, delta, track, quiet)
     if not row then return end
     if row.kind == "fx" then
         Looper:adjustTrackFx(track.slot, row.slot, delta * 0.1)
+    elseif row.key == "PUMP" and track then
+        local n = #require("src.synth").PUMP_LEVELS
+        track.pump = (((track.pump or 1) - 1 + delta) % n) + 1
+        Looper:showToast("PUMP: " .. require("src.synth").PUMP_LEVELS[track.pump].label)
     elseif row.kind == "setting" then
         if def.cycleSetting then def:cycleSetting(state, row.key, delta) end
     elseif def.cycleRowSound then
@@ -256,7 +293,8 @@ function Handle:bend(fields)
     local dt = math.floor(e + 0.5)
     rec.bend = rec.bend or {}
     local kf = { dt = dt, degree = fields.degree, octave = fields.octave, semis = fields.semis,
-                 acc = fields.acc, bright = fields.bright, move = fields.move }
+                 acc = fields.acc, bright = fields.bright, move = fields.move,
+                 rate = fields.rate, open = fields.open }
     local last = rec.bend[#rec.bend]
     if last and last.dt == dt then
         rec.bend[#rec.bend] = kf                 -- several changes in one tick: keep the latest

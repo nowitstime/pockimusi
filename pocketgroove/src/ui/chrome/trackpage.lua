@@ -120,6 +120,7 @@ function Chrome:drawInstrumentTabs(track, col)
     local pending = Modes.trackPage.pending
     local selectedId = pending or track.instrumentId
     local y, h, pad = 60, 18, 7
+    local groups = {}
     love.graphics.setFont(font)
     for _, tab in ipairs(self:tabLayout(self:tabPosition(track))) do
         local inst = tab.inst
@@ -144,10 +145,19 @@ function Chrome:drawInstrumentTabs(track, col)
         end
         self:setColor(textCol, a)
         love.graphics.print(label, x + pad, y + math_floor((h - font:getHeight()) * 0.5))
-        if inst.lab then
-            -- a lab instrument: a small dot over the name
-            self:setColor(col, a)
-            love.graphics.circle("fill", math_floor(tab.x), y - 3, 1.6)
+        -- the instrument's group: a short bar in the group's colour under the tab
+        local group = Instruments:groupOf(inst)
+        self:setColor(group.rgb, a)
+        love.graphics.rectangle("fill", math_floor(tab.x - 6), y + h + 3, 12, 2)
+        groups[#groups + 1] = { x = tab.x, w = w, group = group, a = a }
+    end
+    -- a hairline where one group ends and the next begins
+    for i = 2, #groups do
+        local l, r = groups[i - 1], groups[i]
+        if l.group ~= r.group then
+            local mx = math_floor((l.x + l.w * 0.5 + r.x - r.w * 0.5) * 0.5) + 0.5
+            self:setColor(C.MUTED, math_min(l.a, r.a) * 0.7)
+            love.graphics.line(mx, y + 2, mx, y + h - 2)
         end
     end
 end
@@ -156,22 +166,26 @@ end
 function Chrome:drawSwapCard(track, col)
     local C = Config.COLORS
     local pDef = Instruments:getDefinition(Modes.trackPage.pending)
+    local group = Instruments:groupOf(pDef)
     local function centred(text, y, font, c, alpha)
         love.graphics.setFont(font)
         self:setColor(c, alpha)
         love.graphics.print(text, math_floor(320 - font:getWidth(text) * 0.5), y)
     end
-    self:setColor(col, 0.14)
+    -- the card takes the colour of the instrument's group (RHYTHM, BASS ...)
+    local gc = group.rgb
+    self:setColor(gc, 0.16)
     love.graphics.rectangle("fill", 210, 94, 220, 214, 8, 8)
-    self:setColor(col)
+    self:setColor(gc)
     love.graphics.setLineWidth(1.5)
     love.graphics.rectangle("line", 210, 94, 220, 214, 8, 8)
     love.graphics.setLineWidth(1)
-    self:drawStarGlint(320, 128, 12, col, 1.0)
-    centred(string.format("TRACK %d BECOMES", track.slot), 152, self.fontTiny, C.MUTED)
-    centred(pDef.name, 170, self.fontLarge, C.TEXT)
-    self:drawCapsule(232, 206, 176, 20, "RELEASE SELECT TO SWAP", col, col, C.BG, self.fontTiny)
-    centred("L1 / R1: ANOTHER INSTRUMENT", 244, self.fontTiny, col)
+    self:drawStarGlint(320, 120, 12, gc, 1.0)
+    centred(string.format("TRACK %d BECOMES", track.slot), 140, self.fontTiny, C.MUTED)
+    centred(group.id, 154, self.fontSmall, gc)
+    centred(pDef.name, 172, self.fontLarge, C.TEXT)
+    self:drawCapsule(232, 206, 176, 20, "RELEASE SELECT TO SWAP", gc, gc, C.BG, self.fontTiny)
+    centred("L1 / R1: ANOTHER INSTRUMENT", 244, self.fontTiny, gc)
     centred("BACK TO " .. (track.shortName or track.name) .. " CANCELS", 258, self.fontTiny, C.MUTED)
     centred("UNDO AFTERWARDS: L2 + R2 + LEFT", 284, self.fontTiny, C.MUTED)
 end

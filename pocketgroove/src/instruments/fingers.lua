@@ -16,7 +16,7 @@ local Fingers = {
     id = "fingers",
     name = "FINGERS",
     shortName = "FINGER",
-    lab = true,
+    dev = true,
     viewKind = "lab",
 
     -- The nine fingerings to build on, in the order they are listed on screen

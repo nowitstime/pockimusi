@@ -8,6 +8,7 @@
 --   REGISTER       the octave of C its 0 semitones plays (Bass 3, others 4)
 --   VOICES         how many voices it can sound at once
 --   NEEDS_LOOP     true = only patches that sustain (the Pad)
+--   NEEDS_BRIGHT   true = only patches with a bright layer (Wobble)
 --   ALLOW_SILENT   true = the silent patch is offered (chord instruments)
 -- and gets its list, the Track page PATCH row and the note calls from here.
 -- ============================================================================
@@ -21,6 +22,7 @@ function Patches.allowed(def, patch)
     if not patch or not patch.group then return false end
     if patch.silent then return def.ALLOW_SILENT == true end
     if def.NEEDS_LOOP and not patch.loop then return false end
+    if def.NEEDS_BRIGHT and not patch.bright then return false end
     return true
 end
 

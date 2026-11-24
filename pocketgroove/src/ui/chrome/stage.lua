@@ -175,7 +175,7 @@ function Chrome:drawCenterStage()
         TRACK = "D-PAD: ROW - VALUE", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
         ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
     }
-    local instSub = { drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
+    local instSub = { breaks = "D-PAD: JUMP TO A SLICE", drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
     local faceSub = { TRACK = "FACE: EFFECTS ON / OFF", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
     local dpadSubtitle = dpadSub[mode] or (def.getDpadSubtitle and def:getDpadSubtitle(state))
         or instSub[def.id] or instSub[kind] or "D-PAD"
@@ -314,6 +314,7 @@ function Chrome:getInstrumentLabels(def, state)
         dpadLabels = view.dpad or dpadLabels
         faceLabels = view.face or faceLabels
     end
+    if def.getActiveButtons then activeMap = def:getActiveButtons(state) end
 
     return dpadLabels, faceLabels, flashMap, activeMap
 end

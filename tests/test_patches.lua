@@ -205,4 +205,42 @@ return {
         H.release("SELECT"); H.play(0.5)
         H.truthy(true, "no errors")
     end },
+
+    { "every loop layer repeats without a click at its seam", function()
+        H.captureSamples = true
+        local ok, err = pcall(function()
+            local M = H.fresh({ realSynth = true })
+            local S = M.Synth
+            S:init()
+            for _, id in ipairs(S.patchOrder) do
+                local p = S:preparePatch(id)
+                for _, name in ipairs({ p.loop or false, p.bright or false }) do
+                    if name then
+                        local sd = S.loopPools[name].data
+                        local x, n = sd.samples, sd.n
+                        local maxStep = 0.0
+                        for i = 1, n - 1 do maxStep = math.max(maxStep, math.abs(x[i] - x[i - 1])) end
+                        local seam = math.abs(x[0] - x[n - 1])
+                        H.truthy(seam <= maxStep * 1.05 + 1e-4,
+                            string.format("%s: seam step %.4f, largest step inside %.4f", name, seam, maxStep))
+                    end
+                end
+            end
+        end)
+        H.captureSamples = false
+        if not ok then error(err, 0) end
+    end },
+
+    { "the electronic patches are in the pool, in their groups", function()
+        local M = H.loadMain()
+        local S = M.Synth
+        local expect = { bass_reese = "BASS", bass_dnbsub = "BASS", bass_neuro = "BASS", bass_hoover = "BASS",
+                         lead_supersaw = "LEAD", pluck_stab = "PLUCK", pad_atmos = "PAD", pad_vox = "PAD" }
+        for id, group in pairs(expect) do
+            H.truthy(S.patches[id], id .. " exists")
+            H.eq(S.patches[id].group, group, id .. " group")
+        end
+        H.truthy(S.patches.bass_reese.bright and S.patches.bass_neuro.bright, "REESE and NEURO have a bright layer (for WOBBLE)")
+        H.truthy(S.patches.pluck_stab.rings, "STAB rings out")
+    end },
 }

@@ -10,12 +10,12 @@ local Config = {
     SAMPLE_RATE = 44100,
     DEFAULT_BPM = 115,
     MIN_BPM = 60,
-    MAX_BPM = 180,
+    MAX_BPM = 240,
     TWO_PI = math_pi * 2.0,
 
-    -- Lab tools (lab/README.md): with this off, every instrument marked
-    -- `lab = true` (today only the FINGERS test screen) leaves the catalogue
-    LAB = true,
+    -- Test screens: with this off, every instrument marked `dev = true`
+    -- (the FINGERS screen) leaves the catalogue
+    DEV_TOOLS = true,
 
     COLORS = {
         BG         = { 0x08 / 255, 0x08 / 255, 0x0B / 255, 1.0 }, -- #08080B (near-black ground)
@@ -57,9 +57,9 @@ local function hex(h)
     return { tonumber(h:sub(1, 2), 16) / 255, tonumber(h:sub(3, 4), 16) / 255, tonumber(h:sub(5, 6), 16) / 255, 1.0 }
 end
 Config.INST_COLORS = {
-    drums = hex("FF5D5D"), hands = hex("FF9548"),
+    drums = hex("FF5D5D"), hands = hex("FF9548"), breaks = hex("FFB347"),
     harp = hex("4DB6FF"), lane = hex("FFD84D"), strum = hex("38D9C6"),
-    bass = hex("A07CFF"),
+    bass = hex("A07CFF"), roller = hex("7C6CFF"), wobble = hex("C46CFF"),
     lead = hex("FF7AC6"), dial = hex("D59BFF"), slide = hex("7FA6FF"), valves = hex("FFE9C2"),
     pad = hex("5CE3A0"),
     fingers = hex("DCE3F5"),

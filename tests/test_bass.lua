@@ -44,7 +44,10 @@ return {
             labels[#labels + 1] = p.label
         end
         H.eq(table.concat(labels, " "), "SAW SUB PLUCK 808", "labels in order")
-        H.truthy(S.patches[list[5]].group ~= "BASS", "then the other groups")
+        local n = 4
+        while S.patches[list[n + 1]].group == "BASS" do n = n + 1 end
+        H.truthy(n >= 8, "the electronic basses follow: " .. n .. " bass patches")
+        H.truthy(S.patches[list[n + 1]].group ~= "BASS", "then the other groups")
         H.truthy(S.patches.bass_pluck.overlap, "PLUCK overlaps")
         H.falsy(S.patches.bass_saw.overlap or S.patches.bass_sub.overlap, "SAW and SUB are mono")
         H.truthy(S.patches.bass_pluck.release > S.patches.bass_saw.release, "PLUCK rings longer")

@@ -25,6 +25,7 @@ local math_max   = math.max
 
 local Lead = setmetatable({
     id = "lead",
+    group = "LEAD",
     name = "LEAD & ARP",
     shortName = "LEAD",
     defaultGridIndex = 3, -- 1/16

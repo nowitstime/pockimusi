@@ -16,6 +16,7 @@ local Drums = require("src.instruments.drums")
 
 local Hands = setmetatable({
     id = "hands",
+    group = "RHYTHM",
     name = "HAND DRUMS",
     shortName = "HANDS",
     viewKind = "drums",

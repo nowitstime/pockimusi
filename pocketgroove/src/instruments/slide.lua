@@ -33,6 +33,7 @@ local math_max   = math.max
 
 local Slide = setmetatable({
     id = "slide",
+    group = "LEAD",
     name = "SLIDE",
     shortName = "SLIDE",
     viewKind = "bass",

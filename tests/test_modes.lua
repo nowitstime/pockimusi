@@ -202,17 +202,18 @@ return {
         local _, L = boot()
         H.tap("L2"); H.tap("B"); H.tap("L2")
         H.hold("SELECT"); H.play(0.3)
+        local I = require("src.instruments")
         H.tap("R1")
-        H.eq(page().pending, "harp", "harp previewed")
+        H.eq(page().pending, I.catalog[2].id, "next instrument previewed")
         H.eq(L.tracks[1].instrumentId, "drums", "not swapped yet")
         local kit = L.tracks[1].state.kitIndex
         H.tap("RIGHT"); H.tap("X")
         H.eq(L.tracks[1].state.kitIndex, kit, "rows wait while a swap is previewed")
         H.falsy(L.tracks[1].fx.on.tone, "so do the effects")
         H.tap("R1")
-        H.eq(page().pending, "bass", "next preview")
+        H.eq(page().pending, I.catalog[3].id, "next preview")
         H.release("SELECT"); H.play(0.1)
-        H.eq(L.tracks[1].instrumentId, "bass", "swapped on release")
+        H.eq(L.tracks[1].instrumentId, I.catalog[3].id, "swapped on release")
         H.eq(#L.tracks[1].events, 0, "drum events stashed")
         H.eq(page().pending, nil, "preview cleared")
         H.eq(L.activeTrack, 1, "release did not change track")
@@ -233,7 +234,7 @@ return {
         H.tap("L2"); H.tap("B"); H.tap("L2")
         local kit = L.tracks[1].state.kitIndex
         H.hold("SELECT"); H.play(0.3); H.tap("R1"); H.release("SELECT"); H.play(0.1)
-        H.eq(L.tracks[1].instrumentId, "harp", "swapped")
+        H.eq(L.tracks[1].instrumentId, require("src.instruments").catalog[2].id, "swapped")
         H.hold("L2", "R2"); H.play(0.1); H.tap("LEFT"); H.release("L2", "R2"); H.play(0.1)
         H.eq(L.tracks[1].instrumentId, "drums", "drums back")
         H.eq(#L.tracks[1].events, 1, "hit back")
@@ -472,6 +473,27 @@ return {
         H.release("L2", "R2", "SELECT"); H.play(0.1)
         H.falsy(M.Input.recLatched, "releasing doesn't latch recording")
         H.eq(L.activeTrack, 2, "releasing SELECT doesn't change track")
+    end },
+
+    { "Transport: holding UP keeps stepping the tempo, faster after a while, up to the cap", function()
+        local M, L = boot()
+        local C = require("src.config")
+        H.hold("START"); H.play(0.3)
+        H.hold("UP"); H.play(0.3)
+        H.eq(L.bpm, C.DEFAULT_BPM + 5, "one step before the repeat starts")
+        H.play(0.5)
+        local after = L.bpm
+        H.truthy(after > C.DEFAULT_BPM + 5, "held: it keeps stepping, now " .. after)
+        H.play(4.0)
+        H.eq(L.bpm, C.MAX_BPM, "a long hold reaches the cap")
+        H.eq(C.MAX_BPM, 240, "the cap is 240")
+        H.release("UP"); H.play(0.2)
+        H.hold("DOWN"); H.play(1.0); H.release("DOWN"); H.play(0.5)
+        local stopped = L.bpm
+        H.truthy(stopped < 240, "DOWN held steps down")
+        H.play(0.5)
+        H.eq(L.bpm, stopped, "letting go stops it")
+        H.release("START"); H.play(0.1)
     end },
 
     { "a fresh session keeps tempo, key, instruments, sounds and effects", function()

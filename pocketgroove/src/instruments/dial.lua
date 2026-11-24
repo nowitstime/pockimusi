@@ -32,6 +32,7 @@ local Patches = require("src.instruments.patches")
 
 local Dial = setmetatable({
     id = "dial",
+    group = "LEAD",
     name = "DIAL",
     shortName = "DIAL",
     viewKind = "bass",

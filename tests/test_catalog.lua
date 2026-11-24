@@ -1,9 +1,8 @@
--- Lab foundation (lab/L0_FOUNDATION.md): what the lab instruments share.
--- A lab instrument here is a stand-in module put in package.preload, so the
--- tests don't depend on which real lab instruments exist.
+-- The instrument catalogue (Phase L0, first built as the lab foundation):
+-- one list in group order, test screens behind Config.DEV_TOOLS, the tabs.
+-- A stand-in instrument here is a module put in package.preload, so the
+-- tests don't depend on which real instruments exist.
 local H = require("helpers")
-
-local LIBRARY = { "drums", "harp", "bass", "pad", "lead" }
 
 -- Stand-in lab modules, removed again by cleanup()
 local preloaded = {}
@@ -22,7 +21,7 @@ end
 -- A silent lab instrument
 local function labDef(id, extra)
     local def = {
-        id = id, name = id:upper(), shortName = id:upper():sub(1, 4), title = id:upper(), lab = true,
+        id = id, name = id:upper(), shortName = id:upper():sub(1, 4), title = id:upper(), group = "LEAD",
         viewKind = "lab",
         newState = function() return {} end,
         noteOn = function() end,
@@ -52,11 +51,15 @@ local function bootSession()
     return M, M.Looper
 end
 
--- A catalogue of exactly n instruments: the library plus stand-ins
+-- A catalogue of exactly n instruments: the first real ones plus stand-ins
 local function setCatalog(I, n)
+    local real = {}
+    for _, id in ipairs({ "drums", "harp", "bass", "pad", "lead" }) do   -- the slots' defaults first
+        if #real < math.min(n, 5) then real[#real + 1] = I.byId[id] end
+    end
     I.catalog, I.byId = {}, {}
-    for _, inst in ipairs(I.LIBRARY) do I.catalog[#I.catalog + 1] = inst end
-    for i = 6, n do I.catalog[i] = labDef("lab" .. i) end
+    for i, inst in ipairs(real) do I.catalog[i] = inst end
+    for i = #real + 1, n do I.catalog[i] = labDef("lab" .. i) end
     for _, inst in ipairs(I.catalog) do I.byId[inst.id] = inst end
 end
 
@@ -122,16 +125,14 @@ return {
     -- ------------------------------------------------------------------
     -- L0.1: the lab switch, reserved ids, saves
     -- ------------------------------------------------------------------
-    { "LAB off: instruments marked lab leave the catalogue, the rest stay", withLab({ strum = {} }, function()
+    { "DEV_TOOLS off: test screens leave the catalogue, the instruments stay", function()
         local M = H.fresh()
-        M.Config.LAB = false
+        M.Config.DEV_TOOLS = false
         M.Instruments:buildCatalog()
-        local list = ids(M.Instruments)
-        H.truthy(list:find("^" .. table.concat(LIBRARY, " ")), "library first: " .. list)
-        H.falsy(M.Instruments.byId.strum, "an instrument marked lab is not registered")
-        H.falsy(M.Instruments.byId.fingers, "nor is the FINGERS test screen")
+        H.eq(M.Instruments.catalog[1].id, "drums", "drums first")
+        H.falsy(M.Instruments.byId.fingers, "the FINGERS test screen is not registered")
         for _, inst in ipairs(M.Instruments.catalog) do
-            H.falsy(inst.lab, inst.id .. " is not marked lab")
+            H.falsy(inst.dev, inst.id .. " is not a test screen")
         end
         -- stepping goes round the catalogue and never lands anywhere else
         local n, id = #M.Instruments.catalog, "drums"
@@ -139,23 +140,31 @@ return {
             id = M.Instruments:stepInstrumentId(id, 1)
             H.eq(id, M.Instruments.catalog[(i % n) + 1].id, "step " .. i)
         end
-    end) },
+        M.Config.DEV_TOOLS = true
+        M.Instruments:buildCatalog()
+    end },
 
-    { "LAB on: lab instruments that exist follow the library, in reserved order", withLab({ valves = {}, strum = {} }, function()
+    { "the catalogue runs group by group, in ORDER, test screens last", function()
         local M = H.fresh()
-        H.truthy(M.Config.LAB, "the switch is on for now")
-        local list = ids(M.Instruments)
-        H.truthy(list:find("^drums harp bass pad lead "), "library first: " .. list)
-        H.truthy(list:find(" strum .*valves"), "strum before valves: " .. list)
-        H.truthy(M.Instruments.byId.strum.lab, "marked lab")
-        for _, inst in ipairs(M.Instruments.catalog) do
-            H.truthy(inst.id ~= "hands" or package.loaded["src.instruments.hands"], "no entry without a module")
+        local I = M.Instruments
+        local lastGroup, lastPos = 0, 0
+        local pos = {}
+        for i, id in ipairs(I.ORDER) do pos[id] = i end
+        for _, inst in ipairs(I.catalog) do
+            local g = I:groupOf(inst)
+            H.truthy(g.index >= lastGroup, inst.id .. " is not in an earlier group than the one before")
+            H.truthy(pos[inst.id] > lastPos, inst.id .. " follows ORDER")
+            lastGroup, lastPos = g.index, pos[inst.id]
+            if not inst.dev then
+                H.truthy(inst.group, inst.id .. " names its group")
+                H.truthy(g.id ~= "TEST", inst.id .. " is in a real group")
+            end
         end
-    end) },
+    end },
 
-    { "a reserved id without a module is skipped", function()
+    { "an id without a module is skipped", function()
         local M = H.fresh()
-        for _, id in ipairs(M.Instruments.LAB_IDS) do
+        for _, id in ipairs(M.Instruments.ORDER) do
             local f = io.open("pocketgroove/src/instruments/" .. id .. ".lua", "r")
             if f then f:close() end
             H.eq(M.Instruments.byId[id] ~= nil, f ~= nil, id .. " is in the catalogue only if its file exists")
@@ -180,16 +189,16 @@ return {
         H.truthy(tostring(err):find("no_such_helper", 1, true), "names what is missing")
     end },
 
-    { "the test runner knows the same reserved ids", function()
+    { "the test runner knows the same ids", function()
         local M = H.fresh()
         local f = assert(io.open("tests/run.lua", "r"))
         local text = f:read("*a")
         f:close()
-        local list = text:match("local LAB_IDS = (%b{})")
-        H.truthy(list, "tests/run.lua has a LAB_IDS list")
+        local list = text:match("local ORDER = (%b{})")
+        H.truthy(list, "tests/run.lua has an ORDER list")
         local found = {}
         for id in list:gmatch('"([%w_]+)"') do found[#found + 1] = id end
-        H.eq(table.concat(found, " "), table.concat(M.Instruments.LAB_IDS, " "), "same ids, same order")
+        H.eq(table.concat(found, " "), table.concat(M.Instruments.ORDER, " "), "same ids, same order")
     end },
 
     { "a save holding an unknown instrument loads that track empty on the default", function()
@@ -215,27 +224,28 @@ return {
         H.eq(L.tracks[3].events[1].len, 240, "track 3's note intact")
     end },
 
-    { "a lab instrument's notes save and load; with LAB off the track loads empty", withLab({ strum = { eventClass = "strum" } }, function()
+    { "a test screen's notes save and load; with DEV_TOOLS off the track loads empty", withLab({ fingers = { eventClass = "strum", dev = true } }, function()
         local M, L = bootSession()
-        M.Instruments:swapTrackInstrument(2, "strum")
+        M.Instruments:swapTrackInstrument(2, "fingers")
         H.record(L, 2, "R1", 0.0, { len = 200, semis = 4 })
         H.record(L, 2, "L1", 0.25)
         H.record(L, 1, "B", 0.5)
         local snap = M.Session.snapshot()
 
         H.truthy(M.Session.restore(snap), "restored")
-        H.eq(L.tracks[2].instrumentId, "strum", "lab instrument back")
+        H.eq(L.tracks[2].instrumentId, "fingers", "test screen back")
         H.eq(#L.tracks[2].events, 2, "shoulder notes kept")
         H.eq(L.tracks[2].events[1].action, "R1", "R1 note")
         H.eq(L.tracks[2].events[1].len, 200, "its length")
         H.eq(L.tracks[2].events[2].action, "L1", "L1 note")
 
-        M.Config.LAB = false
+        M.Config.DEV_TOOLS = false
         M.Instruments:buildCatalog()
-        H.truthy(M.Session.restore(snap), "restored with the lab off")
+        H.truthy(M.Session.restore(snap), "restored with the test screens off")
         H.eq(L.tracks[2].instrumentId, "harp", "default instrument")
-        H.eq(#L.tracks[2].events, 0, "no lab notes on the harp")
+        H.eq(#L.tracks[2].events, 0, "no test-screen notes on the harp")
         H.eq(#L.tracks[1].events, 1, "the drum track is intact")
+        M.Config.DEV_TOOLS = true
     end) },
 
     -- ------------------------------------------------------------------
@@ -249,9 +259,10 @@ return {
         H.eq(centreTab(M).x, 320, "the centre of the strip")
         H.near(centreTab(M).alpha, 1.0, "fully lit")
 
+        local second = M.Instruments.catalog[2].id
         H.tap("R1"); H.play(0.3)
-        H.eq(page.pending, "harp", "previewing the harp")
-        H.eq(centreTab(M).inst.id, "harp", "the preview takes the centre")
+        H.eq(page.pending, second, "previewing the next instrument")
+        H.eq(centreTab(M).inst.id, second, "the preview takes the centre")
         local own
         for _, tab in ipairs((tabs(M))) do
             if tab.inst.id == "drums" then own = tab end
@@ -356,7 +367,21 @@ return {
         end
     end },
 
-    { "a lab instrument's tab is marked; the outer tabs fade", function()
+    { "the swap card names the previewed instrument's group", function()
+        local M, frame = bootCapturing()
+        local page = require("src.modes").trackPage
+        H.hold("SELECT"); H.play(0.3)
+        for _ = 1, #M.Instruments.catalog - 1 do
+            H.tap("R1")
+            local inst = M.Instruments.byId[page.pending]
+            local seen = frame()
+            H.truthy(seen[inst.name], "the name: " .. inst.name)
+            H.truthy(seen[M.Instruments:groupOf(inst).id], inst.id .. " shows its group " .. M.Instruments:groupOf(inst).id)
+        end
+        H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "the outer tabs fade", function()
         local M = bootSession()
         setCatalog(M.Instruments, 10)
         H.hold("SELECT"); H.play(0.3)
@@ -368,8 +393,6 @@ return {
                 H.near(tab.alpha, 1.0, "centre and neighbours fully lit")
             end
         end
-        H.truthy(list[1].inst.lab and list[2].inst.lab, "left of DRUMS: the last two (lab) instruments")
-        H.falsy(list[3].inst.lab, "the library is not marked")
         H.release("SELECT"); H.play(0.1)
     end },
 
@@ -440,7 +463,7 @@ return {
         H.truthy(seen["3  +  5TH"], "the large line, from the state")
         H.truthy(seen["DOWN STROKE"], "the small line")
         H.truthy(seen["FIRST LINE"] and seen["SECOND LINE"], "further lines")
-        H.truthy(seen["LAB"], "marked as a lab view")
+        H.truthy(seen["LEAD"], "its group in the capsule row")
         H.truthy((seen["L1"] and seen["-"]) and (seen["R1"] and seen["-"]), "no shoulder labels of its own")
         H.truthy(seen["B"] and seen["X"], "plain face labels")
     end },
@@ -450,11 +473,11 @@ return {
         local def = labDef("valves")
         def.viewKind = nil
         addInstrument(M.Instruments, def)
-        H.eq(require("src.ui.chrome"):viewKind(def), "lab", "falls back to the lab view")
+        H.eq(require("src.ui.chrome"):viewKind(def), "lab", "falls back to the plain view")
         playOn(M, 4, "valves")
         local seen = frame()
         H.truthy(seen["VALVES"], "its name, large")
-        H.truthy(seen["LAB"], "the plain view")
+        H.truthy(seen["LEAD"], "the plain view, with its group")
     end },
 
     { "viewKind \"drums\" on a Drums-built instrument: the four lanes with its own labels", function()
@@ -489,7 +512,6 @@ return {
             for _, label in ipairs(labels) do
                 H.truthy(seen[label], id .. " shows " .. label)
             end
-            H.falsy(seen["LAB"], id .. " is not drawn as a lab view")
         end
         playOn(M, 3, "lead")
         H.hold("L1", "R1")
