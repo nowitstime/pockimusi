@@ -146,41 +146,58 @@ function Chrome:fitText(text, font, w)
     return text .. ".."
 end
 
--- The little tape deck, the big one (tapedeck.lua) pared down: a faint
--- thread per track in its instrument's colour, a dot for each hit, a line
--- for each held note, and a faint line at each bar. A 2-bar loop fills the
--- same width as a 4-bar one; the bar lines tell them apart. Bright on the
--- row under the cursor, dim on the others; a muted track goes grey.
-function Chrome:drawMiniDeck(x, y, w, h, sum, active)
+-- The little tape deck, the big one (tapedeck.lua) pared down, in a small
+-- inset frame: a faint thread per track in its instrument's colour and a
+-- rounded mark for every note. Hits and held notes are the same shape and
+-- height (a hit is a held note of minimum length), so they read as one set.
+-- A faint line at each bar; a 2-bar loop fills the same width as a 4-bar
+-- one. Bright on the row under the cursor (its frame takes the row colour),
+-- dim on the others; a muted track goes grey.
+Chrome.MINI_NOTE_H = 3          -- note height (px)
+Chrome.MINI_HIT_W  = 4          -- a hit's width (px)
+Chrome.MINI_PAD    = { 7, 4 }   -- inside the frame: left/right, top/bottom
+
+function Chrome:drawMiniDeck(x, y, w, h, sum, active, frameCol)
     local C = Config.COLORS
     local lanes = sum.lanes or {}
-    local pitch = h / 4
     local dim = active and 1.0 or 0.5
+    local px, py = self.MINI_PAD[1], self.MINI_PAD[2]
 
-    -- bar lines only
+    -- the frame: a darker inset with a hairline border
+    self:setColor(C.BG, active and 0.75 or 0.45)
+    love.graphics.rectangle("fill", x, y, w, h, 4, 4)
+    self:setColor(active and Config.shade(frameCol or C.GRID, 0.55) or C.GRID)
+    love.graphics.rectangle("line", x + 0.5, y + 0.5, w - 1, h - 1, 4, 4)
+
+    local ix, iw = x + px, w - px * 2
+    local iy, ih = y + py, h - py * 2
+
+    -- bar lines
     for b = 1, sum.bars - 1 do
-        local bx = math_floor(x + w * b / sum.bars) + 0.5
+        local bx = math_floor(ix + iw * b / sum.bars) + 0.5
         self:setColor(C.GRID, dim)
-        love.graphics.line(bx, y, bx, y + h)
+        love.graphics.line(bx, y + 2, bx, y + h - 2)
     end
 
+    local nh, hw = self.MINI_NOTE_H, self.MINI_HIT_W
+    local r = nh * 0.5
+    local pitch = ih / 4
     for i = 1, 4 do
         local lane = lanes[i] or { notes = {} }
-        local cy = math_floor(y + (i - 0.5) * pitch) + 0.5
+        local cy = math_floor(iy + (i - 0.5) * pitch + 0.5)
         local col = (lane.id and Config.INST_COLORS[lane.id]) or Config.TRACK_COLORS[i] or C.MUTED
         if lane.muted then col = C.DIM end
 
-        self:setColor(col, 0.18 * dim)
-        love.graphics.line(x, cy, x + w, cy)
+        self:setColor(col, 0.16 * dim)
+        love.graphics.rectangle("fill", ix, cy - 0.5, iw, 1)
 
         self:setColor(col, dim)
         for _, n in ipairs(lane.notes) do
-            local nx = x + n[1] * w
-            local nw = math.min((n[2] - n[1]) * w, x + w - nx)
-            if nw >= 2 then
-                love.graphics.rectangle("fill", nx, cy - 1.5, nw, 3, 1.5, 1.5)
-            else
-                love.graphics.circle("fill", nx, cy, 1.9)
+            local nx = ix + n[1] * iw
+            local nw = math.max(hw, (n[2] - n[1]) * iw)
+            nw = math.min(nw, ix + iw - nx)
+            if nw > 0 then
+                love.graphics.rectangle("fill", nx, cy - r, math.max(nw, nh), nh, r, r)
             end
         end
     end
@@ -231,7 +248,7 @@ function Chrome:drawMenuSlots()
             -- the instruments, cut off before the little deck
             local names = self:fitText(table.concat(sum.instruments, " / "), self.fontTiny, mapX - 14 - tx)
             self:menuText(names, tx, cy + 8, self.fontTiny, C.MUTED)
-            self:drawMiniDeck(mapX, y + 5, mapW, rh - 10, sum, cur)
+            self:drawMiniDeck(mapX, y + 4, mapW, rh - 8, sum, cur, rowCol)
         end
 
         if isNow then
