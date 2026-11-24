@@ -178,9 +178,9 @@ function Chrome:drawMiniDeck(x, y, w, h, sum, active)
             local nx = x + n[1] * w
             local nw = math.min((n[2] - n[1]) * w, x + w - nx)
             if nw >= 2 then
-                love.graphics.rectangle("fill", nx, cy - 0.75, nw, 1.5, 0.75, 0.75)
+                love.graphics.rectangle("fill", nx, cy - 1.5, nw, 3, 1.5, 1.5)
             else
-                love.graphics.circle("fill", nx, cy, 1.3)
+                love.graphics.circle("fill", nx, cy, 1.9)
             end
         end
     end
