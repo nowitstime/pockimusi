@@ -52,7 +52,10 @@ end
 
 -- What the slot list shows for one slot:
 --   { empty = true }  or  { broken = true }  or
---   { bpm, key, notes, instruments = { "DRUMS", ... }, saved }
+--   { bpm, key, notes, instruments = { "DRUMS", ... }, saved, bars,
+--     lanes = { { id, muted, notes = { { from, to }, ... } } x4 } }
+-- lanes: where each track's notes sit, as fractions of the loop (0..1), for
+-- the little tape deck in the slot list
 function Patterns.summary(slot)
     local data, reason = Patterns.read(slot)
     if not data then
@@ -69,13 +72,27 @@ function Patterns.summary(slot)
         notes = 0,
         instruments = {},
         saved = tonumber(data.saved),
+        bars = (s.bars == 4) and 4 or 2,
+        lanes = {},
     }
+    local loop = Looper.PPQN * 4 * out.bars
     for i = 1, 4 do
         local t = type(s.tracks) == "table" and s.tracks[i]
+        local lane = { notes = {} }
+        out.lanes[i] = lane
         if type(t) == "table" then
             local def = type(t.instrumentId) == "string" and Instruments.byId[t.instrumentId]
             out.instruments[i] = def and def.name or "?"
-            if type(t.events) == "table" then out.notes = out.notes + #t.events end
+            lane.id, lane.muted = def and def.id or nil, (t.muted == true)
+            if type(t.events) == "table" then
+                out.notes = out.notes + #t.events
+                for _, ev in ipairs(t.events) do
+                    local tick, len = tonumber(type(ev) == "table" and ev.tick), tonumber(type(ev) == "table" and ev.len) or 0
+                    if tick and tick >= 0 and tick < loop then
+                        lane.notes[#lane.notes + 1] = { tick / loop, math.min(1, (tick + math.max(0, len)) / loop) }
+                    end
+                end
+            end
         end
     end
     if type(s.lane) == "table" and type(s.lane.events) == "table" then

@@ -139,6 +139,48 @@ local function savedLabel(t)
     return ok and s and s:upper() or ""
 end
 
+-- `text` cut to fit `w` pixels in `font`, with ".." when it was cut
+function Chrome:fitText(text, font, w)
+    if font:getWidth(text) <= w then return text end
+    while #text > 1 and font:getWidth(text .. "..") > w do text = text:sub(1, -2) end
+    return text .. ".."
+end
+
+-- The little tape deck: one thin lane per track, a mark wherever a note
+-- sits (held notes as long as they last), bar lines behind. A 2-bar loop
+-- fills the same width as a 4-bar one; the bar lines tell them apart.
+-- Full colour on the row under the cursor, dim on the others.
+function Chrome:drawMiniDeck(x, y, w, h, sum, active)
+    local C = Config.COLORS
+    local lanes = sum.lanes or {}
+    local gap = 2
+    local lh = (h - gap * 3) / 4
+    self:setColor(C.BG, active and 0.6 or 0.35)
+    love.graphics.rectangle("fill", x - 3, y - 2, w + 6, h + 4, 3, 3)
+    -- bar lines (beats fainter)
+    local beats = sum.bars * 4
+    for b = 1, beats - 1 do
+        local bx = math_floor(x + w * b / beats) + 0.5
+        self:setColor(b % 4 == 0 and C.GRID or C.PANEL_HI)
+        love.graphics.line(bx, y, bx, y + h)
+    end
+    for i = 1, 4 do
+        local lane = lanes[i] or { notes = {} }
+        local ly = y + (i - 1) * (lh + gap)
+        local col = (lane.id and Config.INST_COLORS[lane.id]) or Config.TRACK_COLORS[i] or C.MUTED
+        local a = active and 1.0 or 0.5
+        if lane.muted then a = a * 0.35 end
+        self:setColor(col, 0.12 * a)
+        love.graphics.rectangle("fill", x, ly, w, lh)
+        self:setColor(col, a)
+        for _, n in ipairs(lane.notes) do
+            local nx = x + n[1] * w
+            local nw = math.max(2, (n[2] - n[1]) * w)
+            love.graphics.rectangle("fill", nx, ly, math.min(nw, x + w - nx), lh)
+        end
+    end
+end
+
 function Chrome:drawMenuSlots()
     local C, col = Config.COLORS, accent()
     local saving = (Menu.page == "SAVE")
@@ -172,30 +214,28 @@ function Chrome:drawMenuSlots()
         end
 
         local tx, cy = bx + bw + 14, y + rh * 0.5
+        local mapX, mapW = X + 300, 236
         if sum.empty then
-            self:menuText(saving and "EMPTY" or "EMPTY", tx, cy, self.fontSmall, C.DIM)
+            self:menuText("EMPTY", tx, cy, self.fontSmall, C.DIM)
         elseif sum.broken then
             self:menuText("COULDN'T BE READ", tx, cy, self.fontSmall, C.RED)
         else
             local head = string.format("%d BPM  %s", sum.bpm, sum.key)
             self:menuText(head, tx, cy - 7, self.fontSmall, cur and C.TEXT or C.MUTED)
-            local notes = sum.notes .. (sum.notes == 1 and " NOTE" or " NOTES")
-            if sum.chords and sum.chords > 0 then notes = notes .. "  " .. sum.chords .. " CHORDS" end
-            local line = table.concat(sum.instruments, " / ") .. "    " .. notes
-            self:menuText(line, tx, cy + 8, self.fontTiny, C.MUTED)
+            self:menuText(savedLabel(sum.saved), tx + self.fontSmall:getWidth(head) + 14, cy - 7, self.fontTiny, C.DIM)
+            -- the instruments, cut off before the little deck
+            local names = self:fitText(table.concat(sum.instruments, " / "), self.fontTiny, mapX - 14 - tx)
+            self:menuText(names, tx, cy + 8, self.fontTiny, C.MUTED)
+            self:drawMiniDeck(mapX, y + 4, mapW, rh - 8, sum, cur)
         end
 
-        local xr = X + W - 28
         if isNow then
             local tag = "NOW"
+            local xr = X + W - 28
             local tw = self.fontTiny:getWidth(tag) + 12
             self:setColor(col)
             love.graphics.rectangle("fill", xr - tw, cy - 8, tw, 16, 3, 3)
             self:menuText(tag, xr - tw + 6, cy, self.fontTiny, C.BG)
-            xr = xr - tw - 10
-        end
-        if not sum.empty and not sum.broken then
-            self:menuTextRight(savedLabel(sum.saved), xr, cy, self.fontTiny, C.MUTED)
         end
     end
     footer(self, saving and "UP / DOWN  SLOT     B  SAVE HERE     A  BACK     START  CLOSE"

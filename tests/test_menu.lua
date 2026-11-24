@@ -197,6 +197,23 @@ return {
         H.truthy(type(s.key) == "string" and #s.key > 0, "key")
     end },
 
+    { "the slot summary maps each track's notes onto the loop", function()
+        local M = boot()
+        local L = M.Looper
+        local loop = L:getLoopTicks()
+        L.tracks[3].events = { { tick = loop / 2, len = loop / 4, action = "B", vel = 0.8, degree = 1, octave = 0 } }
+        L.tracks[2].muted = true
+        M.Patterns.save("G")
+        local s = M.Patterns.summary("G")
+        H.eq(s.bars, L.bars, "bars")
+        H.eq(#s.lanes, 4, "four lanes")
+        H.eq(#s.lanes[3].notes, 1, "one note on track 3")
+        H.near(s.lanes[3].notes[1][1], 0.5, "starts halfway")
+        H.near(s.lanes[3].notes[1][2], 0.75, "lasts a quarter")
+        H.truthy(s.lanes[2].muted, "mute shown")
+        H.eq(s.lanes[1].id, L.tracks[1].instrumentId, "instrument id for the colour")
+    end },
+
     { "the current pattern survives a reboot (autosave)", function()
         local M = boot()
         M.Patterns.save("F")

@@ -25,7 +25,10 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 SCENES = {
     "menu-hold": 'H.hold("SELECT", "START"); H.play(0.6)',
     "menu": 'H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1)',
-    "menu-save": 'local P = require("src.patterns"); H.tap("L2"); H.tap("B"); H.tap("L2"); P.save("A"); require("src.looper").bpm = 96; P.save("C");'
+    "menu-save": 'local P = require("src.patterns"); local L = require("src.looper");'
+                 ' local function put(slot, act, n, len) local t = L.tracks[slot]; for i = 0, n - 1 do t.events[#t.events + 1] = { tick = math.floor(i * L:getLoopTicks() / n), len = len or 0, action = act, vel = 0.8, degree = 1, octave = 0 } end end;'
+                 ' put(1, "B", 8); put(1, "A", 16); put(1, "Y", 4); put(3, "B", 6, 300); put(4, "B", 2, 1700); P.save("A");'
+                 ' L.bars = 4; L.bpm = 96; for i = 1, 4 do L.tracks[i].events = {} end; put(1, "B", 4); put(1, "A", 32); put(2, "B", 8, 200); put(3, "B", 16, 100); put(4, "B", 1, 7000); P.save("C");'
                  ' H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1); H.tap("B"); H.tap("UP"); H.tap("UP"); H.tap("B")',
     "wobble": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "wobble"); H.tap("SELECT"); H.tap("SELECT"); H.hold("UP_RIGHT" and "UP"); H.hold("RIGHT"); H.hold("B"); H.play(0.6); H.release("RIGHT"); H.hold("UP"); H.play(0.6)',
     "breaks": 'local I = require("src.instruments"); I:swapTrackInstrument(1, "breaks"); local st = require("src.looper").tracks[1].state; st.breakId = "amen"; H.hold("B"); H.play(0.6); H.hold("RIGHT"); H.play(0.3)',
