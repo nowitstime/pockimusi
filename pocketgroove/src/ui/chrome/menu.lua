@@ -146,37 +146,65 @@ function Chrome:fitText(text, font, w)
     return text .. ".."
 end
 
--- The little tape deck: one thin lane per track, a mark wherever a note
--- sits (held notes as long as they last), bar lines behind. A 2-bar loop
--- fills the same width as a 4-bar one; the bar lines tell them apart.
--- Full colour on the row under the cursor, dim on the others.
+-- The little tape deck, drawn like the big one (tapedeck.lua) at a smaller
+-- size: a thread per track in its instrument's colour with a diamond at each
+-- end, beads for hits, ribbons for held notes, beat lines behind and a
+-- diamond above and below each bar line. A 2-bar loop fills the same width
+-- as a 4-bar one; the bar diamonds tell them apart. Bright on the row under
+-- the cursor, dim on the others; a muted track goes grey.
 function Chrome:drawMiniDeck(x, y, w, h, sum, active)
     local C = Config.COLORS
     local lanes = sum.lanes or {}
-    local gap = 2
-    local lh = (h - gap * 3) / 4
-    self:setColor(C.BG, active and 0.6 or 0.35)
-    love.graphics.rectangle("fill", x - 3, y - 2, w + 6, h + 4, 3, 3)
-    -- bar lines (beats fainter)
+    local pitch = h / 4
+    local dim = active and 1.0 or 0.55
+
+    -- beats and bars
     local beats = sum.bars * 4
-    for b = 1, beats - 1 do
+    for b = 0, beats do
         local bx = math_floor(x + w * b / beats) + 0.5
-        self:setColor(b % 4 == 0 and C.GRID or C.PANEL_HI)
-        love.graphics.line(bx, y, bx, y + h)
+        local isBar = (b % 4 == 0)
+        if b > 0 and b < beats then
+            self:setColor(isBar and C.GRID or C.PANEL_HI)
+            love.graphics.line(bx, y + 1, bx, y + h - 1)
+        end
+        if isBar then
+            self:setColor(C.MUTED, 0.8 * dim)
+            love.graphics.polygon("fill", bx, y - 2.5, bx + 1.6, y - 0.9, bx, y + 0.7, bx - 1.6, y - 0.9)
+            love.graphics.polygon("fill", bx, y + h - 0.7, bx + 1.6, y + h + 0.9, bx, y + h + 2.5, bx - 1.6, y + h + 0.9)
+        end
     end
+
     for i = 1, 4 do
         local lane = lanes[i] or { notes = {} }
-        local ly = y + (i - 1) * (lh + gap)
+        local cy = math_floor(y + (i - 0.5) * pitch) + 0.5
         local col = (lane.id and Config.INST_COLORS[lane.id]) or Config.TRACK_COLORS[i] or C.MUTED
-        local a = active and 1.0 or 0.5
-        if lane.muted then a = a * 0.35 end
-        self:setColor(col, 0.12 * a)
-        love.graphics.rectangle("fill", x, ly, w, lh)
-        self:setColor(col, a)
+        if lane.muted then col = C.DIM end
+
+        -- the thread and its end diamonds
+        self:setColor(Config.shade(col, active and 0.45 or 0.28))
+        love.graphics.line(x, cy, x + w, cy)
+        self:setColor(col, dim)
+        for _, ex in ipairs({ x, x + w }) do
+            love.graphics.polygon("fill", ex, cy - 2, ex + 2, cy, ex, cy + 2, ex - 2, cy)
+        end
+
+        -- notes: ribbons for held ones, beads for hits
         for _, n in ipairs(lane.notes) do
             local nx = x + n[1] * w
-            local nw = math.max(2, (n[2] - n[1]) * w)
-            love.graphics.rectangle("fill", nx, ly, math.min(nw, x + w - nx), lh)
+            local nw = (n[2] - n[1]) * w
+            if nw >= 2 then
+                nw = math.min(nw, x + w - nx)
+                self:setColor(col, 0.22 * dim)
+                love.graphics.rectangle("fill", nx, cy - 2, nw, 4, 1.5, 1.5)
+                self:setColor(col, 0.85 * dim)
+                love.graphics.rectangle("fill", nx, cy - 0.75, nw, 1.5)
+                love.graphics.circle("fill", nx, cy, 1.5)
+            else
+                self:setColor(col, 0.25 * dim)
+                love.graphics.circle("fill", nx, cy, 2.6)
+                self:setColor(col, dim)
+                love.graphics.circle("fill", nx, cy, 1.5)
+            end
         end
     end
 end
@@ -226,7 +254,7 @@ function Chrome:drawMenuSlots()
             -- the instruments, cut off before the little deck
             local names = self:fitText(table.concat(sum.instruments, " / "), self.fontTiny, mapX - 14 - tx)
             self:menuText(names, tx, cy + 8, self.fontTiny, C.MUTED)
-            self:drawMiniDeck(mapX, y + 4, mapW, rh - 8, sum, cur)
+            self:drawMiniDeck(mapX, y + 5, mapW, rh - 10, sum, cur)
         end
 
         if isNow then
