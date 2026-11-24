@@ -146,32 +146,22 @@ function Chrome:fitText(text, font, w)
     return text .. ".."
 end
 
--- The little tape deck, drawn like the big one (tapedeck.lua) at a smaller
--- size: a thread per track in its instrument's colour with a diamond at each
--- end, beads for hits, ribbons for held notes, beat lines behind and a
--- diamond above and below each bar line. A 2-bar loop fills the same width
--- as a 4-bar one; the bar diamonds tell them apart. Bright on the row under
--- the cursor, dim on the others; a muted track goes grey.
+-- The little tape deck, the big one (tapedeck.lua) pared down: a faint
+-- thread per track in its instrument's colour, a dot for each hit, a line
+-- for each held note, and a faint line at each bar. A 2-bar loop fills the
+-- same width as a 4-bar one; the bar lines tell them apart. Bright on the
+-- row under the cursor, dim on the others; a muted track goes grey.
 function Chrome:drawMiniDeck(x, y, w, h, sum, active)
     local C = Config.COLORS
     local lanes = sum.lanes or {}
     local pitch = h / 4
-    local dim = active and 1.0 or 0.55
+    local dim = active and 1.0 or 0.5
 
-    -- beats and bars
-    local beats = sum.bars * 4
-    for b = 0, beats do
-        local bx = math_floor(x + w * b / beats) + 0.5
-        local isBar = (b % 4 == 0)
-        if b > 0 and b < beats then
-            self:setColor(isBar and C.GRID or C.PANEL_HI)
-            love.graphics.line(bx, y + 1, bx, y + h - 1)
-        end
-        if isBar then
-            self:setColor(C.MUTED, 0.8 * dim)
-            love.graphics.polygon("fill", bx, y - 2.5, bx + 1.6, y - 0.9, bx, y + 0.7, bx - 1.6, y - 0.9)
-            love.graphics.polygon("fill", bx, y + h - 0.7, bx + 1.6, y + h + 0.9, bx, y + h + 2.5, bx - 1.6, y + h + 0.9)
-        end
+    -- bar lines only
+    for b = 1, sum.bars - 1 do
+        local bx = math_floor(x + w * b / sum.bars) + 0.5
+        self:setColor(C.GRID, dim)
+        love.graphics.line(bx, y, bx, y + h)
     end
 
     for i = 1, 4 do
@@ -180,30 +170,17 @@ function Chrome:drawMiniDeck(x, y, w, h, sum, active)
         local col = (lane.id and Config.INST_COLORS[lane.id]) or Config.TRACK_COLORS[i] or C.MUTED
         if lane.muted then col = C.DIM end
 
-        -- the thread and its end diamonds
-        self:setColor(Config.shade(col, active and 0.45 or 0.28))
+        self:setColor(col, 0.18 * dim)
         love.graphics.line(x, cy, x + w, cy)
-        self:setColor(col, dim)
-        for _, ex in ipairs({ x, x + w }) do
-            love.graphics.polygon("fill", ex, cy - 2, ex + 2, cy, ex, cy + 2, ex - 2, cy)
-        end
 
-        -- notes: ribbons for held ones, beads for hits
+        self:setColor(col, dim)
         for _, n in ipairs(lane.notes) do
             local nx = x + n[1] * w
-            local nw = (n[2] - n[1]) * w
+            local nw = math.min((n[2] - n[1]) * w, x + w - nx)
             if nw >= 2 then
-                nw = math.min(nw, x + w - nx)
-                self:setColor(col, 0.22 * dim)
-                love.graphics.rectangle("fill", nx, cy - 2, nw, 4, 1.5, 1.5)
-                self:setColor(col, 0.85 * dim)
-                love.graphics.rectangle("fill", nx, cy - 0.75, nw, 1.5)
-                love.graphics.circle("fill", nx, cy, 1.5)
+                love.graphics.rectangle("fill", nx, cy - 0.75, nw, 1.5, 0.75, 0.75)
             else
-                self:setColor(col, 0.25 * dim)
-                love.graphics.circle("fill", nx, cy, 2.6)
-                self:setColor(col, dim)
-                love.graphics.circle("fill", nx, cy, 1.5)
+                love.graphics.circle("fill", nx, cy, 1.3)
             end
         end
     end
