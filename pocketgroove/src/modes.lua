@@ -415,7 +415,7 @@ end
 -- Hold START: Transport = timing. A SELECT tap still changes track here, so
 -- grid and swing can be set for each track without leaving the page.
 local updateSelectTap
--- Tempo: a press steps 5 BPM; held, it keeps stepping after TEMPO_REPEAT[1]
+-- Tempo (L1 / R1): a press steps 5 BPM; held, it keeps stepping after TEMPO_REPEAT[1]
 -- seconds, every TEMPO_REPEAT[2] seconds, and twice as fast after
 -- TEMPO_REPEAT[3] seconds, so 60 -> 240 is a short hold, not 36 presses
 Modes.TEMPO_REPEAT = { 0.4, 0.12, 1.5 }
@@ -426,16 +426,17 @@ local function stepTempo(dir)
     Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
 end
 
+-- Tempo on the shoulders: R1 up, L1 down
 local function updateTempo(dt)
     local th = Modes.tempoHold
-    if Input.pressed.UP or Input.pressed.DOWN then
-        th.dir = Input.pressed.UP and 1 or -1
+    if Input.pressed.R1 or Input.pressed.L1 then
+        th.dir = Input.pressed.R1 and 1 or -1
         th.held, th.next = 0.0, Modes.TEMPO_REPEAT[1]
         stepTempo(th.dir)
         return
     end
     if th.dir == 0 then return end
-    if not Input.down[th.dir > 0 and "UP" or "DOWN"] then
+    if not Input.down[th.dir > 0 and "R1" or "L1"] then
         th.dir = 0
         return
     end
@@ -454,29 +455,27 @@ function handlers.TRANSPORT(ctx, dt)
     local tIdx = Looper.activeTrack
     local lane = Looper.tracks[tIdx] and Looper.tracks[tIdx].isLane
 
+    updateTempo(dt)
+
+    -- D-pad = the music: LEFT / RIGHT key, UP / DOWN scale (with Y: swing)
     if Input.down.Y and lane then
         if Input.pressed.UP or Input.pressed.DOWN then
             Looper:showToast("TRACK C HAS NO SWING")
         end
     elseif Input.down.Y then
-        Modes.tempoHold.dir = 0
         if Input.pressed.UP then
             Looper:adjustSwing(tIdx, 0.02)
         elseif Input.pressed.DOWN then
             Looper:adjustSwing(tIdx, -0.02)
         end
-    else
-        updateTempo(dt)
+    elseif Input.pressed.UP or Input.pressed.DOWN then
+        Theory:cycleScale(Input.pressed.UP and 1 or -1)
+        Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
     end
 
     if Input.pressed.LEFT or Input.pressed.RIGHT then
         Theory:cycleRoot(Input.pressed.RIGHT and 1 or -1)
         Looper:showToast("KEY: " .. Theory:getKeyLabel())
-    end
-
-    if Input.pressed.L1 or Input.pressed.R1 then
-        Theory:cycleScale(Input.pressed.R1 and 1 or -1)
-        Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
     end
 
     if Input.pressed.B then Looper:toggleBars() end

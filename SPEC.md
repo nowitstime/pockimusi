@@ -137,16 +137,16 @@ The list shows six rows at a time and scrolls with the cursor (marks show when t
 
 | Control | Job |
 | :-- | :-- |
-| `UP / DOWN` | BPM ±5 (60–240); held, it keeps stepping, faster after 1.5 s ✅ |
+| `L1 / R1` | BPM −5 / +5 (60–240); held, it keeps stepping, faster after 1.5 s ✅ |
 | `LEFT / RIGHT` | Key (root) |
-| `L1 / R1` | Scale |
+| `UP / DOWN` | Scale (next / previous) |
 | `B` | Bars 2 / 4 |
 | `A` | Grid for the active track (1/4 → 1/8 → 1/16 → 1/12T → FREE) |
 | `Y` + `UP / DOWN` | Swing for the active track, 50–75 % in 2 % steps |
 | `X` | Metronome click on / off |
 | `START` tap | Play / pause; double tap = reset playhead to 1.1 and silence everything still ringing (stuck notes, echo and reverb tails) |
 
-BPM, key, scale and bars are global. Grid and swing belong to the active track and are drawn in its colour. 
+The D-pad holds the musical choices (key, scale), the shoulders the tempo. BPM, key, scale and bars are global. Grid and swing belong to the active track and are drawn in its colour. 
 
 ✅ **Click and count-in:** `X` cycles click **off → on → count-in → on + count-in**. With count-in, a record *tap* arms recording instead of starting it: the beats are clicked and counted down in the top bar, and recording latches at the next bar line (the one after, if that is under two beats away), opening a 1/16 early so a note played a touch ahead still lands on beat 1. Tap again, or pause, to cancel. From a paused clock the count starts the clock one bar before the loop's start. Holding `L2` still punches in at once.
 
