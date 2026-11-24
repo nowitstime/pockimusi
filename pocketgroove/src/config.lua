@@ -47,6 +47,8 @@ Config.MODE_COLORS = {
     FX        = Config.COLORS.SILVER,
     ERASE     = Config.COLORS.RED,
     NEW       = Config.COLORS.RED,
+    MENU_HOLD = Config.COLORS.CYAN,
+    MENU      = Config.COLORS.CYAN,
 }
 
 -- Each instrument's own colour, grouped by family: rhythm warm, chords cool

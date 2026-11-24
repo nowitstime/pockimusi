@@ -15,7 +15,8 @@
 -- Chrome installs). Chrome:lineHeight gives the built-in font's line height,
 -- for text centred in a box.
 --
--- F8 (desktop) cycles the sets; the choice is kept in display.txt.
+-- The menu (hold SELECT + START) and F8 (desktop) change the set; the choice
+-- is kept in display.txt.
 -- ============================================================================
 
 local math_floor, math_max = math.floor, math.max
@@ -72,12 +73,12 @@ function Fonts:setByName(name)
     return false
 end
 
-function Fonts:cycle()
+function Fonts:cycle(dir)
     local idx = 1
     for i, s in ipairs(self.SETS) do
         if s.name == self.set then idx = i end
     end
-    self.set = self.SETS[idx % #self.SETS + 1].name
+    self.set = self.SETS[(idx - 1 + (dir or 1)) % #self.SETS + 1].name
     return self.set
 end
 

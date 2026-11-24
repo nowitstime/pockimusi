@@ -34,7 +34,7 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | Workflow | **One instrument at a time**; each pass includes its stage visuals in the shared template |
 | Look | Base look set early; refined per instrument, not finalised up front |
 | Page colours | One colour per page (SPEC §11) |
-| Saving | Autosave right after the format settles; patterns/song later |
+| Saving | Autosave keeps the loop on screen; pattern slots A–H in the menu (`SELECT + START`); song later |
 | Latency | Fine on device. Revisit only if it gets worse |
 
 ---
@@ -177,7 +177,10 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Phase J · Later
 
-- [ ] Pattern slots A–H and a simple chain ❓ what a "song" is
+- [x] Menu on `SELECT + START` (hold 0.3 s): save / load pattern slots A–H, font set, song mode placeholder
+- [x] Pattern slots A–H: each one a whole session (= a scene in FUTURE_PLANS §8.1), its own file
+- [ ] Device check: the hold timing, the slot list legibility, save time on the SD card
+- [ ] Song mode: a chain of the slots ❓ what a "song" is (FUTURE_PLANS §8)
 - [ ] Export loop to `.wav`
 - [ ] Optional `.wav` sample loading
 

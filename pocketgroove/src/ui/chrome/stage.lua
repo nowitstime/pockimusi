@@ -79,7 +79,7 @@ function Chrome:drawCenterStage()
     elseif mode == "TRACK" then
         l1Label, r1Label = "L1: < INSTRUMENT", "R1: INSTRUMENT >"
     elseif mode == "TRANSPORT" then
-        l1Label, r1Label = "L1: SCALE <", "R1: SCALE >"
+        l1Label, r1Label = "L1: BPM -", "R1: BPM +"
     elseif mode == "MIX" then
         l1Label, r1Label = "L1: MST -", "R1: MST +"
     elseif mode == "ERASE" then
@@ -172,7 +172,7 @@ function Chrome:drawCenterStage()
     self:setColor(C.MUTED)
     love.graphics.setFont(self.fontTiny)
     local dpadSub = {
-        TRACK = "D-PAD: ROW - VALUE", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: TEMPO - KEY",
+        TRACK = "D-PAD: ROW - VALUE", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: SCALE - KEY",
         ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
     }
     local instSub = { breaks = "D-PAD: JUMP TO A SLICE", drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
@@ -240,7 +240,7 @@ function Chrome:getControlLabels(def, state, mode)
     elseif mode == "TRANSPORT" then
         local swingHeld = Input.down.Y
         dpadLabels = swingHeld and { UP = "SWING +", DOWN = "SWING -", LEFT = "KEY <", RIGHT = "KEY >" }
-            or { UP = "BPM+", DOWN = "BPM-", LEFT = "KEY <", RIGHT = "KEY >" }
+            or { UP = "SCALE >", DOWN = "SCALE <", LEFT = "KEY <", RIGHT = "KEY >" }
         local clickLabels = { ["OFF"] = "CLICK", ["ON"] = "CLICK", ["COUNT-IN"] = "COUNT IN", ["ON + COUNT-IN"] = "CLICK +COUNT" }
         faceLabels = { B = Looper.bars .. " BAR", A = "GRID", Y = "SWING", X = clickLabels[Looper:getClickMode()] }
         activeMap.X = Looper.clickOn or Looper.countIn

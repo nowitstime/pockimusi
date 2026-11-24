@@ -12,11 +12,13 @@ local Input       = require("src.input")
 local Synth       = require("src.synth")
 local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
+local Menu        = require("src.menu")
 
 local clamp = Config.clamp
 
 local Modes = {
-    -- NORMAL, REC_LATCH, REC_HOLD, NEW, ERASE, MIX, TRACK, TRANSPORT, FX
+    -- NORMAL, REC_LATCH, REC_HOLD, NEW, ERASE, MIX, TRACK, TRANSPORT, FX,
+    -- MENU_HOLD (SELECT + START held, counting up), MENU (src/menu.lua)
     current  = "NORMAL",
     previous = "NORMAL",
 
@@ -161,6 +163,7 @@ end
 local function updateRecord()
     updateCountIn()
     updateRecPass()
+    if Menu:isActive() then return end             -- L2 does nothing in the menu
     if Input.pressed.L2 then
         Looper:beginRecordingTake()
         Modes.warned = Modes:followWarning()
@@ -190,8 +193,16 @@ end
 -- ---------------------------------------------------------------------------
 function Modes:resolve()
     local d = Input.down
+    if Menu:isActive() then return "MENU" end
     if d.L2 and d.R2 and d.SELECT then return "NEW" end
     if d.L2 and d.R2 then return "ERASE" end
+    if d.SELECT and d.START then
+        -- On the Clock page a quick SELECT tap still changes track; only a
+        -- SELECT held past a tap counts towards the menu
+        local st, sl = Input.startHoldTime, Input.selectHoldTime
+        if st > sl and st >= self.TRANSPORT_HOLD and sl < self.TAP_MAX then return "TRANSPORT" end
+        return "MENU_HOLD"
+    end
     if d.SELECT and d.R2 then return "MIX" end
     if d.SELECT and Input.selectHoldTime >= self.TRACK_HOLD then return "TRACK" end
     if d.START and Input.startHoldTime >= self.TRANSPORT_HOLD then return "TRANSPORT" end
@@ -254,6 +265,34 @@ function handlers.NEW(ctx, dt)
         Instruments:releaseAll()
         Looper:freshSession()
     end
+    return true
+end
+
+-- Seconds SELECT and START have both been held
+local function menuHeld()
+    return math.min(Input.selectHoldTime, Input.startHoldTime)
+end
+
+-- SELECT + START held: the menu opens once both have been down Menu.HOLD seconds
+function handlers.MENU_HOLD()
+    Input.comboUsed.SELECT, Input.comboUsed.START = true, true
+    if menuHeld() >= Menu.HOLD then
+        -- a swap previewed on the Track page is dropped, not applied
+        Modes.trackPage.pending, Modes.trackPage.pendingSlot = nil, nil
+        Modes.trackPage.picker, Modes.trackPage.previewIn = nil, nil
+        Instruments:releaseAll()
+        Menu:openMenu()
+    end
+    return true
+end
+
+-- The menu is up: it reads the buttons (src/menu.lua)
+-- (L2 and R2 are not marked used: that mark only clears on their next
+-- press, and a stale L2 mark would swallow every SELECT tap after the menu.
+-- updateRecord skips L2 while the menu is active instead.)
+function handlers.MENU(ctx, dt)
+    Input.comboUsed.SELECT, Input.comboUsed.START = true, true
+    Menu:update(dt)
     return true
 end
 
@@ -376,7 +415,7 @@ end
 -- Hold START: Transport = timing. A SELECT tap still changes track here, so
 -- grid and swing can be set for each track without leaving the page.
 local updateSelectTap
--- Tempo: a press steps 5 BPM; held, it keeps stepping after TEMPO_REPEAT[1]
+-- Tempo (L1 / R1): a press steps 5 BPM; held, it keeps stepping after TEMPO_REPEAT[1]
 -- seconds, every TEMPO_REPEAT[2] seconds, and twice as fast after
 -- TEMPO_REPEAT[3] seconds, so 60 -> 240 is a short hold, not 36 presses
 Modes.TEMPO_REPEAT = { 0.4, 0.12, 1.5 }
@@ -387,16 +426,17 @@ local function stepTempo(dir)
     Looper:showToast("TEMPO: " .. Looper.bpm .. " BPM")
 end
 
+-- Tempo on the shoulders: R1 up, L1 down
 local function updateTempo(dt)
     local th = Modes.tempoHold
-    if Input.pressed.UP or Input.pressed.DOWN then
-        th.dir = Input.pressed.UP and 1 or -1
+    if Input.pressed.R1 or Input.pressed.L1 then
+        th.dir = Input.pressed.R1 and 1 or -1
         th.held, th.next = 0.0, Modes.TEMPO_REPEAT[1]
         stepTempo(th.dir)
         return
     end
     if th.dir == 0 then return end
-    if not Input.down[th.dir > 0 and "UP" or "DOWN"] then
+    if not Input.down[th.dir > 0 and "R1" or "L1"] then
         th.dir = 0
         return
     end
@@ -415,29 +455,27 @@ function handlers.TRANSPORT(ctx, dt)
     local tIdx = Looper.activeTrack
     local lane = Looper.tracks[tIdx] and Looper.tracks[tIdx].isLane
 
+    updateTempo(dt)
+
+    -- D-pad = the music: LEFT / RIGHT key, UP / DOWN scale (with Y: swing)
     if Input.down.Y and lane then
         if Input.pressed.UP or Input.pressed.DOWN then
             Looper:showToast("TRACK C HAS NO SWING")
         end
     elseif Input.down.Y then
-        Modes.tempoHold.dir = 0
         if Input.pressed.UP then
             Looper:adjustSwing(tIdx, 0.02)
         elseif Input.pressed.DOWN then
             Looper:adjustSwing(tIdx, -0.02)
         end
-    else
-        updateTempo(dt)
+    elseif Input.pressed.UP or Input.pressed.DOWN then
+        Theory:cycleScale(Input.pressed.UP and 1 or -1)
+        Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
     end
 
     if Input.pressed.LEFT or Input.pressed.RIGHT then
         Theory:cycleRoot(Input.pressed.RIGHT and 1 or -1)
         Looper:showToast("KEY: " .. Theory:getKeyLabel())
-    end
-
-    if Input.pressed.L1 or Input.pressed.R1 then
-        Theory:cycleScale(Input.pressed.R1 and 1 or -1)
-        Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
     end
 
     if Input.pressed.B then Looper:toggleBars() end

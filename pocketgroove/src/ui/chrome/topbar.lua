@@ -134,6 +134,8 @@ function Chrome:drawTopBar()
         ERASE     = { label = "ERASE",       icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         NEW       = { label = "FRESH", icon = "CROSS",   stroke = C.RED,    fill = C.RED,      txt = C.BG,     iconCol = C.BG },
         FX        = { label = "LIVE FX",     icon = "GLINT",   stroke = C.SILVER, fill = C.SILVER,   txt = C.BG,     iconCol = C.BG },
+        MENU_HOLD = { label = "MENU",        icon = "GLINT",   stroke = C.CYAN,   fill = C.PANEL_HI, txt = C.CYAN,   iconCol = C.CYAN },
+        MENU      = { label = "MENU",        icon = "GLINT",   stroke = C.CYAN,   fill = C.CYAN,     txt = C.BG,     iconCol = C.BG },
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
     -- Count-in: recording is armed and the beats left are counted down

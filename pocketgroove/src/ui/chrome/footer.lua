@@ -46,7 +46,7 @@ Chrome.FOOTER_HINTS = {
                   { "face", "XYAB", "FX ON/OFF" } },
     TRACK_LANE = { { "dpad", "UD", "ROW" }, { "dpad", "LR", "CHANGE" } },
     MIX       = { { "dpad", "LR", "TRACK" }, { "dpad", "UD", "LEVEL" }, { "face", "XYAB", "MUTE" }, { "key", { "L1", "R1" }, "MASTER" } },
-    TRANSPORT = { { "dpad", "UD", "BPM" }, { "dpad", "LR", "KEY" }, { "key", { "L1", "R1" }, "SCALE" },
+    TRANSPORT = { { "key", { "L1", "R1" }, "BPM" }, { "dpad", "LR", "KEY" }, { "dpad", "UD", "SCALE" },
                   { "face", "A", "GRID" }, { "face", "Y", "+UP/DN SWING" }, { "face", "X", "CLICK" } },
     ERASE     = { { "face", "XYAB", "CLEAR PAD" }, { "dpad", "L", "UNDO" }, { "key", { "START" }, "CLEAR TRACK" },
                   { "key", { "SELECT" }, "FRESH" } },

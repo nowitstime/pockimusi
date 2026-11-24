@@ -23,6 +23,17 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
+    "menu": 'H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1)',
+    "menu-save": 'local P = require("src.patterns"); local L = require("src.looper");'
+                 ' local function put(slot, act, n, len) local t = L.tracks[slot]; for i = 0, n - 1 do t.events[#t.events + 1] = { tick = math.floor(i * L:getLoopTicks() / n), len = len or 0, action = act, vel = 0.8, degree = 1, octave = 0 } end end;'
+                 ' put(1, "B", 8); put(1, "A", 16); put(1, "Y", 4); put(3, "B", 6, 300); put(4, "B", 2, 1700); P.save("A");'
+                 ' L.bars = 4; L.bpm = 96; for i = 1, 4 do L.tracks[i].events = {} end; put(1, "B", 4); put(1, "A", 32); put(2, "B", 8, 200); put(3, "B", 16, 100); put(4, "B", 1, 7000); P.save("C");'
+                 ' H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1); H.tap("B"); H.tap("UP"); H.tap("UP"); H.tap("B")',
+    "menu-load": 'local P = require("src.patterns"); local L = require("src.looper");'
+                 ' local function put(slot, act, n, len) local t = L.tracks[slot]; for i = 0, n - 1 do t.events[#t.events + 1] = { tick = math.floor(i * L:getLoopTicks() / n), len = len or 0, action = act, vel = 0.8, degree = 1, octave = 0 } end end;'
+                 ' put(1, "B", 8); put(1, "A", 16); put(1, "Y", 4); put(3, "B", 6, 300); put(4, "B", 2, 1700); P.save("A");'
+                 ' L.bars = 4; L.bpm = 96; for i = 1, 4 do L.tracks[i].events = {} end; put(1, "B", 4); put(1, "A", 32); put(2, "B", 8, 200); put(3, "B", 16, 100); put(4, "B", 1, 7000); P.save("C");'
+                 ' H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1); H.tap("DOWN"); H.tap("B")',
     "wobble": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "wobble"); H.tap("SELECT"); H.tap("SELECT"); H.hold("UP_RIGHT" and "UP"); H.hold("RIGHT"); H.hold("B"); H.play(0.6); H.release("RIGHT"); H.hold("UP"); H.play(0.6)',
     "breaks": 'local I = require("src.instruments"); I:swapTrackInstrument(1, "breaks"); local st = require("src.looper").tracks[1].state; st.breakId = "amen"; H.hold("B"); H.play(0.6); H.hold("RIGHT"); H.play(0.3)',
     "roller": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "roller"); H.tap("SELECT"); H.tap("SELECT"); H.hold("X"); H.play(0.4); H.hold("UP"); H.play(0.3); H.hold("R1"); H.play(0.2)',
@@ -143,8 +154,8 @@ local ops = {}
 local state = { color = {1,1,1,1}, lw = 1, font = nil, tx = 0, ty = 0, sx = 1, stack = {}, clip = nil }
 local function rec(kind, ...) ops[#ops+1] = { kind, state.color, state.lw, state.font and state.font.size or 12,
                                               state.tx, state.ty, state.sx, {...}, state.clip } end
-local function newFont(size)
-    size = size or 12
+local function newFont(a, b)
+    local size = (type(a) == "string" and b or a) or 12   -- newFont(size) or newFont(path, size)
     return { size = size,
              getWidth = function(_, t) return MEASURE(tostring(t), size) end,
              getHeight = function() return math.floor(size * 1.17 + 0.5) end }

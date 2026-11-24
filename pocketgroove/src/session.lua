@@ -25,6 +25,9 @@ local Session = {
     DEFAULT_INSTRUMENTS = { "drums", "harp", "bass", "pad" },
     -- Instruments that no longer exist load as their replacement (notes kept)
     REPLACED = { grain = "pad" },
+    -- The pattern slot (A–H, src/patterns.lua) this loop was last saved to or
+    -- loaded from, or nil. Saved with the session, so it survives a reboot.
+    patternSlot = nil,
 }
 
 -- Event fields that only matter while the game runs
@@ -104,6 +107,7 @@ function Session.snapshot()
         rootIndex = Theory.rootIndex,
         scaleIndex = Theory.scaleIndex,
         masterVolume = Synth.masterVolume,
+        patternSlot = Session.patternSlot,
         tracks = tracks,
     }
 end
@@ -225,6 +229,8 @@ function Session.restore(data)
     Theory.rootIndex = int(data.rootIndex, 1, #Theory.NOTE_NAMES, 1)
     Theory.scaleIndex = int(data.scaleIndex, 1, #Theory.SCALES, 1)
     Synth.masterVolume = num(data.masterVolume, 0.0, 1.0, Synth.masterVolume)
+    local ps = data.patternSlot
+    Session.patternSlot = (type(ps) == "string" and #ps == 1 and ps:match("^[A-H]$")) and ps or nil
 
     local loop = Looper:getLoopTicks()
     local tracks = type(data.tracks) == "table" and data.tracks or {}
