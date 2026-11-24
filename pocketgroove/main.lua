@@ -72,6 +72,8 @@ function love.keypressed(key)
         love.event.quit()
     elseif key == "f9" then
         Looper:showToast(Display:cycleStyle())
+    elseif key == "f8" then
+        Looper:showToast(Chrome:cycleFonts())
     elseif key == "f11" then
         Looper:showToast(Display:toggleFullscreen())
     end

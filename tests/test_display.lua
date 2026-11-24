@@ -9,7 +9,9 @@ local function recorder(w, h, opts)
     local noop = function() end
     local g = setmetatable({
         getDimensions = function() return w, h end,
-        newFont = function(size, _, dpi)
+        newFont = function(a, b, c, d)
+            local size, dpi = a, c                         -- newFont(size, hinting, dpi)
+            if type(a) == "string" then size, dpi = b, d end -- newFont(path, size, hinting, dpi)
             log.fonts[#log.fonts + 1] = { size = size, dpi = dpi or 1 }
             size = size or 12
             return { getHeight = function() return size end,
@@ -105,6 +107,23 @@ return {
         local M2 = boot(1280, 800)
         H.eq(M2.Display.style, "PIXEL", "look restored")
         H.eq(M2.Display.fullscreen, true, "fullscreen restored")
+        H.keepFiles = false
+    end },
+
+    { "F8 cycles the font sets, remembered across boots; the layout's line height holds", function()
+        local M = boot(640, 480)
+        local Chrome = require("src.ui.chrome")
+        local Fonts = require("src.ui.fonts")
+        local h = Chrome:lineHeight(Chrome.fontSmall)
+        H.eq(Fonts.set, Fonts.SETS[1].name, "starts on the first set")
+        love.keypressed("f8")
+        H.eq(Fonts.set, Fonts.SETS[2].name, "F8: the next set")
+        H.eq(Chrome:lineHeight(Chrome.fontSmall), h, "same line height for the layout")
+        H.truthy(H.files["display.txt"]:find("font=" .. Fonts.SETS[2].name), "written to display.txt")
+
+        H.keepFiles = true
+        boot(640, 480)
+        H.eq(require("src.ui.fonts").set, Fonts.SETS[2].name, "set restored")
         H.keepFiles = false
     end },
 }

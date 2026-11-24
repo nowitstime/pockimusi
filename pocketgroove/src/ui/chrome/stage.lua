@@ -127,13 +127,13 @@ function Chrome:drawCenterStage()
         love.graphics.rectangle("fill", kx, y + 4, kw, 14, 7, 7)
         love.graphics.setFont(ft)
         self:setColor(accent)
-        love.graphics.print(key, math_floor(kx + (kw - ft:getWidth(key)) * 0.5), math_floor(y + 11 - ft:getHeight() * 0.5))
+        love.graphics.print(key, math_floor(kx + (kw - ft:getWidth(key)) * 0.5), math_floor(y + 11 - self:lineHeight(ft) * 0.5))
         local room = w - kw - 16
         local f = (self.fontSmall:getWidth(text) <= room) and self.fontSmall or ft
         love.graphics.setFont(f)
         local tw = f:getWidth(text)
         local tx = right and (kx - 6 - tw) or (kx + kw + 6)
-        local ty = math_floor(y + 11 - f:getHeight() * 0.5)
+        local ty = math_floor(y + 11 - self:lineHeight(f) * 0.5)
         self:setColor(on and C.BG or C.TEXT)
         if on then self:printBold(text, math_floor(tx), ty) else love.graphics.print(text, math_floor(tx), ty) end
     end

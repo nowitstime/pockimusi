@@ -124,7 +124,7 @@ function Chrome:drawLabView(def, state, track, col)
     if font:getWidth(big) > 224 then font = self.fontLarge end
     self:setColor(C.TEXT)
     love.graphics.setFont(font)
-    love.graphics.print(big, math_floor(320 - font:getWidth(big) * 0.5), 112 + math_floor((28 - font:getHeight()) * 0.5))
+    love.graphics.print(big, math_floor(320 - font:getWidth(big) * 0.5), 112 + math_floor((28 - self:lineHeight(font)) * 0.5))
 
     if small and small ~= "" then
         small = tostring(small)

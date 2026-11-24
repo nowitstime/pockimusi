@@ -84,7 +84,7 @@ function Chrome:drawTag(x, y, w, h, text, strokeCol, fillCol, textCol, font, fil
     self:setColor(textCol)
     love.graphics.setFont(font)
     local tw = font:getWidth(text)
-    local th = font:getHeight()
+    local th = self:lineHeight(font)
     love.graphics.print(text, math_floor(x + (w - tw) * 0.5), math_floor(y + (h - th) * 0.5))
 end
 
@@ -116,7 +116,7 @@ function Chrome:drawCapsule(x, y, w, h, text, strokeCol, fillCol, textCol, font,
     self:setColor(textCol or C.TEXT)
     love.graphics.setFont(font)
     local tw = font:getWidth(text)
-    love.graphics.print(text, math_floor(x + (w - tw) * 0.5), math_floor(y + (h - font:getHeight()) * 0.5))
+    love.graphics.print(text, math_floor(x + (w - tw) * 0.5), math_floor(y + (h - self:lineHeight(font)) * 0.5))
 end
 
 -- Lay out capsules centred on cx; items = { {text, stroke, fill, textCol, fillAlpha} }

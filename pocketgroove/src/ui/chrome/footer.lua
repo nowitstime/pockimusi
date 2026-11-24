@@ -78,7 +78,7 @@ function Chrome:drawKeycap(x, label, col, lit)
     love.graphics.rectangle("line", x, MID - 8, w, 16, 8, 8)
     love.graphics.setFont(f)
     self:setColor(lit and C.BG or col)
-    love.graphics.print(label, math_floor(x + (w - f:getWidth(label)) * 0.5), math_floor(MID - f:getHeight() * 0.5))
+    love.graphics.print(label, math_floor(x + (w - f:getWidth(label)) * 0.5), math_floor(MID - self:lineHeight(f) * 0.5))
     return w
 end
 
@@ -152,7 +152,7 @@ function Chrome:drawHintRow(x, hints, col)
         end
         local f = self.fontSmall
         love.graphics.setFont(f)
-        local ty = math_floor(MID - f:getHeight() * 0.5)
+        local ty = math_floor(MID - self:lineHeight(f) * 0.5)
         if held then
             self:setColor(C.TEXT)
             self:printBold(word, x + 2, ty)
@@ -240,7 +240,7 @@ function Chrome:drawToast(text, timer, instCol)
     self:drawToastIcon(kind, 28, MID, C.BG)
     local f = self.fontSmall
     love.graphics.setFont(f)
-    local ty = math_floor(MID - f:getHeight() * 0.5)
+    local ty = math_floor(MID - self:lineHeight(f) * 0.5)
     self:setColor(C.TEXT)
     self:printBold(title, 46, ty)
     if detail ~= "" then
@@ -281,7 +281,7 @@ function Chrome:drawFooterStrip(def)
         love.graphics.rectangle("fill", x, MID - 8, w, 16, 3, 3)
         love.graphics.setFont(f)
         self:setColor(C.BG)
-        love.graphics.print(tag, math_floor(x + 7), math_floor(MID - f:getHeight() * 0.5))
+        love.graphics.print(tag, math_floor(x + 7), math_floor(MID - self:lineHeight(f) * 0.5))
         x = x + w + 12
     end
     self:drawHintRow(x, hints, col)

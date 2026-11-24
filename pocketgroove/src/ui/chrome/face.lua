@@ -230,7 +230,7 @@ function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeM
                 local font = (#text <= 3) and self.fontMed or self.fontSmall
                 love.graphics.setFont(font)
                 local tw = font:getWidth(text)
-                local th = font:getHeight()
+                local th = self:lineHeight(font)
                 love.graphics.print(text, math_floor(p.x - tw * 0.5), math_floor(p.y - th * 0.5))
             end
         end

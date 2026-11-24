@@ -273,7 +273,7 @@ function Chrome:drawLaneStrip(lx, lw)
         self:drawDiamond(19, cy, 2.0, col)
     end
     love.graphics.setFont(self.fontTiny)
-    local fh = self.fontTiny:getHeight()
+    local fh = self:lineHeight(self.fontTiny)
     local ty = math_floor(cy - fh * 0.5)
     self:setColor(isSel and C.TEXT or Config.shade(col, 0.8))
     love.graphics.print("C CHORDS", 28, ty)

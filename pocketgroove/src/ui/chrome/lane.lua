@@ -135,7 +135,7 @@ function Chrome:drawLaneView(def, state, track, col)
         love.graphics.setFont(f)
         self:setColor(fg)
         local showNum = numeral and not small and nBoxes < 16
-        local ny = showNum and (cy + ch * 0.5 - f:getHeight() + 1) or (cy + (ch - f:getHeight()) * 0.5)
+        local ny = showNum and (cy + ch * 0.5 - self:lineHeight(f) + 1) or (cy + (ch - self:lineHeight(f)) * 0.5)
         love.graphics.print(name, math_floor(cx + (cw - f:getWidth(name)) * 0.5), math_floor(ny))
         if showNum then
             love.graphics.setFont(self.fontTiny)

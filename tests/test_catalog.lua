@@ -82,8 +82,8 @@ local function bootCapturing()
     local texts = {}
     local noop = function() end
     H.graphicsOverride = setmetatable({
-        newFont = function(size)
-            size = size or 12
+        newFont = function(a, b)                       -- newFont(size) or newFont(path, size)
+            local size = (type(a) == "string" and b or a) or 12
             return { size = size, getHeight = function() return size end,
                      getWidth = function(_, t) return #tostring(t) * math.floor(size * 0.6) end }
         end,
