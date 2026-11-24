@@ -45,12 +45,12 @@ local function goToSlot(M, slot)
 end
 
 return {
-    { "holding SELECT + START for a second opens the menu", function()
+    { "holding SELECT + START a moment opens the menu", function()
         local M = boot()
-        H.hold("SELECT", "START"); H.play(0.5)
+        H.hold("SELECT", "START"); H.play(0.15)
         H.eq(H.mode(), "MENU_HOLD", "counting up")
         H.falsy(M.Menu.open, "not yet")
-        H.play(0.6)
+        H.play(0.2)
         H.truthy(M.Menu.open, "open")
         H.release("SELECT", "START"); H.play(0.1)
         H.eq(H.mode(), "MENU", "menu mode")
@@ -59,7 +59,7 @@ return {
     { "a short SELECT + START does nothing, and neither release is a tap", function()
         local M = boot()
         local playing, track = M.Looper.playing, M.Looper.activeTrack
-        H.hold("SELECT", "START"); H.play(0.4)
+        H.hold("SELECT", "START"); H.play(0.15)
         H.release("SELECT", "START"); H.play(0.1)
         H.falsy(M.Menu.open, "closed")
         H.eq(M.Looper.playing, playing, "clock unchanged")
@@ -78,6 +78,8 @@ return {
 
         H.hold("START"); H.play(0.3)
         H.eq(H.mode(), "TRANSPORT", "clock page")
+        H.tap("SELECT")
+        H.falsy(M.Menu.open, "a SELECT tap on the clock page isn't the menu")
         H.hold("SELECT"); H.play(1.1)
         H.truthy(M.Menu.open, "open from TRANSPORT")
         H.release("SELECT", "START"); H.play(0.1)
@@ -91,6 +93,17 @@ return {
         H.falsy(M.Menu:isActive(), "closed")
         H.eq(M.Looper.playing, playing, "clock unchanged")
         H.eq(H.mode(), "NORMAL", "back to playing")
+    end },
+
+    { "after the menu, a SELECT tap still changes track (and L2 still records)", function()
+        local M = boot()
+        openMenu()
+        H.tap("START"); H.play(0.1)
+        local t = M.Looper.activeTrack
+        H.tap("SELECT")
+        H.eq(M.Looper.activeTrack, t % #M.Looper.tracks + 1, "next track")
+        H.tap("L2")
+        H.truthy(M.Input.recLatched, "record latches")
     end },
 
     { "the instrument and record are blocked while it's open", function()
@@ -247,9 +260,9 @@ return {
     { "the menu draws in every page without errors", function()
         local M = boot()
         local Chrome = require("src.ui.chrome")
-        H.hold("SELECT", "START"); H.play(0.5)
+        H.hold("SELECT", "START"); H.play(0.15)
         Chrome:draw()
-        H.play(0.6); H.release("SELECT", "START"); H.play(0.1)
+        H.play(0.3); H.release("SELECT", "START"); H.play(0.1)
         Chrome:draw()
         M.Patterns.save("A")
         goTo(M, "SAVE"); H.tap("B"); Chrome:draw()

@@ -53,12 +53,11 @@ Chrome.FOOTER_HINTS = {
     NEW       = { { "key", { "SELECT" }, "HOLD 1 S: CLEAR ALL NOTES" }, { "dpad", "L", "WITH L2+R2: UNDO" } },
     FX        = { { "dpad", "U", "STUTTER" }, { "dpad", "D", "SLOW" }, { "dpad", "L", "FILTER" }, { "dpad", "R", "CRUSH" },
                   { "face", "XYAB", "MUTE 1-4" } },
-    MENU_HOLD = { { "key", { "SELECT", "START" }, "KEEP HOLDING: MENU" } },
 }
 Chrome.FOOTER_TAGS = { REC_LATCH = "REC", REC_HOLD = "REC", TRACK = "TRACK", MIX = "MIX", TRANSPORT = "CLOCK",
-                       ERASE = "ERASE", NEW = "FRESH", FX = "LIVE FX", MENU_HOLD = "MENU" }
+                       ERASE = "ERASE", NEW = "FRESH", FX = "LIVE FX" }
 -- Pages whose hints stay up even while a toast is showing
-local HELD_PAGES = { TRACK = true, MIX = true, TRANSPORT = true, ERASE = true, NEW = true, FX = true, MENU_HOLD = true }
+local HELD_PAGES = { TRACK = true, MIX = true, TRANSPORT = true, ERASE = true, NEW = true, FX = true }
 
 -- Text drawn twice, a hair apart: a bold weight from the one font
 function Chrome:printBold(text, x, y)

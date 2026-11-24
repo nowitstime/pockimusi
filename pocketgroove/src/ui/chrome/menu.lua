@@ -2,13 +2,11 @@
 -- src/ui/chrome/menu.lua — The menu (hold SELECT + START), drawn over the stage
 -- (part of src/ui/chrome.lua: adds methods to the Chrome table)
 --
--- While SELECT + START are held: a small card fills up until the menu opens.
--- Open: everything under the top bar is covered by the top list, or by the
+-- Everything under the top bar is covered by the top list, or by the
 -- slot list A–H when saving or loading a pattern.
 -- ============================================================================
 
 local Config   = require("src.config")
-local Modes    = require("src.modes")
 local Menu     = require("src.menu")
 local Session  = require("src.session")
 local Patterns = require("src.patterns")
@@ -34,27 +32,6 @@ end
 
 function Chrome:menuTextRight(text, xr, cy, font, col, alpha)
     self:menuText(text, xr - font:getWidth(text), cy, font, col, alpha)
-end
-
--- SELECT + START held: "MENU" and a bar that fills to the moment it opens
-function Chrome:drawMenuHold()
-    local p = Modes:menuHoldProgress()
-    if p <= 0 then return end
-    local C, col = Config.COLORS, accent()
-    local w, h = 240, 64
-    local x, y = 320 - w * 0.5, 160 - h * 0.5
-    self:setColor(C.BG, 0.9)
-    love.graphics.rectangle("fill", x, y, w, h, 8, 8)
-    self:setColor(col)
-    love.graphics.setLineWidth(1.6)
-    love.graphics.rectangle("line", x, y, w, h, 8, 8)
-    love.graphics.setLineWidth(1)
-    local label = "KEEP HOLDING: MENU"
-    self:menuText(label, 320 - self.fontSmall:getWidth(label) * 0.5, y + 22, self.fontSmall, C.TEXT)
-    self:setColor(C.GRID)
-    love.graphics.rectangle("fill", x + 20, y + 42, w - 40, 6, 3, 3)
-    self:setColor(col)
-    love.graphics.rectangle("fill", x + 20, y + 42, (w - 40) * p, 6, 3, 3)
 end
 
 local function frame(self, title, right)
@@ -265,10 +242,7 @@ function Chrome:drawMenuSlots()
 end
 
 function Chrome:drawMenu()
-    if not Menu.open then
-        self:drawMenuHold()
-        return
-    end
+    if not Menu.open then return end
     if Menu.page == "ROOT" then
         self:drawMenuRoot()
     else

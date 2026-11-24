@@ -27,7 +27,7 @@ local Session  = require("src.session")
 local Patterns = require("src.patterns")
 
 local Menu = {
-    HOLD = 1.0,              -- seconds SELECT + START are held to open
+    HOLD = 0.3,              -- seconds SELECT + START are held to open (just past a tap)
     MESSAGE_TIME = 2.4,
 
     ITEMS = {

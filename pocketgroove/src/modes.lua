@@ -286,16 +286,12 @@ function handlers.MENU_HOLD()
     return true
 end
 
--- How far the menu hold has got, 0..1 (for the screen)
-function Modes:menuHoldProgress()
-    if self.current ~= "MENU_HOLD" then return 0 end
-    return clamp(menuHeld() / Menu.HOLD, 0.0, 1.0)
-end
-
 -- The menu is up: it reads the buttons (src/menu.lua)
+-- (L2 and R2 are not marked used: that mark only clears on their next
+-- press, and a stale L2 mark would swallow every SELECT tap after the menu.
+-- updateRecord skips L2 while the menu is active instead.)
 function handlers.MENU(ctx, dt)
     Input.comboUsed.SELECT, Input.comboUsed.START = true, true
-    Input.comboUsed.L2, Input.comboUsed.R2 = true, true
     Menu:update(dt)
     return true
 end

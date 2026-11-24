@@ -23,7 +23,6 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
-    "menu-hold": 'H.hold("SELECT", "START"); H.play(0.6)',
     "menu": 'H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1)',
     "menu-save": 'local P = require("src.patterns"); local L = require("src.looper");'
                  ' local function put(slot, act, n, len) local t = L.tracks[slot]; for i = 0, n - 1 do t.events[#t.events + 1] = { tick = math.floor(i * L:getLoopTicks() / n), len = len or 0, action = act, vel = 0.8, degree = 1, octave = 0 } end end;'

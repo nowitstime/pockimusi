@@ -177,7 +177,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 
 ## Phase J · Later
 
-- [x] Menu on `SELECT + START` (hold ~1 s): save / load pattern slots A–H, font set, song mode placeholder
+- [x] Menu on `SELECT + START` (hold 0.3 s): save / load pattern slots A–H, font set, song mode placeholder
 - [x] Pattern slots A–H: each one a whole session (= a scene in FUTURE_PLANS §8.1), its own file
 - [ ] Device check: the hold timing, the slot list legibility, save time on the SD card
 - [ ] Song mode: a chain of the slots ❓ what a "song" is (FUTURE_PLANS §8)

@@ -161,7 +161,7 @@ BPM, key, scale and bars are global. Grid and swing belong to the active track a
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
 | `L2 + R2 + SELECT` (hold ~1 s) | ✅ Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
-| `SELECT + START` (hold ~1 s) | ✅ Menu (§10.1). On the Clock page a quick `SELECT` tap still changes track |
+| `SELECT + START` (hold 0.3 s) | ✅ Menu (§10.1). On the Clock page a quick `SELECT` tap still changes track |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
@@ -429,7 +429,7 @@ Event = {
 
 ### 10.1 Menu and pattern slots ✅ (`src/menu.lua`, `src/patterns.lua`, `src/ui/chrome/menu.lua`)
 
-- **Open:** hold `SELECT + START` for about 1 s (a card fills up while held). The music keeps playing; the instrument and record are blocked. Opening and closing both wait until every button is let go, so nothing leaks in or out.
+- **Open:** hold `SELECT + START` for 0.3 s (just past a tap). The music keeps playing; the instrument and record are blocked. Opening and closing both wait until every button is let go, so nothing leaks in or out.
 - **Buttons:** `UP / DOWN` move, `B` choose, `LEFT / RIGHT` change a value, `A` back (closes from the top list), `START` close.
 - **Items:** `SAVE PATTERN`, `LOAD PATTERN`, `SONG MODE` (not built; says so), `FONTS` (the font set, live; same as `F8`, kept in `display.txt`).
 - **A pattern is the whole session** (`Session.snapshot`): four tracks with instruments, sounds, effects and notes, track C, tempo, key, scale. The same thing FUTURE_PLANS §8.1 calls a scene, so song mode can use the slots as they are.
