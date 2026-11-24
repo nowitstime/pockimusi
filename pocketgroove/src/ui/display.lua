@@ -10,13 +10,26 @@
 --   PIXEL  the picture is drawn at 640x480 and then enlarged with
 --          nearest-neighbour, like the handheld's own screen blown up.
 --
--- Keys (desktop / laptop): F9 switches the look, F11 toggles fullscreen.
--- Both are remembered in display.txt next to the session saves.
+-- High-DPI screens (a Mac's Retina, Windows display scaling): the window
+-- asks for the screen's real pixels (conf.lua), and the fonts are
+-- rasterised for scale x the screen's DPI scale, so nothing is drawn small
+-- and then stretched by the system.
+--
+-- Keys (desktop / laptop): F9 switches the look, F11 toggles fullscreen,
+-- F8 the font set (src/ui/fonts.lua). All are remembered in display.txt
+-- next to the session saves.
 -- ============================================================================
 
 local Config = require("src.config")
+local Fonts  = require("src.ui.fonts")
 
 local math_min, math_floor = math.min, math.floor
+
+local function dpiScale()
+    local g = love.graphics
+    local s = g and g.getDPIScale and g.getDPIScale()
+    return (type(s) == "number" and s > 0) and s or 1
+end
 
 local Display = {
     FILE = "display.txt",
@@ -29,10 +42,11 @@ local Display = {
     fontScale = nil,                        -- the scale the fonts were last built for
     canvas = nil,                           -- PIXEL: the 640x480 drawing surface
     canvasFailed = false,                   -- PIXEL unavailable: stay CRISP
+    snap = false,                           -- CRISP and scaled: text onto whole pixels
 }
 
 -- ---------------------------------------------------------------------------
--- Remembered settings: "style=PIXEL\nfullscreen=1\n"
+-- Remembered settings: "style=PIXEL\nfullscreen=1\nfont=NEON\n"
 -- ---------------------------------------------------------------------------
 function Display:load()
     local fs = love.filesystem
@@ -44,12 +58,15 @@ function Display:load()
         if s == style then self.style = s end
     end
     self.fullscreen = text:match("fullscreen=1") ~= nil
+    local font = text:match("font=(%u+)")
+    if font then Fonts:setByName(font) end
 end
 
 function Display:save()
     local fs = love.filesystem
     if not (fs and fs.write) then return end
-    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\n", self.style, self.fullscreen and 1 or 0))
+    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\n",
+        self.style, self.fullscreen and 1 or 0, Fonts.set))
 end
 
 -- Call once at boot, after Chrome:init()
@@ -105,12 +122,29 @@ function Display:setFontScale(s)
     if self.chrome and self.chrome.makeFonts then self.chrome:makeFonts(s) end
 end
 
+-- A point of the 640x480 picture moved onto the nearest whole screen pixel
+-- (in the coordinates of the current transform)
+function Display:snapPoint(x, y)
+    local g = love.graphics
+    if not (g.transformPoint and g.inverseTransformPoint) then return x, y end
+    local d = dpiScale()
+    local sx, sy = g.transformPoint(x, y)
+    if not sy then return x, y end
+    sx = math_floor(sx * d + 0.5) / d
+    sy = math_floor(sy * d + 0.5) / d
+    local lx, ly = g.inverseTransformPoint(sx, sy)
+    if not ly then return x, y end
+    return lx, ly
+end
+
 function Display:getCanvas()
     if self.canvas or self.canvasFailed then return self.canvas end
     local W, H = Config.SCREEN_W, Config.SCREEN_H
     -- Smooth edges at 640x480 like the window's own MSAA; plain canvas if the
     -- GPU can't (some Android GLES 2 devices)
-    local ok, c = pcall(love.graphics.newCanvas, W, H, { msaa = 2 })
+    -- (dpiscale 1: really 640x480 pixels, even on a high-DPI screen)
+    local ok, c = pcall(love.graphics.newCanvas, W, H, { msaa = 2, dpiscale = 1 })
+    if not ok or not c then ok, c = pcall(love.graphics.newCanvas, W, H, { dpiscale = 1 }) end
     if not ok or not c then ok, c = pcall(love.graphics.newCanvas, W, H) end
     if ok and c then
         c:setFilter("nearest", "nearest")
@@ -129,6 +163,7 @@ function Display:draw(drawFn)
 
     local canvas = self.style == "PIXEL" and self:getCanvas()
     if canvas then
+        self.snap = false
         self:setFontScale(1)
         love.graphics.setCanvas(canvas)
         love.graphics.clear(bg[1], bg[2], bg[3], 1.0)
@@ -143,7 +178,10 @@ function Display:draw(drawFn)
         return
     end
 
-    self:setFontScale(self.scale)
+    local px = self.scale * dpiScale()       -- screen pixels per layout pixel
+    self:setFontScale(px)
+    -- At exactly 1:1 every layout position is already a whole pixel
+    self.snap = math.abs(px - 1) > 0.001
     love.graphics.clear(0, 0, 0, 1)
     love.graphics.push()
     love.graphics.translate(self.offsetX, self.offsetY)

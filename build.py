@@ -6,18 +6,23 @@ Packages the pocketgroove sources into pocketgroove/PocketGroove.love
 import os
 import zipfile
 
-# Top-level files packed besides every .lua under src/
+# Top-level files packed besides every .lua under src/ and everything in assets/
 ROOT_FILES = ["main.lua", "conf.lua", "controls.gptk"]
+ASSET_DIR = "assets"   # fonts (with their licences)
 
 
 def collect_files(source_dir):
-    """Every top-level runtime file plus every .lua file under src/, sorted."""
+    """Every top-level runtime file, every .lua file under src/ and every file under assets/, sorted."""
     src_files = []
     for dirpath, _, filenames in os.walk(os.path.join(source_dir, "src")):
         for name in filenames:
             if name.endswith(".lua"):
                 full = os.path.join(dirpath, name)
                 src_files.append(os.path.relpath(full, source_dir).replace(os.sep, "/"))
+    for dirpath, _, filenames in os.walk(os.path.join(source_dir, ASSET_DIR)):
+        for name in filenames:
+            full = os.path.join(dirpath, name)
+            src_files.append(os.path.relpath(full, source_dir).replace(os.sep, "/"))
     return ROOT_FILES + sorted(src_files)
 
 

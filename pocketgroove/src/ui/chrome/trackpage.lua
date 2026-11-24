@@ -144,7 +144,7 @@ function Chrome:drawInstrumentTabs(track, col)
             love.graphics.rectangle("line", x, y, w, h, h * 0.5, h * 0.5)
         end
         self:setColor(textCol, a)
-        love.graphics.print(label, x + pad, y + math_floor((h - font:getHeight()) * 0.5))
+        love.graphics.print(label, x + pad, y + math_floor((h - self:lineHeight(font)) * 0.5))
         -- the instrument's group: a short bar in the group's colour under the tab
         local group = Instruments:groupOf(inst)
         self:setColor(group.rgb, a)

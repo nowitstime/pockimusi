@@ -108,7 +108,7 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
         love.graphics.print(t, math_floor(cx - self.fontTiny:getWidth(t) * 0.5), cy + 12)
         if guideDirKey == "NEUTRAL" then
             self:setColor(col)
-            love.graphics.circle("fill", cx, cy + 12 + self.fontTiny:getHeight() + 2, 1.8)
+            love.graphics.circle("fill", cx, cy + 12 + self:lineHeight(self.fontTiny) + 2, 1.8)
         end
     end
 
@@ -170,7 +170,7 @@ function Chrome:drawStarDpad(cx, cy, labels, col, activeDirKey, guideDirKey)
             end
 
             local tw = self.fontSmall:getWidth(text)
-            local th = self.fontSmall:getHeight()
+            local th = self:lineHeight(self.fontSmall)
             local isGuide = (guideDirKey == d.k)
             if isActive then
                 -- the held label sits in a solid chip

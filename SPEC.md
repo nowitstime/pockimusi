@@ -482,6 +482,17 @@ Internally the Clock page is still the `TRANSPORT` mode and the Fresh page is `N
 
 The tape deck dims while a settings page is open. The Pad has Grain's mint. Tracks are coloured by slot, so a Lead takes the colour of the slot it is put in.
 
+**Fonts** ✅ (`src/ui/fonts.lua`). Each font set pairs a *text* face for the small labels with a *display* face for titles and the big readouts (note and chord names, BPM). All are free (SIL Open Font License), in `pocketgroove/assets/fonts/` with their licences. Each face is sized so its capitals match the built-in font's and nudged so they start on the same row, so changing the set never moves the layout.
+
+| Set | Text | Display |
+| :-- | :-- | :-- |
+| NEON (default) | Chakra Petch SemiBold | Audiowide |
+| STARLIGHT | Tomorrow SemiBold | Zen Dots |
+| SOFT | Atkinson Hyperlegible Bold | Righteous |
+| CLASSIC | LÖVE's built-in font | — |
+
+**Desktop display** ✅ (`src/ui/display.lua`). The picture scales to fit any window: CRISP draws at the screen's resolution (fonts rebuilt at that size, text snapped to whole pixels), PIXEL enlarges a 640×480 picture with nearest-neighbour. High-DPI screens draw at their real pixels (Retina via `highdpi`, Windows scaling via `SetProcessDPIAware`); 4× MSAA smooths shape edges. Keys: `F8` font set, `F9` CRISP / PIXEL, `F11` fullscreen, all remembered in `display.txt`.
+
 ---
 
 ## 12. Code layout
@@ -494,11 +505,12 @@ pockimusi/
  ├── tests/                     # Lua tests: python3 tests/run.py (needs `pip install lupa`) or luajit tests/run.lua
  └── pocketgroove/
       ├── main.lua  conf.lua  controls.gptk
+      ├── assets/fonts/          # the font sets' faces and their licences (OFL)
       └── src/
            config.lua  theory.lua  input.lua  looper.lua  harmony.lua  modes.lua
            instruments/{init,drums,harp,bass,pad,lead}.lua
            synth/{init,voice (📐),drums_bank,synths_bank}.lua
-           ui/chrome.lua
+           ui/chrome.lua  ui/display.lua  ui/fonts.lua  ui/chrome/*.lua
 ```
 
 Global modes and combos live in `modes.lua` (`Modes.current` is read by the UI); `main.lua` only wires the LÖVE callbacks.

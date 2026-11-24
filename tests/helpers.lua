@@ -73,7 +73,8 @@ end
 
 -- Every love.graphics call is a no-op except the few that must return values
 local graphics = setmetatable({
-    newFont = function(size) return fakeFont(size or 12) end,
+    -- newFont(size) or newFont(path, size, ...)
+    newFont = function(a, b) return fakeFont((type(a) == "string" and b or a) or 12) end,
     getDimensions = function() return 640, 480 end,
 }, { __index = function() return noop end })
 

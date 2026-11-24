@@ -1,6 +1,17 @@
 -- PocketGroove — LÖVE (Love2D 11.x) Configuration
 -- Target: Anbernic RG35XX Plus (640x480 4:3 IPS) & Desktop PC
 
+-- Windows with display scaling (125%, 150%...) stretches an app that doesn't
+-- say it handles DPI itself, which blurs and jags everything. This one scales
+-- its own picture (src/ui/display.lua), so say so before the window opens.
+if jit and jit.os == "Windows" then
+    pcall(function()
+        local ffi = require("ffi")
+        ffi.cdef("int SetProcessDPIAware(void);")
+        ffi.load("user32").SetProcessDPIAware()
+    end)
+end
+
 function love.conf(t)
     t.identity = "pocketgroove"
     t.appendidentity = true
@@ -16,7 +27,8 @@ function love.conf(t)
     t.window.minwidth = 640
     t.window.minheight = 480
     t.window.vsync = 1
-    t.window.msaa = 2
+    t.window.msaa = 4            -- smooth shape edges (LÖVE drops it if the GPU can't)
+    t.window.highdpi = true      -- a Mac's Retina screen: draw at its real pixels
 
     t.modules.audio = true
     t.modules.data = true

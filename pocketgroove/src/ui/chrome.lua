@@ -30,23 +30,62 @@ local Chrome = {
     fontHuge  = nil,
 }
 
-Chrome.FONT_SIZES = { fontTiny = 9, fontSmall = 11, fontMed = 13, fontLarge = 16, fontHuge = 28 }
+local Fonts = require("src.ui.fonts")
+
+Chrome.sizeOf = setmetatable({}, { __mode = "k" })   -- font -> its role's size
 
 function Chrome:init()
+    self:installTextWrapper()
     self:makeFonts(1)
     love.graphics.setLineStyle("smooth")
 end
 
 -- (Re)build the fonts with `dpiScale` screen pixels per layout pixel
--- (src/ui/display.lua). Widths and heights still come back in layout pixels.
+-- (src/ui/display.lua), in the current font set (src/ui/fonts.lua). Widths
+-- and heights still come back in layout pixels.
 function Chrome:makeFonts(dpiScale)
-    for name, size in pairs(self.FONT_SIZES) do
-        if dpiScale and dpiScale ~= 1 then
-            self[name] = love.graphics.newFont(size, "normal", dpiScale)
-        else
-            self[name] = love.graphics.newFont(size)
-        end
+    self.fontDpi = dpiScale or 1
+    for role, r in pairs(Fonts.ROLES) do
+        local f = Fonts:make(role, self.fontDpi)
+        self[role] = f
+        self.sizeOf[f] = r.size
     end
+end
+
+-- F8: the next font set; returns a label for a toast
+function Chrome:cycleFonts()
+    Fonts:cycle()
+    self:makeFonts(self.fontDpi or 1)
+    Display:save()
+    return "FONTS: " .. Fonts.set
+end
+
+-- The line height the layout was drawn for (the built-in font's), so text
+-- centred in a box sits the same in every font set
+function Chrome:lineHeight(font)
+    local size = self.sizeOf[font]
+    if size then return Fonts:refHeight(size) end
+    return font:getHeight()
+end
+
+-- Every print goes through here: the face's nudge so its capitals start
+-- where the built-in font's did, then (CRISP, scaled) onto whole screen
+-- pixels so the glyphs aren't smeared across two.
+function Chrome:installTextWrapper()
+    local g = love.graphics
+    if rawget(g, "__pgTextWrapped") then return end
+    local rawPrint, rawPrintf, getFont = g.print, g.printf, g.getFont
+    g.print = function(text, x, y, ...)
+        x, y = x or 0, (y or 0) + Fonts:offsetOf(getFont and getFont())
+        if Display.snap then x, y = Display:snapPoint(x, y) end
+        return rawPrint(text, x, y, ...)
+    end
+    g.printf = function(text, x, y, ...)
+        x, y = x or 0, (y or 0) + Fonts:offsetOf(getFont and getFont())
+        if Display.snap then x, y = Display:snapPoint(x, y) end
+        return rawPrintf(text, x, y, ...)
+    end
+    rawset(g, "__pgTextWrapped", true)
 end
 
 function Chrome:setColor(c, alphaOverride)
