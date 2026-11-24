@@ -12,11 +12,13 @@ local Input       = require("src.input")
 local Synth       = require("src.synth")
 local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
+local Menu        = require("src.menu")
 
 local clamp = Config.clamp
 
 local Modes = {
-    -- NORMAL, REC_LATCH, REC_HOLD, NEW, ERASE, MIX, TRACK, TRANSPORT, FX
+    -- NORMAL, REC_LATCH, REC_HOLD, NEW, ERASE, MIX, TRACK, TRANSPORT, FX,
+    -- MENU_HOLD (SELECT + START held, counting up), MENU (src/menu.lua)
     current  = "NORMAL",
     previous = "NORMAL",
 
@@ -161,6 +163,7 @@ end
 local function updateRecord()
     updateCountIn()
     updateRecPass()
+    if Menu:isActive() then return end             -- L2 does nothing in the menu
     if Input.pressed.L2 then
         Looper:beginRecordingTake()
         Modes.warned = Modes:followWarning()
@@ -190,8 +193,16 @@ end
 -- ---------------------------------------------------------------------------
 function Modes:resolve()
     local d = Input.down
+    if Menu:isActive() then return "MENU" end
     if d.L2 and d.R2 and d.SELECT then return "NEW" end
     if d.L2 and d.R2 then return "ERASE" end
+    if d.SELECT and d.START then
+        -- On the Clock page a quick SELECT tap still changes track; only a
+        -- SELECT held past a tap counts towards the menu
+        local st, sl = Input.startHoldTime, Input.selectHoldTime
+        if st > sl and st >= self.TRANSPORT_HOLD and sl < self.TAP_MAX then return "TRANSPORT" end
+        return "MENU_HOLD"
+    end
     if d.SELECT and d.R2 then return "MIX" end
     if d.SELECT and Input.selectHoldTime >= self.TRACK_HOLD then return "TRACK" end
     if d.START and Input.startHoldTime >= self.TRANSPORT_HOLD then return "TRANSPORT" end
@@ -254,6 +265,38 @@ function handlers.NEW(ctx, dt)
         Instruments:releaseAll()
         Looper:freshSession()
     end
+    return true
+end
+
+-- Seconds SELECT and START have both been held
+local function menuHeld()
+    return math.min(Input.selectHoldTime, Input.startHoldTime)
+end
+
+-- SELECT + START held: the menu opens once both have been down Menu.HOLD seconds
+function handlers.MENU_HOLD()
+    Input.comboUsed.SELECT, Input.comboUsed.START = true, true
+    if menuHeld() >= Menu.HOLD then
+        -- a swap previewed on the Track page is dropped, not applied
+        Modes.trackPage.pending, Modes.trackPage.pendingSlot = nil, nil
+        Modes.trackPage.picker, Modes.trackPage.previewIn = nil, nil
+        Instruments:releaseAll()
+        Menu:openMenu()
+    end
+    return true
+end
+
+-- How far the menu hold has got, 0..1 (for the screen)
+function Modes:menuHoldProgress()
+    if self.current ~= "MENU_HOLD" then return 0 end
+    return clamp(menuHeld() / Menu.HOLD, 0.0, 1.0)
+end
+
+-- The menu is up: it reads the buttons (src/menu.lua)
+function handlers.MENU(ctx, dt)
+    Input.comboUsed.SELECT, Input.comboUsed.START = true, true
+    Input.comboUsed.L2, Input.comboUsed.R2 = true, true
+    Menu:update(dt)
     return true
 end
 

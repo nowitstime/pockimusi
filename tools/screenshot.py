@@ -23,6 +23,10 @@ FONT_FILE = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 
 # Each scene is Lua run after boot, using the tests/helpers.lua input helpers
 SCENES = {
+    "menu-hold": 'H.hold("SELECT", "START"); H.play(0.6)',
+    "menu": 'H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1)',
+    "menu-save": 'local P = require("src.patterns"); H.tap("L2"); H.tap("B"); H.tap("L2"); P.save("A"); require("src.looper").bpm = 96; P.save("C");'
+                 ' H.hold("SELECT", "START"); H.play(1.1); H.release("SELECT", "START"); H.play(0.1); H.tap("B"); H.tap("UP"); H.tap("UP"); H.tap("B")',
     "wobble": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "wobble"); H.tap("SELECT"); H.tap("SELECT"); H.hold("UP_RIGHT" and "UP"); H.hold("RIGHT"); H.hold("B"); H.play(0.6); H.release("RIGHT"); H.hold("UP"); H.play(0.6)',
     "breaks": 'local I = require("src.instruments"); I:swapTrackInstrument(1, "breaks"); local st = require("src.looper").tracks[1].state; st.breakId = "amen"; H.hold("B"); H.play(0.6); H.hold("RIGHT"); H.play(0.3)',
     "roller": 'local I = require("src.instruments"); I:swapTrackInstrument(3, "roller"); H.tap("SELECT"); H.tap("SELECT"); H.hold("X"); H.play(0.4); H.hold("UP"); H.play(0.3); H.hold("R1"); H.play(0.2)',
@@ -143,8 +147,8 @@ local ops = {}
 local state = { color = {1,1,1,1}, lw = 1, font = nil, tx = 0, ty = 0, sx = 1, stack = {}, clip = nil }
 local function rec(kind, ...) ops[#ops+1] = { kind, state.color, state.lw, state.font and state.font.size or 12,
                                               state.tx, state.ty, state.sx, {...}, state.clip } end
-local function newFont(size)
-    size = size or 12
+local function newFont(a, b)
+    local size = (type(a) == "string" and b or a) or 12   -- newFont(size) or newFont(path, size)
     return { size = size,
              getWidth = function(_, t) return MEASURE(tostring(t), size) end,
              getHeight = function() return math.floor(size * 1.17 + 0.5) end }

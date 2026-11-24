@@ -52,9 +52,10 @@ function Chrome:makeFonts(dpiScale)
     end
 end
 
--- F8: the next font set; returns a label for a toast
-function Chrome:cycleFonts()
-    Fonts:cycle()
+-- F8 and the menu: the next (dir = 1) or previous (-1) font set; returns a
+-- label for a toast
+function Chrome:cycleFonts(dir)
+    Fonts:cycle(dir)
     self:makeFonts(self.fontDpi or 1)
     Display:save()
     return "FONTS: " .. Fonts.set
@@ -119,6 +120,7 @@ for _, part in ipairs({
     "lane",
     "pad",
     "electronic",
+    "menu",
 }) do
     require("src.ui.chrome." .. part)(Chrome)
 end
@@ -128,6 +130,7 @@ function Chrome:drawScreen()
     self:drawCenterStage()
     self:drawTapeDeck()
     self:drawPickerShelf()
+    self:drawMenu()
 end
 
 -- Fitted to the window, black bars around it (src/ui/display.lua)

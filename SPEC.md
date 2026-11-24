@@ -161,6 +161,7 @@ BPM, key, scale and bars are global. Grid and swing belong to the active track a
 | `L2 + R2` + `LEFT` or `L1` | Undo last take |
 | `L2 + R2` + `START` | Clear active track |
 | `L2 + R2 + SELECT` (hold ~1 s) | ✅ Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
+| `SELECT + START` (hold ~1 s) | ✅ Menu (§10.1). On the Clock page a quick `SELECT` tap still changes track |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
@@ -424,7 +425,18 @@ Event = {
 - Files live in the port folder (`conf/love/pocketgroove/`, via `XDG_DATA_HOME` in `PocketGroove.sh`).
 - Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-style table text (`format = 1`, events v2), read back by a parser that never runs it as code; unreadable or newer files are ignored and the game still boots.
 - **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
-- Later: named **patterns** (A–H) and a simple chain = "song" (the format leaves room). ❓ Exact definition.
+- Later: a chain of the pattern slots = "song" (§10.1). ❓ Exact definition (FUTURE_PLANS §8).
+
+### 10.1 Menu and pattern slots ✅ (`src/menu.lua`, `src/patterns.lua`, `src/ui/chrome/menu.lua`)
+
+- **Open:** hold `SELECT + START` for about 1 s (a card fills up while held). The music keeps playing; the instrument and record are blocked. Opening and closing both wait until every button is let go, so nothing leaks in or out.
+- **Buttons:** `UP / DOWN` move, `B` choose, `LEFT / RIGHT` change a value, `A` back (closes from the top list), `START` close.
+- **Items:** `SAVE PATTERN`, `LOAD PATTERN`, `SONG MODE` (not built; says so), `FONTS` (the font set, live; same as `F8`, kept in `display.txt`).
+- **A pattern is the whole session** (`Session.snapshot`): four tracks with instruments, sounds, effects and notes, track C, tempo, key, scale. The same thing FUTURE_PLANS §8.1 calls a scene, so song mode can use the slots as they are.
+- **Slots A–H**, one file each (`pattern_a.txt` … `pattern_h.txt`, next to the autosaves): `{slot="A",saved=<os.time>,session={...}}`. The list shows each slot's tempo, key, instruments, notes, chords and when it was saved; `NOW` marks the slot the loop on screen was last saved to or loaded from (`patternSlot` in the session, so it survives a reboot).
+- **Saving** into an empty slot happens at once; over a full slot, `B` asks and a second `B` saves. **Loading** always asks first (the loop on screen is replaced). Both close the menu with a toast. A slot that won't load leaves the loop on screen as it was.
+- The autosave is unchanged: it is always the loop on screen, whichever slot it came from. Saving to a slot is what keeps a version before trying something new.
+- Later ❓: clear / copy a slot, names, export.
 - Later ❓: export the loop to `.wav`.
 
 ---
