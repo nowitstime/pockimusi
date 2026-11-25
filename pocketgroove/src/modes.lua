@@ -176,6 +176,15 @@ local function updateRecord()
     if not Input.released.L2 then return end
 
     local used = Input.comboUsed.L2
+    -- Song mode: L2 on S rolls the song tape; L2 anywhere stops it
+    if not used and Input.l2HoldTime < Modes.TAP_MAX and (Song.recording or Song.armed) then
+        Song:stopRecording()
+        return
+    end
+    if not used and Input.l2HoldTime < Modes.TAP_MAX and Song.page and Song:isOn() and not Input.recLatched then
+        Song:startRecording()
+        return
+    end
     if not used and Input.l2HoldTime < Modes.TAP_MAX then
         if Modes.arm then
             cancelCountIn("COUNT-IN CANCELLED")
@@ -247,7 +256,7 @@ function handlers.ERASE(ctx)
     end
     if Input.pressed.LEFT or Input.pressed.L1 then
         Instruments:releaseAll()      -- held notes end on the instrument that started them
-        Looper:undo()
+        if Song.page then Song:undo() else Looper:undo() end
     end
     if Input.pressed.START then
         Looper:clearTrack(tIdx)
@@ -539,6 +548,12 @@ local function updateStartTap()
         return
     end
     local now = love.timer.getTime()
+    -- On S: START plays the song from the top, or stops it
+    if Song.page and Song:hasSong() then
+        if Song.playing then Song:stop() else Song:playFromTop() end
+        Input.lastStartTapTime = now
+        return
+    end
     if (now - Input.lastStartTapTime) < Modes.DOUBLE_TAP then
         -- Back to bar 1.1 from silence: whatever is still ringing (a stuck
         -- note, echo and reverb tails) stops
@@ -592,7 +607,7 @@ function Modes:update(dt)
     end
 
     if self.current ~= "FX" then
-        setLiveFx(false, false, false, false)
+        setLiveFx(Song:playbackFx())          -- the song's recorded FX, or none
     end
 
     local def, state = Instruments:getTrackInstrument(Looper.activeTrack)

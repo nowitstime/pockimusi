@@ -152,6 +152,13 @@ function Chrome:drawTopBar()
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
     -- Count-in: recording is armed and the beats left are counted down
+    if Song and Song.recording then
+        mc = { label = "SONG REC", icon = "DOT", stroke = C.RED, fill = C.RED, txt = C.BG, iconCol = C.BG }
+    elseif Song and Song.armed then
+        mc = { label = "SONG ARMED", icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }
+    elseif Song and Song.playing and mode == "NORMAL" then
+        mc = { label = "SONG", icon = "PLAY", stroke = C.SONG, fill = C.PANEL_HI, txt = C.SONG, iconCol = C.SONG }
+    end
     local countBeats = Modes:countInBeats()
     if countBeats and mode == "NORMAL" then
         mc = { label = "COUNT-IN  " .. countBeats, icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }

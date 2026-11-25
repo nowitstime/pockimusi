@@ -47,6 +47,7 @@ function Chrome:drawCenterStage()
     -- Frame: the instrument's dark stage, sky and halo while playing; a
     -- solid mode-coloured border on a settings page or while recording
     local borderCol = (mode == "NORMAL") and Config.shade(instCol, 0.45) or (Config.MODE_COLORS[mode] or C.GRID)
+    if Song.recording and playMode then borderCol = C.RED end
     self:drawFrame(8, 50, 624, 306, borderCol, 1)
     self.haloDrawn = false
     if playMode and not songPage then
@@ -57,7 +58,7 @@ function Chrome:drawCenterStage()
         love.graphics.rectangle("fill", 9, 51, 622, 304, 6, 6)
     end
     self:setColor(borderCol)
-    love.graphics.setLineWidth((mode == "NORMAL") and 1 or 2)
+    love.graphics.setLineWidth((mode == "NORMAL" and not Song.recording) and 1 or 2)
     love.graphics.rectangle("line", 8, 50, 624, 306, 6, 6)
     love.graphics.setLineWidth(1)
 

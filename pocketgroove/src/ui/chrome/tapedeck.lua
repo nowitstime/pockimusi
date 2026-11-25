@@ -226,7 +226,8 @@ function Chrome:drawTapeDeck()
 
     -- Shooting Star Sweeping Playhead
     local px = lx + Looper.phase * lw
-    local isRec = (Modes.current == "REC_LATCH" or Modes.current == "REC_HOLD")
+    local SongM = package.loaded["src.song"]
+    local isRec = (Modes.current == "REC_LATCH" or Modes.current == "REC_HOLD") or (SongM and SongM.recording)
     local playCol = isRec and C.RED or C.TEXT
 
     -- Comet wake trailing behind playhead

@@ -360,4 +360,161 @@ return {
         Chrome:draw()
         M.Song:goToPage(); Chrome:draw()
     end },
+
+    { "song recording: armed on S, starts at the loop, catches switches, mutes and notes", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        twoPatterns(M, { bpmB = L.bpm })
+        Song:setOn(true); Song:goToPage()
+        L:resetPlayhead()
+        H.play(0.3)
+        H.tap("L2")
+        H.truthy(Song.armed, "armed")
+        H.falsy(Song.recording, "not yet")
+        H.play(L:getLoopDuration())
+        H.truthy(Song.recording, "rolling from the loop start")
+        H.eq(#Song.data.steps, 1, "step 1")
+        H.eq(Song.data.steps[1].slot, "A", "on A")
+        Song:toggleQueue("B")
+        H.play(L:getLoopDuration())
+        H.eq(#Song.data.steps, 2, "the switch made step 2")
+        H.eq(Song.data.steps[2].slot, "B", "B")
+        H.truthy(Song.data.steps[1].len > L:getLoopTicks() * 0.9, "step 1 lasted about a loop")
+        -- a mute, then a note on drums from track 1's page
+        H.hold("R2"); H.tap("A"); H.release("R2")
+        H.play(60 / L.bpm * 4)
+        local moves = Song.data.steps[2].moves
+        H.eq(moves[#moves].kind, "mute", "mute written")
+        H.eq(moves[#moves].slot, 2, "track 2")
+        local before = #L.tracks[1].events
+        H.tap("B")                                   -- face alone: go to track 1
+        H.eq(L.activeTrack, 1, "on drums")
+        H.tap("B")                                   -- a kick, no L2
+        H.eq(#L.tracks[1].events, before, "not into the pattern")
+        local takes = Song.data.steps[2].takes[1]
+        H.truthy(takes and #takes == 1, "a take note in the song")
+        H.tap("L2")
+        H.falsy(Song.recording, "L2 anywhere stops it")
+        H.truthy(H.files["song.txt"], "saved")
+    end },
+
+    { "START on S plays the song back: switches, mutes and take notes", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        twoPatterns(M, { bpmB = L.bpm })
+        Song:setOn(true); Song:goToPage()
+        L:resetPlayhead()
+        H.tap("L2")
+        H.play(L:getLoopDuration())
+        Song:toggleQueue("B")
+        H.play(L:getLoopDuration() + 60 / L.bpm)
+        H.hold("R2"); H.tap("A"); H.release("R2")
+        H.play(60 / L.bpm * 4)
+        H.tap("B"); H.tap("Y")                       -- track 1, a snare as a take
+        M.Song:goToPage()
+        H.play(0.3)
+        H.tap("L2")
+        H.falsy(Song.recording, "stopped")
+        -- somewhere else entirely
+        M.Patterns.goTo("A")
+        L.tracks[2].muted = false
+        local hits = spy(M)
+        H.tap("START")
+        H.truthy(Song.playing, "playing")
+        H.eq(M.Session.patternSlot, "A", "from A")
+        H.play(Song.data.steps[1].len / L:getTicksPerSecond() + 0.1)
+        H.eq(M.Session.patternSlot, "B", "then B, on time")
+        H.play(60 / L.bpm * 6)
+        H.truthy(L.tracks[2].muted, "the mute came back")
+        local sawSnare = false
+        for _, h in ipairs(hits) do if h.action == "Y" and h.slot == "B" then sawSnare = true end end
+        H.truthy(sawSnare, "the take note played")
+    end },
+
+    { "rolling again keeps what you don't touch; a switch rewrites the rest", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        twoPatterns(M, { bpmB = L.bpm })
+        M.Patterns.copyTo("C")
+        Song:setOn(true); Song:goToPage()
+        L:resetPlayhead()
+        H.tap("L2")
+        H.play(L:getLoopDuration())
+        Song:toggleQueue("B")
+        H.play(L:getLoopDuration() * 2)
+        H.tap("L2")
+        H.eq(#Song.data.steps, 2, "A, B")
+        -- overdub from the top with a mute only
+        H.tap("L2")
+        H.truthy(Song.recording and Song.playing, "rolling over the song")
+        H.play(0.5)
+        H.hold("R2"); H.tap("X"); H.release("R2")
+        H.play(60 / L.bpm * 4)
+        H.tap("L2")
+        H.eq(#Song.data.steps, 2, "still two steps")
+        H.eq(Song.data.steps[2].slot, "B", "B kept")
+        H.eq(Song.data.steps[1].moves[1].kind, "mute", "the new mute")
+        -- overdub with a switch: the rest is rewritten
+        H.tap("L2")
+        H.play(0.5)
+        Song:toggleQueue("C")
+        H.play(L:getLoopDuration())
+        H.tap("L2")
+        H.eq(Song.data.steps[2].slot, "C", "C in place of B")
+        H.eq(#Song.data.steps, 2, "nothing after")
+        -- and undo takes the pass back
+        H.hold("L2", "R2"); H.tap("LEFT"); H.release("L2", "R2"); H.play(0.05)
+        H.eq(Song.data.steps[2].slot, "B", "undo: B again")
+    end },
+
+    { "song.txt keeps steps, moves and takes", function()
+        local M = boot()
+        local Song = M.Song
+        Song.data = { steps = {
+            { slot = "A", start = 0, len = 3840, mutes = { false, true, false, false },
+              moves = { { at = 960, kind = "mute", slot = 2, muted = false }, { at = 1200, kind = "fade", gain = 0.5 },
+                        { at = 1500, kind = "fx", s = false, h = true, d = false, c = false } },
+              takes = { [1] = { { at = 480, tick = 0, len = 0, action = "B", vel = 0.8, degree = 1, octave = 0 } } } },
+            { slot = "C", start = 0, len = 1920, mutes = { false, false, false, false }, moves = {}, takes = {} },
+        } }
+        H.truthy(Song:save(), "saved")
+        Song.data = { steps = {} }
+        H.truthy(Song:load(), "loaded")
+        local st = Song.data.steps
+        H.eq(#st, 2, "two steps")
+        H.eq(st[1].mutes[2], true, "start mutes")
+        H.eq(#st[1].moves, 3, "moves")
+        H.eq(st[1].moves[2].gain, 0.5, "fade gain")
+        H.eq(st[1].moves[3].h, true, "fx")
+        H.eq(st[1].takes[1][1].at, 480, "take position")
+        H.eq(st[2].slot, "C", "slot")
+        H.files["song.txt"] = "garbage("
+        H.falsy(Song:load(), "a broken file is ignored")
+        H.eq(#Song.data.steps, 0, "empty song")
+    end },
+
+    { "the song stops at its end", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        Song:setOn(true); Song:goToPage()
+        Song.data = { steps = { { slot = "A", start = 0, len = L:getLoopTicks(), mutes = { false, false, false, false }, moves = {}, takes = {} } } }
+        Song:playFromTop()
+        H.play(L:getLoopDuration() + 0.2)
+        H.falsy(Song.playing, "done")
+        H.falsy(L.playing, "clock stopped")
+    end },
+
+    { "recording draws on S and on a track page", function()
+        local M = boot()
+        local Chrome = require("src.ui.chrome")
+        M.Song:setOn(true); M.Song:goToPage()
+        H.tap("L2"); Chrome:draw()
+        H.play(M.Looper:getLoopDuration())
+        Chrome:draw()
+        M.Song:leavePage(1); Chrome:draw()
+    end },
 }

@@ -366,6 +366,11 @@ end
 function Looper:recordEvent(trackIdx, ev)
     local track = self.tracks[trackIdx]
     if not track then return nil end
+    -- Song recording (src/song.lua) takes the note as a song take instead
+    if self.recordRedirect then
+        local taken = self.recordRedirect(trackIdx, ev)
+        if taken ~= nil then return taken end
+    end
 
     ev.takeId = self.currentTakeId
     ev.len = ev.len or 0

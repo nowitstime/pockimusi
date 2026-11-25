@@ -211,6 +211,11 @@ local function restoreEvent(raw, loop)
     return ev
 end
 
+-- For song takes (src/song.lua): the same checks, with positions kept by the
+-- song itself (`at`), so `loop` is only the longest a note may be
+Session.restoreEvent = restoreEvent
+Session.plainEvent = function(ev) return snapshotEvent(ev, 1e9) end
+
 -- opts.live (song mode, a pattern switch while playing): the clock, the
 -- song position, record and the track you're on are left alone, and no toast.
 function Session.restore(data, opts)
