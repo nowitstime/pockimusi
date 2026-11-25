@@ -17,6 +17,7 @@ local Chrome      = require("src.ui.chrome")
 local Display     = require("src.ui.display")
 local Autosave    = require("src.autosave")
 local Patterns    = require("src.patterns")
+local Song        = require("src.song")
 
 local math_min = math.min
 
@@ -54,6 +55,7 @@ function love.update(dt)
     Input:update(dt)
     local controlsBlocked = Modes:update(dt)
 
+    Song:update()              -- song mode: the next switch point, if any
     Looper:update(dt)
 
     Instruments:update(dt, controlsBlocked)

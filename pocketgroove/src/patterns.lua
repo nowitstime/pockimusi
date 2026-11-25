@@ -105,6 +105,7 @@ end
 -- false + message.
 function Patterns.writeText(slot, text)
     if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
+    if Patterns.lastWritten then Patterns.lastWritten[slot] = nil end
     local saved = (os and os.time) and os.time() or 0
     local fileText = string.format('{slot="%s",saved=%d,session=%s}', slot, saved, text)
     local name = Patterns.fileName(slot)
@@ -158,13 +159,31 @@ function Patterns.clear(slot)
     return true
 end
 
--- Write the loop on screen into its own slot now (before leaving it)
+-- Write the loop on screen into its own slot now (before leaving it).
+-- Skipped when the slot already holds exactly this.
+Patterns.lastWritten = {}
 function Patterns.flush()
     local slot = Session.patternSlot
     if not slot then return true end
     local text = encodeAs(slot)
     if not text then return false end
-    return (Patterns.writeText(slot, text))
+    if Patterns.lastWritten[slot] == text then return true end
+    local ok = Patterns.writeText(slot, text)
+    if ok then Patterns.lastWritten[slot] = text end
+    return ok
+end
+
+-- Clear the loop on screen down to its setup: same instruments, sounds,
+-- tempo and key; no notes, no chords, no mutes (a new pattern)
+function Patterns.blank()
+    Looper:silenceAll()
+    for i = 1, #Looper.tracks do
+        local t = Looper.tracks[i]
+        t.events = {}
+        t.muted = false
+        Looper:touch(t)
+    end
+    Looper.undoStack = {}
 end
 
 -- The first slot with no file, or nil
@@ -206,14 +225,7 @@ function Patterns.goTo(slot)
         return true
     end
     -- empty: same setup, no notes, no chords
-    Looper:silenceAll()
-    for i = 1, #Looper.tracks do
-        local t = Looper.tracks[i]
-        t.events = {}
-        t.muted = false
-        Looper:touch(t)
-    end
-    Looper.undoStack = {}
+    Patterns.blank()
     Session.patternSlot = slot
     Patterns.flush()
     Looper:showToast("NEW PATTERN " .. slot)

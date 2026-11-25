@@ -30,6 +30,7 @@ local FILES = {
     "test_lane",
     "test_autosave",
     "test_menu",
+    "test_song",
     "test_catalog",
     "test_display",
     "test_regressions",
