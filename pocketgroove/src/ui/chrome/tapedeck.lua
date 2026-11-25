@@ -125,8 +125,18 @@ function Chrome:drawTapeDeck()
         love.graphics.setFont(self.fontTiny)
         love.graphics.print(grid.label, 84, ry + 3)
 
-        -- Mute Rune Tag (Diamond vs M)
-        if track.muted then
+        -- Mute Rune Tag (Diamond vs M); song mode: a mute waiting for the bar is dashed
+        local Song = package.loaded["src.song"]
+        local pending = Song and Song.pendingMutes[tIdx]
+        if pending ~= nil then
+            self:setColor(pending and C.RED or tColor)
+            self:dashedRect(113, ry + 2, 16, 16)
+            if track.muted then
+                self:setColor(C.RED)
+                love.graphics.setFont(self.fontTiny)
+                love.graphics.print("M", 117, ry + 4)
+            end
+        elseif track.muted then
             self:drawTag(113, ry + 2, 16, 16, "M", C.RED, C.RED, C.BG, self.fontTiny)
         else
             self:drawTag(113, ry + 2, 16, 16, "", C.GRID, C.PANEL_HI, tColor, self.fontTiny)
@@ -250,6 +260,8 @@ end
 -- is longer than the loop; only the chord playing now is lit.
 -- ============================================================================
 function Chrome:drawLaneStrip(lx, lw)
+    local Song = package.loaded["src.song"]
+    if Song and Song:isOn() then return self:drawSongStrip(lx, lw) end
     local lane = Looper:getLane()
     if not lane then return end
     local C = Config.COLORS

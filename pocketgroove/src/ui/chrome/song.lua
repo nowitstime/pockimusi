@@ -172,4 +172,96 @@ function Chrome:drawSongView(accent)
     end
 end
 
+
+-- ============================================================================
+-- THE SONG STRIP (song mode, in place of the chord strip, y 359..373): the
+-- patterns scroll past a fixed NOW line; the one playing is widened to show
+-- its chords bar by bar (Song:stripLayout does the maths)
+-- ============================================================================
+function Chrome:drawSongStrip(lx, lw)
+    local C = Config.COLORS
+    local col, col2 = C.SONG, C.SONG_2
+    local y, h = 359, 14
+    local cy = y + h * 0.5
+    local rec = Song.recording
+
+    self:setColor(C.BG)
+    love.graphics.rectangle("fill", 8, y, 624, h, 4, 4)
+    self:setColor(rec and C.RED or col, 0.85)
+    love.graphics.rectangle("line", 8, y, 624, h, 4, 4)
+
+    love.graphics.setFont(self.fontTiny)
+    local fh = self:lineHeight(self.fontTiny)
+    local ty = math_floor(cy - fh * 0.5)
+    self:drawStarGlint(19, cy, 4.0, col, 1.0)
+    self:setColor(C.TEXT)
+    love.graphics.print("SONG", 28, ty)
+    local q = #Song.queue + (Song.cutTo and 1 or 0)
+    local info = (Session.patternSlot or "-") .. (q > 0 and ("  +" .. q) or "")
+    self:setColor(col)
+    love.graphics.print(info, 131 - self.fontTiny:getWidth(info), ty)
+    self:setColor(C.GRID)
+    love.graphics.line(136, y + 3, 136, y + h - 3)
+
+    local L = Song:stripLayout(lx, lw)
+    local Display = require("src.ui.display")
+    local clip = Display:pushClip(lx, y, lw, h)
+    for _, b in ipairs(L.blocks) do
+        local bx, bw = b.x + 1, math.max(2, b.w - 2)
+        if b.kind == "now" then
+            self:setColor(col, 0.12)
+            love.graphics.rectangle("fill", bx, y + 1.5, bw, h - 3, 2, 2)
+            self:setColor(col)
+            love.graphics.rectangle("line", bx, y + 1.5, bw, h - 3, 2, 2)
+            self:setColor(col)
+            love.graphics.print(b.slot, math_floor(bx + 3), ty)
+            local lw0 = self.fontTiny:getWidth(b.slot) + 6
+            for i, ch in ipairs(b.chords) do
+                local cx0 = ch.x + ((i == 1) and lw0 or 1)
+                local cw = ch.w - ((i == 1) and lw0 or 1) - 1
+                if cw > 4 then
+                    self:setColor(C.AMBER, ch.lit and 0.32 or 0.0)
+                    love.graphics.rectangle("fill", cx0, y + 3, cw, h - 6, 2, 2)
+                    self:setColor(C.AMBER, ch.lit and 0.9 or 0.4)
+                    love.graphics.rectangle("line", cx0, y + 3, cw, h - 6, 2, 2)
+                    if self.fontTiny:getWidth(ch.name) <= cw - 3 then
+                        self:setColor(ch.lit and C.TEXT or C.AMBER)
+                        love.graphics.print(ch.name, math_floor(cx0 + 2), ty)
+                    end
+                end
+            end
+        else
+            local past = (b.kind == "past")
+            self:setColor(past and C.MUTED or col2, past and 0.10 or 0.14)
+            love.graphics.rectangle("fill", bx, y + 1.5, bw, h - 3, 2, 2)
+            if b.kind == "next" then
+                self:setColor(col2)
+                self:dashedRect(bx, y + 1.5, bw, h - 3)
+            else
+                self:setColor(past and C.DIM or Config.shade(col2, 0.6))
+                love.graphics.rectangle("line", bx, y + 1.5, bw, h - 3, 2, 2)
+            end
+            local label = b.slot
+            if b.names and #b.names > 0 then
+                local more = b.slot .. " " .. table.concat(b.names, " ")
+                if self.fontTiny:getWidth(more) <= bw - 5 then label = more end
+            end
+            if self.fontTiny:getWidth(label) <= bw - 4 then
+                self:setColor(past and C.MUTED or C.TEXT)
+                love.graphics.print(label, math_floor(bx + 3), ty)
+            end
+        end
+    end
+    -- the past darkened
+    self:setColor(C.BG, 0.45)
+    love.graphics.rectangle("fill", lx, y + 1, L.now - lx, h - 2)
+    Display:popClip(clip)
+
+    -- the NOW line
+    self:setColor(rec and C.RED or C.TEXT)
+    love.graphics.setLineWidth(2)
+    love.graphics.line(L.now, y + 1, L.now, y + h - 1)
+    love.graphics.setLineWidth(1)
+end
+
 end

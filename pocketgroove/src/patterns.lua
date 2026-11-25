@@ -97,6 +97,17 @@ function Patterns.summary(slot)
     end
     if type(s.lane) == "table" and type(s.lane.events) == "table" then
         out.chords = #s.lane.events
+        -- the chord names in order (a run of one chord counts once), for the song strip
+        local evs = {}
+        for _, ev in ipairs(s.lane.events) do
+            if type(ev) == "table" and type(ev.chord) == "table" and tonumber(ev.tick) then evs[#evs + 1] = ev end
+        end
+        table.sort(evs, function(a, b) return a.tick < b.tick end)
+        out.chordNames = {}
+        for _, ev in ipairs(evs) do
+            local ok, name = pcall(Theory.chordName, Theory, ev.chord)
+            if ok and out.chordNames[#out.chordNames] ~= name then out.chordNames[#out.chordNames + 1] = name end
+        end
     end
     return out
 end

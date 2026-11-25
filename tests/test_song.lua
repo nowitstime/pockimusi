@@ -288,4 +288,76 @@ return {
         H.hold("RIGHT"); H.release("UP"); H.play(0.05); Chrome:draw()
         H.release("RIGHT")
     end },
+
+    { "the song strip: the pattern playing is widened around a fixed NOW line", function()
+        local M = boot()
+        local L = M.Looper
+        twoPatterns(M, { bpmB = L.bpm })
+        M.Song:setOn(true)
+        L:resetPlayhead()
+        H.play(60 / L.bpm * 4)                       -- one bar in
+        M.Song:toggleQueue("B")
+        local lay = M.Song:stripLayout(148, 456)
+        H.eq(lay.now, 148 + M.Song.STRIP_NOW, "NOW line")
+        local now, nxt
+        for _, b in ipairs(lay.blocks) do
+            if b.kind == "now" then now = b elseif b.kind == "next" then nxt = b end
+        end
+        local zp = M.Song.STRIP_PPB * M.Song.STRIP_ZOOM
+        H.eq(now.slot, "A", "A playing")
+        H.near(now.w, L.bars * zp, "widened", 1e-6)
+        H.near(lay.now - now.x, (L.tick / L.BAR_TICKS) * zp, "NOW line where the playhead is", 1e-6)
+        H.eq(nxt.slot, "B", "B next")
+        H.near(nxt.x, now.x + now.w, "right after", 1e-6)
+    end },
+
+    { "the song strip shows the playing pattern's chords bar by bar, the sounding one lit", function()
+        local M = boot()
+        local L = M.Looper
+        M.Song:setOn(true)
+        H.popChords(M)                               -- C G Am F, half a bar each
+        L:resetPlayhead()
+        H.play(60 / L.bpm * 5)                       -- into bar 2
+        local lay = M.Song:stripLayout(148, 456)
+        local now
+        for _, b in ipairs(lay.blocks) do if b.kind == "now" then now = b end end
+        H.eq(#now.chords, 2, "one box per bar (the chord on its downbeat)")
+        H.eq(now.chords[1].name, "C", "bar 1 starts on C")
+        H.eq(now.chords[2].name, "A" .. "m", "bar 2 starts on Am")
+        H.truthy(now.chords[2].lit and not now.chords[1].lit, "bar 2 lit")
+    end },
+
+    { "after a switch the pattern left behind shows before the NOW line", function()
+        local M = boot()
+        local L = M.Looper
+        twoPatterns(M, { bpmB = L.bpm })
+        M.Song:setOn(true)
+        L:resetPlayhead()
+        M.Song:toggleQueue("B")
+        H.play(L:getLoopDuration() + 0.1)
+        local lay = M.Song:stripLayout(148, 456)
+        H.eq(lay.blocks[1].kind, "past", "past first")
+        H.eq(lay.blocks[1].slot, "A", "A before")
+        H.eq(lay.blocks[2].slot, "B", "B playing")
+    end },
+
+    { "slot summaries carry the chord names", function()
+        local M = boot()
+        H.popChords(M)
+        M.Patterns.copyTo("C")
+        local sum = M.Patterns.summary("C")
+        H.eq(table.concat(sum.chordNames, " "), "C G Am F", "names in order")
+    end },
+
+    { "the strip and a waiting mute draw on every page", function()
+        local M = boot()
+        local Chrome = require("src.ui.chrome")
+        H.popChords(M)
+        M.Song:setOn(true)
+        M.Patterns.copyTo("B")
+        M.Song:toggleQueue("B")
+        H.hold("R2"); H.tap("A"); H.release("R2")
+        Chrome:draw()
+        M.Song:goToPage(); Chrome:draw()
+    end },
 }

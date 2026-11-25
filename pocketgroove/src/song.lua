@@ -44,6 +44,7 @@ local Song = {
     clearHold = 0.0,  -- seconds X has been held (D-pad held: clear)
     CLEAR_HOLD = 0.8,
     summaries = {},   -- slot -> Patterns.summary (refreshed when slots change)
+    history = {},     -- { { slot, bars } ... } the patterns played before this one (newest last)
 }
 
 -- The D-pad directions and the slots they point at
@@ -125,6 +126,10 @@ end
 -- The switch itself (also used directly, e.g. by the writing grid later)
 function Song:switchTo(slot, data)
     Patterns.flush()
+    if Session.patternSlot then
+        self.history[#self.history + 1] = { slot = Session.patternSlot, bars = Looper.bars }
+        if #self.history > 4 then table.remove(self.history, 1) end
+    end
     if data then
         local called, ok, err = pcall(Session.restore, data.session, { live = true })
         if not called then ok, err = false, ok end
@@ -212,6 +217,89 @@ function Song:applyMutes()
         if t and t.muted ~= muted then Looper:toggleMute(slot) end
     end
     self.pendingMutes = {}
+end
+
+-- ---------------------------------------------------------------------------
+-- The song strip (drawn in place of the chord strip in song mode): the
+-- patterns before, the one playing (widened: one chord box per bar) and the
+-- ones queued, scrolling past a fixed NOW line. Pure layout, so it can be
+-- tested; src/ui/chrome/song.lua draws it.
+--   returns { now = x of the NOW line, blocks = { { slot, x, w, kind =
+--   "past" | "now" | "next" | "later", bars, chords = { { name, x, w, lit } },
+--   names } } }
+-- ---------------------------------------------------------------------------
+Song.STRIP_PPB = 14       -- pixels per bar for the patterns around
+Song.STRIP_ZOOM = 3       -- the one playing is this much wider
+Song.STRIP_NOW = 100      -- the NOW line, from the strip's left edge
+
+local function laneChordAt(spans, pos)
+    local hit = spans[#spans]                -- before the first chord, the last carries over
+    for _, sp in ipairs(spans) do
+        if pos >= sp.from - 1e-9 then hit = sp else break end
+    end
+    return hit
+end
+
+function Song:stripLayout(lx, lw)
+    local Theory = require("src.theory")
+    local ppb, zp = self.STRIP_PPB, self.STRIP_PPB * self.STRIP_ZOOM
+    local nowX = lx + self.STRIP_NOW
+    local bars = Looper.bars
+    local posBars = Looper.tick / Looper.BAR_TICKS
+    local out = { now = nowX, blocks = {} }
+
+    -- the pattern playing
+    local x0 = nowX - posBars * zp
+    local cur = { slot = Session.patternSlot or "-", x = x0, w = bars * zp, kind = "now", bars = bars, chords = {} }
+    local lane = Looper:getLane()
+    if lane then
+        local def = require("src.instruments"):getDefinition("lane")
+        local spans = def:spans(lane.state, lane)
+        if #spans > 0 then
+            local laneT, loopT = Looper:getLaneTicks(), Looper:getLoopTicks()
+            local passStart = (Looper.pass * loopT) % laneT
+            local litBar = math.floor(posBars)
+            for b = 0, bars - 1 do
+                local sp = laneChordAt(spans, ((passStart + b * Looper.BAR_TICKS) % laneT) / laneT)
+                local name = Theory:chordName(sp.chord)
+                local last = cur.chords[#cur.chords]
+                if last and last.name == name then
+                    last.w = last.w + zp
+                    last.lit = last.lit or (b == litBar)
+                else
+                    cur.chords[#cur.chords + 1] = { name = name, x = x0 + b * zp, w = zp, lit = (b == litBar) }
+                end
+            end
+        end
+    end
+    out.blocks[#out.blocks + 1] = cur
+
+    -- before it
+    local x = x0
+    for i = #self.history, 1, -1 do
+        local h = self.history[i]
+        local w = (h.bars or 2) * ppb
+        x = x - w
+        if x + w < lx then break end
+        table.insert(out.blocks, 1, { slot = h.slot, x = x, w = w, kind = "past", bars = h.bars, chords = {} })
+    end
+
+    -- after it: the cut or the queue
+    x = x0 + bars * zp
+    local upcoming = {}
+    if self.cutTo then upcoming[1] = self.cutTo.slot end
+    for _, q in ipairs(self.queue) do upcoming[#upcoming + 1] = q.slot end
+    for i, slot in ipairs(upcoming) do
+        local sum = self.summaries[slot] or {}
+        local b = sum.bars or bars
+        local w = b * ppb
+        out.blocks[#out.blocks + 1] = { slot = slot, x = x, w = w, kind = (i == 1) and "next" or "later", bars = b,
+                                        chords = {}, names = sum.chordNames }
+        x = x + w
+        if x > lx + lw then break end
+    end
+    out.endX = x
+    return out
 end
 
 -- Beats until the next switch (nil if none is waiting)
