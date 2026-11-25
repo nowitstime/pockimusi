@@ -517,4 +517,94 @@ return {
         Chrome:draw()
         M.Song:leavePage(1); Chrome:draw()
     end },
+
+    { "writing with the clock stopped: D-pad + B writes steps, L1 / R1 move, R2 + face sets a track out", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        twoPatterns(M, { bpmB = L.bpm })
+        Song:setOn(true); Song:goToPage()
+        L:setPlaying(false)
+        H.truthy(Song:writing(), "writing")
+        H.hold("UP"); H.play(0.05); H.tap("B"); H.release("UP"); H.play(0.05)
+        H.eq(#Song.data.steps, 1, "step 1")
+        H.eq(Song.data.steps[1].slot, "A", "A")
+        H.eq(Song.cursor, 2, "cursor on")
+        H.eq(Song.data.steps[1].len, L:getLoopTicks(), "a loop long")
+        H.hold("UP", "RIGHT"); H.play(0.05); H.tap("B"); H.release("UP", "RIGHT"); H.play(0.05)
+        H.eq(Song.data.steps[2].slot, "B", "step 2 = B")
+        H.tap("L1"); H.tap("L1")
+        H.eq(Song.cursor, 1, "back to step 1")
+        H.hold("RIGHT"); H.play(0.05); H.tap("B"); H.release("RIGHT"); H.play(0.05)
+        H.eq(Song.data.steps[1].slot, "C", "step 1 rewritten")
+        H.eq(#Song.data.steps, 2, "still two")
+        H.tap("L1")
+        H.hold("R2"); H.tap("Y"); H.release("R2")
+        H.eq(Song.data.steps[1].mutes[3], true, "track 3 out on step 1")
+        H.falsy(L.tracks[3].muted, "the loop on screen untouched")
+    end },
+
+    { "the song's rows: loops, in / out, at the end, delete, clear", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        local Modes = require("src.modes")
+        Song:setOn(true); Song:goToPage()
+        Song.data = { steps = {
+            { slot = "A", start = 0, len = L:getLoopTicks(), mutes = { false, false, false, false }, moves = {}, takes = {} },
+            { slot = "A", start = 0, len = L:getLoopTicks(), mutes = { false, false, false, false }, moves = {}, takes = {} } } }
+        Song.cursor = 1
+        local function row(key)
+            for i, r in ipairs(Song:rows()) do if r.key == key then return i end end
+        end
+        H.hold("SELECT"); H.play(0.3)
+        H.eq(H.mode(), "TRACK", "track page")
+        local function goRow(key)
+            for _ = 1, 20 do
+                if Modes.trackPage.row == row(key) then return end
+                H.tap("DOWN")
+            end
+            error("no row " .. key)
+        end
+        goRow("LOOPS"); H.tap("RIGHT")
+        H.eq(Song.data.steps[1].len, 2 * L:getLoopTicks(), "x 2")
+        goRow("IN2"); H.tap("RIGHT")
+        H.eq(Song.data.steps[1].mutes[2], true, "track 2 out")
+        goRow("END"); H.tap("RIGHT")
+        H.eq(Song.data.atEnd, "LOOP", "loops")
+        goRow("DELETE"); H.tap("RIGHT")
+        H.eq(#Song.data.steps, 2, "asks first")
+        H.tap("RIGHT")
+        H.eq(#Song.data.steps, 1, "deleted")
+        goRow("CLEAR"); H.tap("RIGHT"); H.tap("RIGHT")
+        H.eq(#Song.data.steps, 0, "cleared")
+        H.release("SELECT"); H.play(0.1)
+        H.hold("L2", "R2"); H.tap("LEFT"); H.release("L2", "R2"); H.play(0.05)
+        H.eq(#Song.data.steps, 1, "undo brings it back")
+    end },
+
+    { "at the end: LOOP plays the song again from step 1", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        Song:setOn(true)
+        Song.data = { atEnd = "LOOP", steps = { { slot = "A", start = 0, len = L:getLoopTicks(), mutes = { false, false, false, false }, moves = {}, takes = {} } } }
+        Song:playFromTop()
+        H.play(L:getLoopDuration() + 0.2)
+        H.truthy(Song.playing, "still playing")
+        H.eq(Song.stepIdx, 1, "step 1 again")
+        H.truthy(L.playing, "clock running")
+    end },
+
+    { "the writing grid and the song rows draw", function()
+        local M = boot()
+        local Chrome = require("src.ui.chrome")
+        M.Song:setOn(true); M.Song:goToPage()
+        M.Looper:setPlaying(false)
+        Chrome:draw()
+        H.hold("UP"); H.play(0.05); H.tap("B"); H.release("UP"); H.play(0.05)
+        Chrome:draw()
+        H.hold("SELECT"); H.play(0.3); Chrome:draw()
+        H.release("SELECT"); H.play(0.1)
+    end },
 }

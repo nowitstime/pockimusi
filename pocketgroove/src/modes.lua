@@ -347,6 +347,21 @@ end
 function handlers.TRACK(ctx, dt)
     Input.comboUsed.SELECT = true
     local page = Modes.trackPage
+    -- On S: the song's rows (src/song.lua)
+    if Song.page then
+        local rows = Song:rows()
+        if Modes.previous ~= "TRACK" then page.row = 1 end
+        page.row = clamp(page.row, 1, #rows)
+        if Input.repeated.UP or Input.repeated.DOWN then
+            page.row = Input.repeated.UP and ((page.row - 2) % #rows) + 1 or (page.row % #rows) + 1
+            Song.confirmRow = nil
+        end
+        if Input.pressed.L1 then Song:moveCursor(-1) end
+        if Input.pressed.R1 then Song:moveCursor(1) end
+        local delta = (Input.repeated.LEFT and -1) or (Input.repeated.RIGHT and 1) or nil
+        if delta then Song:cycleRow(rows[page.row].key, delta) end
+        return true
+    end
     local def, state = ctx.def, ctx.state
     local track = Looper.tracks[Looper.activeTrack]
     local rows = Instruments:getSoundRows(def, state, track)

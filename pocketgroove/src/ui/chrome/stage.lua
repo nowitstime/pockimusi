@@ -38,6 +38,7 @@ function Chrome:drawCenterStage()
     local playMode = self:isPlayMode(mode)
     -- The S page (song mode): this stage, with the song's labels and view
     local songPage = Song.page and playMode
+    local songRows = Song.page and mode == "TRACK"
     if songPage then instCol = Config.COLORS.SONG end
     local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
@@ -79,7 +80,11 @@ function Chrome:drawCenterStage()
     -- Shoulder capsules
     local lOn, rOn = Input.down.L1, Input.down.R1
     local l1Label, r1Label = "L1: -", "R1: +"
-    if songPage then
+    if songPage and Song:writing() then
+        l1Label, r1Label = "L1: < STEP", "R1: STEP >"
+    elseif songRows then
+        l1Label, r1Label = "L1: < STEP", "R1: STEP >"
+    elseif songPage then
         l1Label, r1Label = "L1: FADE OUT", "R1: FADE IN"
     elseif mode == "TRACK" and track.isLane then
         l1Label, r1Label = "L1: -", "R1: -"
@@ -156,7 +161,12 @@ function Chrome:drawCenterStage()
     elseif mode == "FX" then titleStr = "LIVE FX"
     end
 
-    if mode == "TRACK" then
+    if songRows then
+        self:setColor(accent)
+        love.graphics.setFont(self.fontMed)
+        local tw = self.fontMed:getWidth("TRACK S - SONG")
+        love.graphics.print("TRACK S - SONG", math_floor(320 - tw * 0.5), 62)
+    elseif mode == "TRACK" then
         -- the instruments are tabs (L1 / R1), in place of a title
         self:drawInstrumentTabs(track, accent)
     else
@@ -176,6 +186,12 @@ function Chrome:drawCenterStage()
     if songPage then
         dpadLabels, faceLabels, activeMap, guideDir = self:songLabels()
         flashMap = {}
+        if Song:writing() and Song.pointing then
+            faceLabels = { B = "WRITE", A = "", Y = "COPY", X = "CLEAR" }
+        end
+    elseif songRows then
+        faceLabels = { B = "", A = "", Y = "", X = "" }
+        activeMap = {}
     end
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
@@ -194,6 +210,8 @@ function Chrome:drawCenterStage()
     if songPage then
         dpadSubtitle = "D-PAD: PATTERNS (HOLD)"
         faceSubtitle = Song.pointing and ("FACE: ACT ON " .. Song.pointing) or "FACE: GO TO TRACK"
+    elseif songRows then
+        faceSubtitle = "FACE: -"
     end
     if mode == "TRACK" and def.NO_FX then faceSubtitle = "TRACK C IS SILENT" end
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
@@ -204,6 +222,8 @@ function Chrome:drawCenterStage()
     -- Center Column Visualizer (x: 204..436, y: 90..314)
     if mode == "MIX" then
         self:drawMixerView(t)
+    elseif songRows then
+        self:drawSongRows(accent)
     elseif mode == "TRACK" then
         self:drawTrackPageView(def, state, track, accent)
     elseif mode == "TRANSPORT" then
@@ -212,6 +232,8 @@ function Chrome:drawCenterStage()
         self:drawEraseView(track, def)
     elseif mode == "NEW" then
         self:drawFreshSessionView()
+    elseif songPage and Song:writing() and not Song.pointing then
+        self:drawSongGrid(accent)
     elseif songPage then
         self:drawSongView(accent)
     else

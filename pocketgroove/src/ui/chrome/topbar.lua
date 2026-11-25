@@ -36,7 +36,7 @@ function Chrome:drawTopBar()
     local mode = Modes.current or "NORMAL"
     local Song = package.loaded["src.song"]
     local songOn = Song and Song:isOn()
-    local songPage = songOn and Song.page and self:isPlayMode(mode)
+    local songPage = songOn and Song.page and (self:isPlayMode(mode) or mode == "TRACK")
     if songPage then instCol = Config.COLORS.SONG end
 
     -- Frame with corner accent diamonds

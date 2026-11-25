@@ -264,4 +264,130 @@ function Chrome:drawSongStrip(lx, lw)
     love.graphics.setLineWidth(1)
 end
 
+
+-- ============================================================================
+-- Writing the song (clock stopped on S): the steps as a grid around the
+-- cursor. Columns = steps, rows = the pattern, its chords, tracks 1-4 in / out.
+-- ============================================================================
+function Chrome:drawSongGrid(accent)
+    local C = Config.COLORS
+    local steps = Song.data.steps
+    local cur = Song.cursor
+    local cols = 5
+    local first = math.max(1, math.min(cur - 2, #steps + 2 - cols))
+    local x0, y0, cw, lw = 206, 92, 44, 12
+    local font = self.fontTiny
+    love.graphics.setFont(font)
+    local fh = self:lineHeight(font)
+
+    local rowY = { pat = y0, ch = y0 + 26, t = { y0 + 46, y0 + 64, y0 + 82, y0 + 100 } }
+    -- row labels
+    self:setColor(C.MUTED)
+    love.graphics.print("C", x0, rowY.ch + 3)
+    for t = 1, 4 do love.graphics.print(tostring(t), x0, rowY.t[t] + 3) end
+
+    for c = 0, cols - 1 do
+        local idx = first + c
+        local x = x0 + lw + c * cw
+        local st = steps[idx]
+        local isCur = (idx == cur)
+        if isCur then
+            self:setColor(C.TEXT, 0.8)
+            self:dashedRect(x - 1, y0 - 3, cw - 2, rowY.t[4] + 18 - y0 + 3)
+        end
+        if st then
+            local playing = Song.playing and idx == Song.stepIdx
+            self:setColor(accent, playing and 0.45 or 0.18)
+            love.graphics.rectangle("fill", x + 1, rowY.pat, cw - 6, 22, 3, 3)
+            self:setColor(accent)
+            love.graphics.rectangle("line", x + 1, rowY.pat, cw - 6, 22, 3, 3)
+            love.graphics.setFont(self.fontSmall)
+            self:setColor(C.TEXT)
+            love.graphics.print(st.slot, x + 5, rowY.pat + 2)
+            love.graphics.setFont(font)
+            local loopT = (Song.summaries[st.slot] and Song.summaries[st.slot].bars or Looper.bars) * 4 * Looper.PPQN
+            local loops = st.len / loopT
+            self:setColor(C.MUTED)
+            love.graphics.print("x" .. (math.abs(loops - math.floor(loops + 0.5)) < 0.01 and math.floor(loops + 0.5) or string.format("%.1f", loops)),
+                x + 20, rowY.pat + 6)
+            local sum = Song.summaries[st.slot]
+            local chord = sum and sum.chordNames and sum.chordNames[1] or "-"
+            self:setColor(C.AMBER)
+            love.graphics.print(self:fitText(chord, font, cw - 8), x + 3, rowY.ch + 3)
+            for t = 1, 4 do
+                local out = st.mutes[t]
+                local tc = self:trackColor(t)
+                if out then
+                    self:setColor(C.DIM)
+                    self:dashedRect(x + 2, rowY.t[t], cw - 8, 14)
+                else
+                    self:setColor(tc, 0.35)
+                    love.graphics.rectangle("fill", x + 2, rowY.t[t], cw - 8, 14, 2, 2)
+                    self:setColor(tc)
+                    love.graphics.rectangle("line", x + 2, rowY.t[t], cw - 8, 14, 2, 2)
+                end
+            end
+        elseif idx == #steps + 1 then
+            self:setColor(C.DIM)
+            self:dashedRect(x + 1, rowY.pat, cw - 6, 22)
+            love.graphics.setFont(self.fontSmall)
+            self:setColor(C.MUTED)
+            love.graphics.print("+", x + 14, rowY.pat + 2)
+            love.graphics.setFont(font)
+        end
+        self:setColor(isCur and C.TEXT or C.DIM)
+        love.graphics.print(tostring(idx), x + 2, rowY.t[4] + 20 - math_floor(fh * 0.5) + 4)
+    end
+
+    local msg = (#steps == 0) and "NO SONG YET - D-PAD + B WRITES STEP 1"
+        or string.format("STEP %d OF %d  -  L1 / R1 MOVE", math.min(cur, #steps + 1), #steps)
+    self:setColor(C.MUTED)
+    love.graphics.print(msg, math_floor(320 - font:getWidth(msg) * 0.5), 232)
+end
+
+-- ============================================================================
+-- The song's rows (hold SELECT on S): the Track page's look
+-- ============================================================================
+function Chrome:drawSongRows(col)
+    local C = Config.COLORS
+    local Modes = require("src.modes")
+    local rows = Song:rows()
+    local sel = Modes.trackPage.row
+    local n = #rows
+    local y0, step, nx = 102, 21, 226
+    local shown = math.min(n, 9)
+    local first = math.max(1, math.min(sel - 3, n - shown + 1))
+    for i = first, first + shown - 1 do
+        local row = rows[i]
+        local y = y0 + (i - first) * step
+        local isSel = (i == sel)
+        if isSel then
+            self:drawCapsule(240, y - 9, 192, 18, "", col, col, col, self.fontSmall, 0.18)
+        end
+        local markCol = isSel and col or C.MUTED
+        if row.kind == "setting" then
+            self:setColor(markCol, 0.9)
+            love.graphics.circle("line", nx, y, isSel and 5 or 3.5)
+        else
+            self:drawStarGlint(nx, y, isSel and 6 or 3.2, markCol, 0.9)
+        end
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(isSel and col or C.MUTED)
+        love.graphics.print(row.label, 250, y - 6)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(isSel and C.TEXT or C.MUTED)
+        local value = isSel and ("<  " .. row.value .. "  >") or row.value
+        love.graphics.print(value, 318, y - 7)
+    end
+    if first > 1 then
+        self:setColor(col, 0.9)
+        love.graphics.polygon("fill", nx - 4, y0 - 12, nx + 4, y0 - 12, nx, y0 - 17)
+    end
+    if first + shown - 1 < n then
+        local by = y0 + (shown - 1) * step + 12
+        self:setColor(col, 0.9)
+        love.graphics.polygon("fill", nx - 4, by, nx + 4, by, nx, by + 5)
+    end
+end
+
 end

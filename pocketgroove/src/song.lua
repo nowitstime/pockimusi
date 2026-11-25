@@ -231,6 +231,7 @@ end
 -- A mute pressed in song mode: lands on the next bar. Pressing it again
 -- before then takes it back.
 function Song:queueMute(slot)
+    if self:writing() and self:hasSong() then return self:toggleStepMute(slot) end
     if self.pendingMutes[slot] ~= nil then
         self.pendingMutes[slot] = nil
         return
@@ -370,7 +371,11 @@ function Song:updatePage(dt)
     if slot ~= self.pointing then self.copyConfirm, self.clearHold = nil, 0.0 end
     self.pointing = slot
 
-    if Input.down.L1 and not Input.down.R1 then self.fadeDir = -1
+    local writing = self:writing()
+    if writing then
+        if Input.pressed.L1 then self:moveCursor(-1) end
+        if Input.pressed.R1 then self:moveCursor(1) end
+    elseif Input.down.L1 and not Input.down.R1 then self.fadeDir = -1
     elseif Input.down.R1 and not Input.down.L1 then self.fadeDir = 1 end
 
     if not slot then
@@ -380,7 +385,11 @@ function Song:updatePage(dt)
         return
     end
 
-    if Input.pressed.B then
+    if writing and Input.pressed.B then
+        self:writeStep(slot)
+    elseif writing and Input.pressed.A then
+        Looper:showToast("THE CLOCK IS STOPPED - B WRITES " .. slot .. " INTO STEP " .. self.cursor)
+    elseif Input.pressed.B then
         local queued, err = self:toggleQueue(slot)
         if queued == nil then Looper:showToast(err)
         elseif queued then Looper:showToast("QUEUED " .. slot .. " (" .. #self.queue .. " WAITING)")
@@ -426,7 +435,7 @@ end
 function Song:update(dt)
     dt = dt or 0
     if self.fadeDir ~= 0 then
-        local secs = self.FADE_BARS * 4 * 60 / Looper.bpm
+        local secs = self:setting("fadeBars", self.FADE_BARS) * 4 * 60 / Looper.bpm
         Synth.fadeGain = Config.clamp((Synth.fadeGain or 1.0) + self.fadeDir * dt / secs, 0.0, 1.0)
     end
     self.fadeDir = 0
@@ -449,6 +458,9 @@ function Song:update(dt)
     elseif self.queue[1] then
         local target = self.queue[1]
         switchAt = loop
+        if self:setting("switchOn", "LOOP END") == "NEXT BAR" then
+            switchAt = math.min(loop, (math.floor(Looper.tick / bar) + 1) * bar)
+        end
         switchFn = function(at0)
             local at = self:isQueued(target.slot)
             if at then table.remove(self.queue, at) end
@@ -692,6 +704,9 @@ end
 function Song:nextStep(at)
     local nextIdx = self.stepIdx + 1
     local step = self.data.steps[nextIdx]
+    if not step and self:setting("atEnd", "STOP") == "LOOP" and #self.data.steps > 0 then
+        nextIdx, step = 1, self.data.steps[1]
+    end
     if not step then
         -- the end: stop
         self:takesOff()
@@ -706,6 +721,7 @@ function Song:nextStep(at)
     self:switchTo(step.slot, data.data or nil)
     for i = 1, 4 do Looper.tracks[i].muted = step.mutes[i] and true or false end
     self.stepIdx, self.stepPos = nextIdx, 0
+    self.cursor = nextIdx
     self.lastTick = step.start % Looper:getLoopTicks()
     Looper.pass = 0
     self:readAhead()
@@ -852,6 +868,152 @@ function Song:clearSong()
 end
 
 -- ---------------------------------------------------------------------------
+-- Writing the song (the clock stopped on S) and the song's rows (hold SELECT
+-- on S). `cursor` is the step being written: 1 .. #steps + 1 (a new one).
+-- ---------------------------------------------------------------------------
+Song.cursor = 1
+Song.END_MODES = { "STOP", "LOOP" }
+Song.SWITCH_MODES = { "LOOP END", "NEXT BAR" }
+Song.FADE_CHOICES = { 1, 2, 4, 8 }
+
+function Song:writing()
+    return self.page and not Looper.playing
+end
+
+function Song:setting(key, default)
+    local v = self.data[key]
+    if v == nil then return default end
+    return v
+end
+
+local function patternLoop(self, slot)
+    local sum = self.summaries[slot] or Patterns.summary(slot)
+    return (sum and sum.bars or Looper.bars) * 4 * Looper.PPQN
+end
+
+function Song:moveCursor(delta)
+    self.cursor = Config.clamp(self.cursor + delta, 1, #self.data.steps + 1)
+end
+
+-- Write `slot` into the step under the cursor (a new one past the end), step on
+function Song:writeStep(slot)
+    self.undoData = copy(self.data)
+    local steps = self.data.steps
+    local st = steps[self.cursor]
+    if st then
+        st.slot = slot
+    else
+        local sum = self.summaries[slot] or Patterns.summary(slot)
+        local mutes = {}
+        for i = 1, 4 do mutes[i] = sum.lanes and sum.lanes[i] and sum.lanes[i].muted or false end
+        st = { slot = slot, start = 0, len = patternLoop(self, slot), mutes = mutes, moves = {}, takes = {} }
+        steps[#steps + 1] = st
+    end
+    Looper:showToast(string.format("STEP %d: %s", self.cursor, slot))
+    self:moveCursor(1)
+    self:save()
+end
+
+-- R2 + face while writing: that track in / out on the step under the cursor
+function Song:toggleStepMute(slot)
+    local st = self.data.steps[self.cursor]
+    if not st then
+        Looper:showToast("NO STEP HERE - D-PAD + B WRITES ONE")
+        return
+    end
+    st.mutes[slot] = not st.mutes[slot]
+    Looper:showToast(string.format("STEP %d: TRACK %d %s", self.cursor, slot, st.mutes[slot] and "OUT" or "IN"))
+    self:save()
+end
+
+function Song:deleteStep()
+    local st = self.data.steps[self.cursor]
+    if not st then return false end
+    self.undoData = copy(self.data)
+    table.remove(self.data.steps, self.cursor)
+    self:moveCursor(0)
+    self:save()
+    Looper:showToast("STEP DELETED - L2 + R2 + LEFT UNDOES")
+    return true
+end
+
+-- The rows for the Track page on S: { key, label, value, kind, hint }
+function Song:rows()
+    local rows = {}
+    local n = #self.data.steps
+    local st = self.data.steps[self.cursor]
+    rows[#rows + 1] = { key = "STEP", label = "STEP", value = st and string.format("%d / %d", self.cursor, n) or (n == 0 and "NO SONG YET" or "NEW (" .. (n + 1) .. ")") }
+    if st then
+        rows[#rows + 1] = { key = "PATTERN", label = "PATTERN", value = st.slot }
+        local loopT = patternLoop(self, st.slot)
+        local loops = st.len / loopT
+        local shown = (math.abs(loops - math.floor(loops + 0.5)) < 0.01) and string.format("x %d", math.floor(loops + 0.5))
+                      or string.format("x %.1f", loops)
+        rows[#rows + 1] = { key = "LOOPS", label = "LOOPS", value = shown }
+        for t = 1, 4 do
+            local tr = Looper.tracks[t]
+            rows[#rows + 1] = { key = "IN" .. t, label = t .. " " .. (tr and tr.shortName or ""), kind = "setting",
+                                value = st.mutes[t] and "OUT" or "IN" }
+        end
+        rows[#rows + 1] = { key = "DELETE", label = "DELETE", kind = "setting",
+                            value = self.confirmRow == "DELETE" and "RIGHT AGAIN" or "RIGHT: THIS STEP" }
+    end
+    rows[#rows + 1] = { key = "END", label = "AT THE END", kind = "setting", value = self:setting("atEnd", "STOP") }
+    rows[#rows + 1] = { key = "SWITCH", label = "SWITCH ON", kind = "setting", value = self:setting("switchOn", "LOOP END") }
+    rows[#rows + 1] = { key = "FADE", label = "FADE TIME", kind = "setting", value = self:setting("fadeBars", 2) .. " BAR" }
+    rows[#rows + 1] = { key = "CLEAR", label = "CLEAR SONG", kind = "setting",
+                        value = self.confirmRow == "CLEAR" and "RIGHT AGAIN" or "RIGHT: EVERY STEP" }
+    return rows
+end
+
+local function cycle(list, cur, delta)
+    local idx = 1
+    for i, v in ipairs(list) do if v == cur then idx = i end end
+    return list[((idx - 1 + delta) % #list) + 1]
+end
+
+function Song:cycleRow(key, delta)
+    local st = self.data.steps[self.cursor]
+    if key ~= self.confirmRow then self.confirmRow = nil end
+    if key == "STEP" then
+        self:moveCursor(delta)
+        return
+    elseif key == "PATTERN" and st then
+        self.undoData = copy(self.data)
+        st.slot = cycle(Patterns.SLOTS, st.slot, delta)
+    elseif key == "LOOPS" and st then
+        self.undoData = copy(self.data)
+        local loopT = patternLoop(self, st.slot)
+        local loops = math.max(1, math.floor(st.len / loopT + 0.5) + delta)
+        st.len = math.min(64, loops) * loopT
+    elseif key and key:match("^IN%d$") and st then
+        local t = tonumber(key:sub(3))
+        st.mutes[t] = not st.mutes[t]
+    elseif key == "DELETE" and st then
+        if delta < 0 then return end
+        if self.confirmRow ~= "DELETE" then self.confirmRow = "DELETE" return end
+        self.confirmRow = nil
+        self:deleteStep()
+        return
+    elseif key == "END" then
+        self.data.atEnd = cycle(self.END_MODES, self:setting("atEnd", "STOP"), delta)
+    elseif key == "SWITCH" then
+        self.data.switchOn = cycle(self.SWITCH_MODES, self:setting("switchOn", "LOOP END"), delta)
+    elseif key == "FADE" then
+        self.data.fadeBars = cycle(self.FADE_CHOICES, self:setting("fadeBars", 2), delta)
+    elseif key == "CLEAR" then
+        if delta < 0 then return end
+        if self.confirmRow ~= "CLEAR" then self.confirmRow = "CLEAR" return end
+        self.confirmRow = nil
+        self:clearSong()
+        self.cursor = 1
+        Looper:showToast("SONG CLEARED - L2 + R2 + LEFT UNDOES")
+        return
+    end
+    self:save()
+end
+
+-- ---------------------------------------------------------------------------
 -- song.txt
 -- ---------------------------------------------------------------------------
 function Song:save()
@@ -877,7 +1039,8 @@ function Song:save()
         steps[i] = { slot = st.slot, start = math.floor(st.start + 0.5), len = math.floor(st.len + 0.5),
                      mutes = copy(st.mutes), moves = moves, takes = takes }
     end
-    local ok, text = pcall(Save.encode, { format = 1, steps = steps })
+    local ok, text = pcall(Save.encode, { format = 1, steps = steps, atEnd = self.data.atEnd,
+                                          switchOn = self.data.switchOn, fadeBars = self.data.fadeBars })
     if not ok then
         log("song save failed: " .. tostring(text))
         return false
@@ -935,6 +1098,9 @@ function Song:load()
             self.data.steps[#self.data.steps + 1] = st
         end
     end
+    for _, v in ipairs(self.END_MODES) do if data.atEnd == v then self.data.atEnd = v end end
+    for _, v in ipairs(self.SWITCH_MODES) do if data.switchOn == v then self.data.switchOn = v end end
+    for _, v in ipairs(self.FADE_CHOICES) do if data.fadeBars == v then self.data.fadeBars = v end end
     return true
 end
 
