@@ -108,6 +108,7 @@ function Session.snapshot()
         scaleIndex = Theory.scaleIndex,
         masterVolume = Synth.masterVolume,
         patternSlot = Session.patternSlot,
+        songMode = Session.songMode or nil,
         tracks = tracks,
     }
 end
@@ -222,7 +223,10 @@ function Session.restore(data, opts)
     -- Stop everything that is sounding or held first
     Instruments:releaseAll()
     Looper:silenceAll()
-    if not live then Input.recLatched = false end
+    if not live then
+        Input.recLatched = false
+        Session.songMode = (data.songMode == true)
+    end
 
     -- Globals
     Looper.bpm = int(data.bpm, Config.MIN_BPM, Config.MAX_BPM, Config.DEFAULT_BPM)

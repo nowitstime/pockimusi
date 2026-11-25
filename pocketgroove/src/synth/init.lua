@@ -24,6 +24,7 @@ local Synth = {
     duckEnvelope = 1.0,      -- volume duck: the R2 + LEFT fallback when there is no EFX
     lpEnvelope   = 0.0,      -- master low-pass (R2 + LEFT): 0 = open .. 1 = closed
     masterVolume = 0.85,
+    fadeGain = 1.0,          -- song mode fades (src/song.lua), on top of the master volume
     -- Level meters, estimated from the sounding voices (SPEC §9.3):
     -- [1..4] = tracks, master = everything. { level, peak, hold }
     meters = { { level = 0, peak = 0, hold = 0 }, { level = 0, peak = 0, hold = 0 },
@@ -490,7 +491,7 @@ function Synth:triggerPool(poolName, soundName, pitchSemis, volume, decayMod, gl
         volume = math_min(1.0, volume * (1.0 + track.fx.drive * 0.5))
     end
 
-    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.duckEnvelope * self:pumpGain(track), 0.0, 1.0)
+    local effectiveVolume = clamp(volume * trkVol * self.masterVolume * self.fadeGain * self.duckEnvelope * self:pumpGain(track), 0.0, 1.0)
     local startSemis = glideFromSemis or pitchSemis
     local pitchRatio = clamp(2.0 ^ ((startSemis + fxPitchOffset) / 12.0), 0.125, 8.0)
 
@@ -588,7 +589,7 @@ function Synth:update(dt)
 
             local remaining = v.maxLife - v.elapsed
             local fade = (remaining < 0.04) and (remaining / 0.04) or 1.0
-            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * fade * self.duckEnvelope
+            v.source:setVolume(clamp(v.baseVolume * (v.trackVolume or 1.0) * self.masterVolume * self.fadeGain * fade * self.duckEnvelope
                 * self:pumpGain(v.track), 0.0, 1.0))
         end
     end
@@ -604,7 +605,7 @@ end
 -- read the output signal.
 function Synth:updateMeters(dt)
     local power, total = { 0.0, 0.0, 0.0, 0.0 }, 0.0
-    local common = self.masterVolume * self.duckEnvelope
+    local common = self.masterVolume * self.fadeGain * self.duckEnvelope
     for i = 1, #self.activeVoices do
         local v = self.activeVoices[i]
         local left = 1.0 - v.elapsed / v.maxLife

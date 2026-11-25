@@ -164,4 +164,128 @@ return {
         H.play(L:getLoopDuration())
         H.eq(#hits - before, 1, "one clap in B's next loop")
     end },
+
+    { "song mode adds S to the SELECT cycle", function()
+        local M = boot()
+        local L = M.Looper
+        L.activeTrack = 4
+        H.tap("SELECT")
+        H.truthy(L.tracks[L.activeTrack].isLane, "C")
+        H.tap("SELECT")
+        H.eq(L.activeTrack, 1, "without song mode, back to 1")
+        M.Song:setOn(true)
+        L.activeTrack = 4
+        H.tap("SELECT"); H.tap("SELECT")
+        H.truthy(M.Song.page, "S after C")
+        H.tap("SELECT")
+        H.falsy(M.Song.page, "S -> 1")
+        H.eq(L.activeTrack, 1, "track 1")
+    end },
+
+    { "a quick SELECT + START tap goes to S (song mode only)", function()
+        local M = boot()
+        H.hold("SELECT", "START"); H.play(0.15); H.release("SELECT", "START"); H.play(0.1)
+        H.falsy(M.Song.page, "off: nothing")
+        M.Song:setOn(true)
+        H.hold("SELECT", "START"); H.play(0.15); H.release("SELECT", "START"); H.play(0.1)
+        H.truthy(M.Song.page, "on: S")
+        H.falsy(require("src.menu"):isActive(), "no menu")
+    end },
+
+    { "on S a face button goes to its track and plays nothing", function()
+        local M = boot()
+        local L = M.Looper
+        M.Song:setOn(true); M.Song:goToPage()
+        H.tap("L2"); H.tap("Y"); H.tap("L2")
+        H.falsy(M.Song.page, "left S")
+        H.eq(L.activeTrack, 3, "Y = track 3")
+        local n = 0
+        for t = 1, 4 do n = n + #L.tracks[t].events end
+        H.eq(n, 0, "no note recorded")
+    end },
+
+    { "on S, D-pad + B queues and unqueues, A cuts", function()
+        local M = boot()
+        twoPatterns(M, { bpmB = M.Looper.bpm })
+        M.Song:setOn(true); M.Song:goToPage()
+        H.hold("RIGHT"); H.play(0.05)
+        H.eq(M.Song.pointing, "C", "RIGHT points at C")
+        H.release("RIGHT")
+        H.hold("UP", "RIGHT"); H.play(0.05)
+        H.eq(M.Song.pointing, "B", "UP + RIGHT points at B")
+        H.tap("B")
+        H.truthy(M.Song:isQueued("B"), "queued")
+        H.tap("B")
+        H.falsy(M.Song:isQueued("B"), "taken out")
+        H.tap("A")
+        H.eq(M.Song.cutTo and M.Song.cutTo.slot, "B", "cut waiting")
+        H.release("UP", "RIGHT")
+        H.truthy(M.Song.page, "still on S")
+    end },
+
+    { "on S, D-pad + Y copies here (asking over a full slot), held X clears", function()
+        local M = boot()
+        M.Song:setOn(true); M.Song:goToPage()
+        H.hold("DOWN"); H.play(0.05)
+        H.tap("Y")
+        H.truthy(H.files["pattern_e.txt"], "copied into empty E")
+        local first = H.files["pattern_e.txt"]
+        H.tap("L2"); H.release("DOWN"); H.play(0.05)
+        H.hold("DOWN"); H.play(0.05)
+        H.tap("Y")
+        H.eq(M.Song.copyConfirm, "E", "asks over a full slot")
+        H.play(1.0, { "X" })
+        H.falsy(H.files["pattern_e.txt"], "held X cleared E")
+        H.release("DOWN")
+    end },
+
+    { "in song mode a mute lands on the next bar", function()
+        local M = boot()
+        local L = M.Looper
+        M.Song:setOn(true)
+        L:resetPlayhead()
+        H.play(0.3)
+        H.hold("R2"); H.tap("B"); H.release("R2"); H.play(0.02)
+        H.falsy(L.tracks[1].muted, "not yet")
+        H.eq(M.Song.pendingMutes[1], true, "waiting")
+        H.play(60 / L.bpm * 4)
+        H.truthy(L.tracks[1].muted, "muted on the bar")
+    end },
+
+    { "fades: L1 / R1 on S, R2 + L1 / R1 anywhere", function()
+        local M = boot()
+        M.Song:setOn(true); M.Song:goToPage()
+        H.play(1.0, { "L1" })
+        local g = M.Synth.fadeGain
+        H.truthy(g < 1.0, "fading out")
+        H.play(1.0, { "R1" })
+        H.truthy(M.Synth.fadeGain > g, "back in")
+        M.Song:leavePage(1)
+        H.hold("R2"); H.play(1.0, { "L1" }); H.release("R2")
+        H.truthy(M.Synth.fadeGain < 1.0, "from a track page")
+        M.Song:setOn(false)
+        H.eq(M.Synth.fadeGain, 1.0, "song mode off: full volume")
+    end },
+
+    { "song mode is saved with the session", function()
+        local M = boot()
+        M.Song:setOn(true)
+        local snap = M.Session.snapshot()
+        H.eq(snap.songMode, true, "in the snapshot")
+        M.Song:setOn(false)
+        M.Session.restore(snap)
+        H.truthy(M.Song:isOn(), "back on")
+    end },
+
+    { "the S page draws, also while pointing", function()
+        local M = boot()
+        local Chrome = require("src.ui.chrome")
+        twoPatterns(M)
+        M.Song:setOn(true); M.Song:goToPage()
+        M.Song:toggleQueue("B")
+        Chrome:draw()
+        H.hold("UP", "RIGHT"); H.play(0.05); Chrome:draw()
+        H.hold("RIGHT"); H.release("UP"); H.play(0.05); Chrome:draw()
+        H.release("RIGHT")
+    end },
 }

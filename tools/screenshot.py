@@ -55,6 +55,9 @@ SCENES = {
     "lane-bass": 'local L = require("src.looper"); local lane = L:getLane(); lane.state.bars = 8; L.activeTrack = L.LANE; L:setPlaying(false); L:seekLane(0);'
                  ' H.tap("X"); H.tap("X"); L.activeTrack = 3; L:setPlaying(true); L:seekLane(4 * 1920 + 300); H.play(0.3)',
     "play-drums": 'H.play(0.5)',
+    "song-page": 'local P = require("src.patterns"); local S = require("src.song"); local L = require("src.looper"); P.copyTo("B"); P.copyTo("D"); S:setOn(true); S:goToPage(); S:toggleQueue("B"); S:toggleQueue("D"); L:resetPlayhead(); H.play(1.2)',
+    "song-point": 'local P = require("src.patterns"); local S = require("src.song"); P.copyTo("B"); S:setOn(true); S:goToPage(); H.hold("UP", "RIGHT"); H.play(0.4)',
+    "song-drums": 'local S = require("src.song"); S:setOn(true); H.play(0.5)',
     "drums-pattern": 'H.tap("L2"); H.hold("B", "R1"); H.play(2.2); H.release("B", "R1");'
                      ' H.hold("Y", "UP"); H.play(0.05); H.release("Y", "UP"); H.play(1.0);'
                      ' H.hold("A", "L1", "R1"); H.play(1.0); H.release("A", "L1", "R1"); H.tap("L2"); H.play(0.3)',

@@ -28,6 +28,7 @@ local Input    = require("src.input")
 local Looper   = require("src.looper")
 local Session  = require("src.session")
 local Patterns = require("src.patterns")
+local Song     = require("src.song")
 
 local Menu = {
     HOLD = 0.3,              -- seconds SELECT + START are held to open (just past a tap)
@@ -37,7 +38,7 @@ local Menu = {
         { id = "GOTO",  label = "GO TO PATTERN", hint = "SWITCH - NOTHING IS LOST" },
         { id = "COPY",  label = "COPY PATTERN",  hint = "THIS LOOP INTO ANOTHER SLOT" },
         { id = "CLEAR", label = "CLEAR PATTERN", hint = "EMPTY A SLOT" },
-        { id = "SONG",  label = "SONG MODE",     hint = "COMING SOON" },
+        { id = "SONG",  label = "SONG MODE",     hint = "THE S PAGE: PERFORM A SONG FROM YOUR PATTERNS" },
         { id = "FONTS", label = "FONTS",        hint = "LEFT / RIGHT TO CHANGE" },
     },
 
@@ -130,6 +131,10 @@ local function updateRoot(menu)
     if item.id == "FONTS" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
         menu:changeFonts(Input.pressed.LEFT and -1 or 1)
     end
+    if item.id == "SONG" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
+        Song:setOn(not Song:isOn())
+        menu:say(Song:isOn() and "SONG MODE ON - SELECT TAPS REACH S" or "SONG MODE OFF")
+    end
 
     if Input.pressed.A then return menu:close() end
     if not Input.pressed.B then return end
@@ -138,7 +143,12 @@ local function updateRoot(menu)
     elseif item.id == "FONTS" then
         menu:changeFonts(1)
     elseif item.id == "SONG" then
-        menu:say("SONG MODE IS COMING - SAVED PATTERNS WILL BE ITS PARTS")
+        Song:setOn(not Song:isOn())
+        if Song:isOn() then
+            Song:goToPage()
+            return menu:close("SONG MODE ON - THIS IS S")
+        end
+        return menu:close("SONG MODE OFF")
     end
 end
 

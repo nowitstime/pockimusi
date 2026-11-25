@@ -686,6 +686,7 @@ function Looper:update(dt, handler)
         loop = self:getLoopTicks()
         tps = self:getTicksPerSecond()
         advance = remain * tps * rate
+        if start >= loop then self.pass = self.pass + math_floor(start / loop) end
         self.tick = start % loop
         self.prevTick = self.tick - 1e-6
     end

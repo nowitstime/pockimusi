@@ -120,6 +120,7 @@ for _, part in ipairs({
     "lane",
     "pad",
     "electronic",
+    "song",
     "menu",
 }) do
     require("src.ui.chrome." .. part)(Chrome)

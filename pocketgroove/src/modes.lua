@@ -13,6 +13,7 @@ local Synth       = require("src.synth")
 local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Menu        = require("src.menu")
+local Song        = require("src.song")
 
 local clamp = Config.clamp
 
@@ -63,9 +64,12 @@ local function setLiveFx(stutter, half, duck, crush)
     Synth.fxBitcrush   = crush
 end
 
+-- R2 + face: mute / unmute. In song mode it lands on the next bar.
 local function face_mutes()
     for btn, slot in pairs(MUTE_BUTTON) do
-        if Input.pressed[btn] then Looper:toggleMute(slot) end
+        if Input.pressed[btn] then
+            if Song:isOn() then Song:queueMute(slot) else Looper:toggleMute(slot) end
+        end
     end
 end
 
@@ -494,6 +498,11 @@ end
 -- and the L2 + START clear still apply.
 function handlers.FX()
     face_mutes()
+    -- R2 + L1 / R1: song mode fades, from any page
+    if Song:isOn() then
+        if Input.down.L1 and not Input.down.R1 then Song.fadeDir = -1
+        elseif Input.down.R1 and not Input.down.L1 then Song.fadeDir = 1 end
+    end
     setLiveFx(Input.down.UP, Input.down.DOWN, Input.down.LEFT, Input.down.RIGHT)
     return false
 end
@@ -504,7 +513,16 @@ end
 function updateSelectTap()
     if not Input.released.SELECT then return end
     if not Input.comboUsed.SELECT and not Input.comboUsed.L2 and Input.selectHoldTime < Modes.TAP_MAX then
-        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> 1
+        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> [S, in song mode] -> 1
+        if Song.page then
+            Song:leavePage(1)
+            return
+        end
+        local cur = Looper.tracks[Looper.activeTrack]
+        if cur and cur.isLane and Song:isOn() then
+            Song:goToPage()
+            return
+        end
         Looper.activeTrack = (Looper.activeTrack % #Looper.tracks) + 1
         local nextTrack = Looper.tracks[Looper.activeTrack]
         if nextTrack and nextTrack.isLane then
@@ -568,6 +586,11 @@ function Modes:update(dt)
     self.previous = self.current
     self.current = self:resolve()
 
+    -- A quick SELECT + START tap (let go before the menu opens): to S
+    if self.previous == "MENU_HOLD" and self.current ~= "MENU_HOLD" and not Menu:isActive() then
+        Song:goToPage()
+    end
+
     if self.current ~= "FX" then
         setLiveFx(false, false, false, false)
     end
@@ -581,6 +604,12 @@ function Modes:update(dt)
             Input:clearReleasedCombos()
             return true
         end
+    end
+
+    -- The S page owns the play controls (src/song.lua)
+    if Song.page and not handler then
+        Song:updatePage(dt)
+        blocked = true
     end
 
     updateSelectTap()

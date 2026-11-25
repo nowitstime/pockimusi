@@ -345,7 +345,7 @@ function Install.updateVoices(Synth, dt)
             local drift = (v.move > 0.0) and (math_sin(lfo) * v.move * Voice.DRIFT) or 0.0
             local pitch = v.currentSemis + v.shift + vib + drift + fxPitch + v.patch.tune
             local level = v:envelope()
-            local gain = level * v.vel * v.trackVolume * Synth.masterVolume * Synth.duckEnvelope
+            local gain = level * v.vel * v.trackVolume * Synth.masterVolume * Synth.fadeGain * Synth.duckEnvelope
                 * Synth:pumpGain(v.track)
             if v.loopSrc then
                 v.loopSrc:setPitch(semisToRatio(pitch))

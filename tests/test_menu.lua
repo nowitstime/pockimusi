@@ -271,12 +271,18 @@ return {
         H.eq(M.Fonts.set, start, "back")
     end },
 
-    { "song mode is listed but not built yet", function()
+    { "song mode turns on from the menu and opens S", function()
         local M = boot()
+        local Song = require("src.song")
         openMenu()
-        goTo(M, "SONG"); H.tap("B")
-        H.truthy(M.Menu.open, "still open")
-        H.truthy(M.Menu.message, "says it's coming")
+        goTo(M, "SONG"); H.tap("B"); H.play(0.1)
+        H.falsy(M.Menu:isActive(), "closes")
+        H.truthy(Song:isOn(), "on")
+        H.truthy(Song.page, "on S")
+        openMenu()
+        goTo(M, "SONG"); H.tap("LEFT")
+        H.falsy(Song:isOn(), "LEFT / RIGHT turns it off")
+        H.falsy(Song.page, "S gone")
     end },
 
     { "the menu draws in every page without errors", function()

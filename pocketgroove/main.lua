@@ -55,7 +55,7 @@ function love.update(dt)
     Input:update(dt)
     local controlsBlocked = Modes:update(dt)
 
-    Song:update()              -- song mode: the next switch point, if any
+    Song:update(dt)            -- song mode: fades and the next switch point
     Looper:update(dt)
 
     Instruments:update(dt, controlsBlocked)
