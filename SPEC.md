@@ -162,6 +162,8 @@ The D-pad holds the musical choices (key, scale), the shoulders the tempo. BPM, 
 | `L2 + R2` + `START` | Clear active track |
 | `L2 + R2 + SELECT` (hold ~1 s) | ✅ Fresh session: clear every track's notes and mutes, keep the setup; undoable (§10) |
 | `SELECT + START` (hold 0.3 s) | ✅ Menu (§10.1). On the Clock page a quick `SELECT` tap still changes track |
+| `SELECT + START` (quick tap) | ✅ Song mode: go to S (§10.2) |
+| `R2 + L1 / R1` | ✅ Song mode: fade out / in, from any page (§10.2) |
 
 🔧 Mix page level should change once per press (plus key repeat), not every frame.
 
@@ -425,21 +427,49 @@ Event = {
 - Files live in the port folder (`conf/love/pocketgroove/`, via `XDG_DATA_HOME` in `PocketGroove.sh`).
 - Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-style table text (`format = 1`, events v2), read back by a parser that never runs it as code; unreadable or newer files are ignored and the game still boots.
 - **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
-- Later: a chain of the pattern slots = "song" (§10.1). ❓ Exact definition (FUTURE_PLANS §8).
+- The song (song mode, §10.2) is saved in `song.txt`.
 
-### 10.1 Menu and pattern slots ✅ (`src/menu.lua`, `src/patterns.lua`, `src/ui/chrome/menu.lua`)
+### 10.1 Menu and living pattern slots ✅ (`src/menu.lua`, `src/patterns.lua`, `src/ui/chrome/menu.lua`)
 
 - **Open:** hold `SELECT + START` for 0.3 s (just past a tap). The music keeps playing; the instrument and record are blocked. Opening and closing both wait until every button is let go, so nothing leaks in or out.
 - **Buttons:** `UP / DOWN` move, `B` choose, `LEFT / RIGHT` change a value, `A` back (closes from the top list), `START` close.
-- **Items:** `SAVE PATTERN`, `LOAD PATTERN`, `SONG MODE` (not built; says so), `FONTS` (the font set, live; same as `F8`, kept in `display.txt`).
-- **A pattern is the whole session** (`Session.snapshot`): four tracks with instruments, sounds, effects and notes, track C, tempo, key, scale. The same thing FUTURE_PLANS §8.1 calls a scene, so song mode can use the slots as they are.
-- **Slots A–H**, one file each (`pattern_a.txt` … `pattern_h.txt`, next to the autosaves): `{slot="A",saved=<os.time>,session={...}}`. The list shows each slot's tempo, key, when it was saved, its instruments, and a **little tape deck** in a small inset frame (bordered in the row colour on the cursor row): a faint thread per track in its instrument's colour, a rounded mark per note (hits and held notes the same height, a hit a short one), a faint line at each bar, a muted track grey; 2- and 4-bar loops fill the same width. Full colour on the row under the cursor, dim on the rest. `NOW` marks the slot the loop on screen was last saved to or loaded from (`patternSlot` in the session, so it survives a reboot).
-- **Saving** into an empty slot happens at once; over a full slot, `B` asks and a second `B` saves. **Loading** always asks first (the loop on screen is replaced). Both close the menu with a toast. A slot that won't load leaves the loop on screen as it was.
-- The autosave is unchanged: it is always the loop on screen, whichever slot it came from. Saving to a slot is what keeps a version before trying something new.
-- Later ❓: clear / copy a slot, names, export.
-- Later ❓: export the loop to `.wav`.
+- **Items:** `GO TO PATTERN`, `COPY PATTERN`, `CLEAR PATTERN`, `SONG MODE` (on / off, §10.2), `FONTS` (the font set, live; same as `F8`, kept in `display.txt`).
+- **A pattern is the whole session** (`Session.snapshot`): four tracks with instruments, sounds, effects, notes and mutes, track C, tempo, key, scale, loop length.
+- **Living slots (Phase M):** the loop on screen always belongs to a slot (`Session.patternSlot`; a session without one takes the first empty slot) and the autosave writes that slot's file along with the session. There is no separate save: what you hear is what's in the slot.
+  - **Go to** another slot: the loop on screen is kept in its slot first, so nothing is lost; no confirm. An empty slot starts a new pattern with the same instruments, sounds, tempo and key, and no notes.
+  - **Copy** the loop on screen into another slot (the current pattern stays); over a full slot `B` asks and a second `B` copies.
+  - **Clear** a slot (asks first). The slot on screen can't be cleared.
+- **Slots A–H**, one file each (`pattern_a.txt` … `pattern_h.txt`, next to the autosaves): `{slot="A",saved=<os.time>,session={...}}`. The list shows each slot's tempo, key, when it was saved, its instruments and a **little tape deck** in a small inset frame. `NOW` marks the slot on screen.
+- Later ❓: names, export the loop to `.wav`.
 
----
+### 10.2 Song mode ✅ (details: [PHASE_M.md](PHASE_M.md), code `src/song.lua`, `src/ui/chrome/song.lua`)
+
+Turn it on in the menu (`SONG MODE`, saved with the session). The instrument pages don't change; song mode adds one page (**S**), one strip and one red badge.
+
+- **Reaching S:** `SELECT` taps go 1 → 2 → 3 → 4 → C → **S** → 1; a quick `SELECT + START` tap goes to S from anywhere.
+- **S** is a page like the others in the song's aurora colour (`Config.COLORS.SONG`): the compass shows patterns A–H (lower case = empty, a number = its place in the queue, the playing one marked), the face diamond the four tracks, the middle NOW → NEXT, "in N beats", the bar progress and this pattern's chords.
+
+| On S | Clock running | Clock stopped (writing) |
+| :-- | :-- | :-- |
+| Face alone | Go to that track (B 1, A 2, Y 3, X 4) | The same |
+| D-pad held + `B` | Queue that pattern (several queue in order; again takes it out) | Write it into the step under the cursor, step on |
+| D-pad held + `A` | Cut to it on the next beat | — |
+| D-pad held + `Y` | Copy the playing pattern into it (asks over a full slot) | The same |
+| D-pad held + `X` (hold) | Clear that slot | The same |
+| `L1 / R1` | Fade out / in | Step cursor back / on |
+| `R2` + face | Mute / unmute, landing on the next bar | That track in / out on the step |
+| `L2` | Record the song (below) | — |
+| `START` | Play the song from the top / stop | The same |
+| hold `SELECT` | The song's rows | The same |
+
+- **Switching** never stops the clock: a queued pattern switches in at the loop end (or the next bar: `SWITCH ON` row), a cut on the next beat. The pattern left behind is kept in its slot; the next one brings its own tempo, key, scale and loop length; track C starts from its first bar. Turning song mode on reads every slot and prepares its sounds.
+- **The song strip** replaces the chord strip in song mode: the patterns played before (darkened), the one playing widened to one chord box per bar with the sounding chord lit, then the queue (the next one dashed), past a fixed NOW line. While the song plays it shows the song's own steps.
+- **Recording the song** works like a tape. `L2` on S starts it (an empty song on the next loop; an existing one plays from the top and records over it); `L2` anywhere stops it. While it rolls (red `SONG REC` badge, frame and playheads on every page) everything goes into the song as moves: pattern switches, mutes, live FX (`R2` + D-pad), fades, and notes played on any track as one-off takes (no second `L2`). Without the tape rolling, `L2` on a track records into the pattern playing, as always.
+- **Overdub:** rolling over a song keeps what you don't touch. A kind of move you touch (a track's mutes, the FX, the fade) is replaced from then until you stop; notes add; a switch you make rewrites the rest of the song. `L2 + R2 + LEFT` on S undoes the last pass.
+- **Playback:** steps switch on time with their start mutes; moves and takes come back. A switch you make during playback takes over (the song stops following). At the end: `STOP` or `LOOP` (row).
+- **Song rows** (hold `SELECT` on S, the Track page's look): `STEP`, `PATTERN`, `LOOPS`, `1–4` `IN / OUT`, `DELETE` (asks), `AT THE END`, `SWITCH ON`, `FADE TIME` (1–8 bars), `CLEAR SONG` (asks).
+- **Saved** in `song.txt` (steps with slot, start, length, start mutes, moves, takes), read with the safe parser and checked.
+- Later ❓: a step's track borrowing another pattern's loop; 1-bar patterns; tempo ramps; `.wav` export of the song.
 
 ## 11. UI layout (640×480) 🔧
 
@@ -520,6 +550,7 @@ pockimusi/
       ├── assets/fonts/          # the font sets' faces and their licences (OFL)
       └── src/
            config.lua  theory.lua  input.lua  looper.lua  harmony.lua  modes.lua
+           session.lua  autosave.lua  save.lua  menu.lua  patterns.lua  song.lua (song mode)
            instruments/{init,drums,harp,bass,pad,lead}.lua
            synth/{init,voice (📐),drums_bank,synths_bank}.lua
            ui/chrome.lua  ui/display.lua  ui/fonts.lua  ui/chrome/*.lua

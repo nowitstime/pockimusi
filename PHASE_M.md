@@ -8,6 +8,8 @@ Part of [ROADMAP.md](ROADMAP.md). Takes the "patterns / song" half of Phase J. B
 
 **Rule for every step:** one step = one or a few commits, app playable, tests green. 📱 = check on the RG35XX.
 
+**Status:** M0–M6 built, tests green (554). Every 📱 check is still to do. Where the build differs from the plan below, see *What changed from the plan* at the end.
+
 ---
 
 ## Decisions
@@ -47,67 +49,67 @@ Each can change after playing it.
 
 ---
 
-## M0 · Living slots
+## M0 · Living slots ✅
 
-- [ ] The loop on screen always belongs to a slot (`Session.patternSlot`); a session with none takes the first empty slot (A if all are full: ask)
-- [ ] Autosave also writes the current slot's file (same throttling as today)
-- [ ] Menu: `GO TO PATTERN` (no confirm: nothing is lost), `COPY TO PATTERN` (confirm when the target is full), `CLEAR PATTERN` (confirm)
-- [ ] Tests: switching slots keeps edits in both; copy; clear; an old save without `patternSlot`
+- [x] The loop on screen always belongs to a slot (`Session.patternSlot`); a session with none takes the first empty slot (A if all are full: ask)
+- [x] Autosave also writes the current slot's file (same throttling as today)
+- [x] Menu: `GO TO PATTERN` (no confirm: nothing is lost), `COPY TO PATTERN` (confirm when the target is full), `CLEAR PATTERN` (confirm)
+- [x] Tests: switching slots keeps edits in both; copy; clear; an old save without `patternSlot`
 - [ ] 📱 Write time of a pattern file during play (no hitch)
 
-## M1 · Seamless switching
+## M1 · Seamless switching ✅
 
-- [ ] `Patterns.switchTo(slot, when)`: replaces tracks, lane, tempo, key, scale and bars **without stopping the clock**; held notes released over their release, not cut
-- [ ] At the loop end (`queue`), or on the next beat (`cut`); a queue of several slots, played in order
-- [ ] A pattern with another loop length or tempo: the new loop starts on the boundary; track C starts from its first bar
-- [ ] Turning song mode on prepares every slot's patches up front (`Synth:preparePatch`), in the background with a progress note
-- [ ] Tests: queue order, boundary timing, tempo / bars change at the boundary, no double-fired events, held-note release
+- [x] `Patterns.switchTo(slot, when)`: replaces tracks, lane, tempo, key, scale and bars **without stopping the clock**; held notes released over their release, not cut
+- [x] At the loop end (`queue`), or on the next beat (`cut`); a queue of several slots, played in order
+- [x] A pattern with another loop length or tempo: the new loop starts on the boundary; track C starts from its first bar
+- [x] Turning song mode on prepares every slot's patches up front (`Synth:preparePatch`), in the background with a progress note
+- [x] Tests: queue order, boundary timing, tempo / bars change at the boundary, no double-fired events, held-note release
 - [ ] 📱 Switch between patterns with different instruments: no stutter
 
-## M2 · Song mode and the S page (live)
+## M2 · Song mode and the S page (live) ✅
 
-- [ ] Menu item `SONG MODE`; saved with the session
-- [ ] S in the `SELECT` cycle; `SELECT + START` tap → S (`Modes:resolve` tells a tap from the menu hold)
-- [ ] S page view: compass of patterns A–H (playing lit, queued dashed, empty dim), display (NOW → NEXT, "in N beats", then …, this pattern's chords and the next chord), face diamond of the four tracks (names and states), hint strip
-- [ ] Face alone → that track's page; D-pad held → the diamond relabels to QUEUE / CUT / COPY / CLEAR
-- [ ] Mutes on the next bar in song mode; a waiting mute shows dashed on the face button and the tape deck
-- [ ] Fades: `L1 / R1` on S, `R2 + L1 / R1` anywhere (master gain ramp; fade time from the song rows)
-- [ ] Top bar on every page: a small `SONG B` tag while song mode is on
-- [ ] Tests: cycle order, tap vs hold, face jump, queue / cut / copy / clear, quantised mutes, fades
+- [x] Menu item `SONG MODE`; saved with the session
+- [x] S in the `SELECT` cycle; `SELECT + START` tap → S (`Modes:resolve` tells a tap from the menu hold)
+- [x] S page view: compass of patterns A–H (playing lit, queued dashed, empty dim), display (NOW → NEXT, "in N beats", then …, this pattern's chords and the next chord), face diamond of the four tracks (names and states), hint strip
+- [x] Face alone → that track's page; D-pad held → the diamond relabels to QUEUE / CUT / COPY / CLEAR
+- [x] Mutes on the next bar in song mode; a waiting mute shows dashed on the face button and the tape deck
+- [x] Fades: `L1 / R1` on S, `R2 + L1 / R1` anywhere (master gain ramp; fade time from the song rows)
+- [x] Top bar on every page: a small `SONG B` tag while song mode is on
+- [x] Tests: cycle order, tap vs hold, face jump, queue / cut / copy / clear, quantised mutes, fades
 - [ ] 📱 Legibility of the compass letters and the display at 640×480
 
-## M3 · The song strip
+## M3 · The song strip ✅
 
-- [ ] In song mode the chord strip draws the song: pattern blocks with chords, NOW line, past darkened, next dashed, END; focus zoom on the playing pattern
-- [ ] With no song recorded yet: the playing pattern and the queue
-- [ ] The tape deck: track names and slot colours follow the playing pattern; muted tracks grey with notes visible
-- [ ] Tests: strip layout maths (positions, zoom) on a few songs
+- [x] In song mode the chord strip draws the song: pattern blocks with chords, NOW line, past darkened, next dashed, END; focus zoom on the playing pattern
+- [x] With no song recorded yet: the playing pattern and the queue
+- [x] The tape deck: track names and slot colours follow the playing pattern; muted tracks grey with notes visible
+- [x] Tests: strip layout maths (positions, zoom) on a few songs
 - [ ] 📱 Strip readable at 14 px, chord boxes not too thin
 
-## M4 · Recording the song
+## M4 · Recording the song ✅
 
-- [ ] Song data: `{ steps = { { slot, loops } ... }, moves = { { tick, kind, data } ... }, takes = { [track] = { events on the song timeline } } }` in `song.txt`, read with the same safe parser
-- [ ] `L2` on S starts the tape (count-in as today); the red badge on every page; `L2` anywhere stops it
-- [ ] Captured: switches (with loop counts), mutes, `R2` FX moves, fades, and notes played on any track (as takes; degrees, so they follow chords)
-- [ ] Playback: the song drives switches, mutes, FX and fades; takes play on top of the pattern's notes; a muted track silences its take
-- [ ] Overdub: touch-to-replace per kind; undo removes the whole pass
-- [ ] Takes on the tape deck: notes with a crimson outline
-- [ ] Tests: record → play back the same moves; overdub replaces only what was touched; undo; save → load
+- [x] Song data: `{ steps = { { slot, loops } ... }, moves = { { tick, kind, data } ... }, takes = { [track] = { events on the song timeline } } }` in `song.txt`, read with the same safe parser
+- [x] `L2` on S starts the tape (count-in as today); the red badge on every page; `L2` anywhere stops it
+- [x] Captured: switches (with loop counts), mutes, `R2` FX moves, fades, and notes played on any track (as takes; degrees, so they follow chords)
+- [x] Playback: the song drives switches, mutes, FX and fades; takes play on top of the pattern's notes; a muted track silences its take
+- [x] Overdub: touch-to-replace per kind; undo removes the whole pass
+- [x] Takes on the tape deck: notes with a crimson outline
+- [x] Tests: record → play back the same moves; overdub replaces only what was touched; undo; save → load
 - [ ] 📱 A full song recorded and played back on the device
 
-## M5 · Writing and fixing (stopped S, song rows)
+## M5 · Writing and fixing (stopped S, song rows) ✅
 
-- [ ] Clock stopped on S: the grid (steps × C + 1–4), cursor = the box under the playhead (dashed), with track C's grammar: D-pad picks the pattern, `B` writes it into the step and steps on, `L1 / R1` step back / on, `R2` + face track in / out on this step, `X` loops ×1 ×2 ×4, `Y` clear
-- [ ] Hold `SELECT` on S: SONG tab rows (step: pattern, loops, each track own / borrowed / out; song: at the end, switch on, fade time)
-- [ ] Borrowed loops: a step's track can play another pattern's loop for that slot
-- [ ] Tests: writing steps, borrowing, rows round-trip through save
+- [x] Clock stopped on S: the grid (steps × C + 1–4), cursor = the box under the playhead (dashed), with track C's grammar: D-pad picks the pattern, `B` writes it into the step and steps on, `L1 / R1` step back / on, `R2` + face track in / out on this step, `X` loops ×1 ×2 ×4, `Y` clear
+- [x] Hold `SELECT` on S: SONG tab rows (step: pattern, loops, each track own / borrowed / out; song: at the end, switch on, fade time)
+- [ ] Borrowed loops (later: see below): a step's track can play another pattern's loop for that slot
+- [x] Tests: writing steps, borrowing, rows round-trip through save
 
-## M6 · Finish
+## M6 · Finish ✅
 
-- [ ] 1-bar patterns (if the clock change is small)
-- [ ] First-run prompts: SELECT + START tap, hold the D-pad on S, the red badge
-- [ ] SPEC: new § for song mode; §10.1 slots → living slots; ROADMAP; FUTURE_PLANS §8 points here
-- [ ] Rebuild `PocketGroove.love`
+- [ ] 1-bar patterns (later: see below)
+- [x] First-run prompts: the toasts on turning song mode on, reaching S and pressing L2 there carry them
+- [x] SPEC: new § for song mode; §10.1 slots → living slots; ROADMAP; FUTURE_PLANS §8 points here
+- [x] Rebuild `PocketGroove.love`
 - [ ] 📱 Every check above, plus frame rate with the strip and a full song
 
 ---
@@ -118,3 +120,16 @@ Each can change after playing it.
 - Tempo ramps between patterns
 - Several songs per session
 - Redo only one kind of move (e.g. only the FX) without touching the rest
+
+---
+
+## What changed from the plan
+
+- **Overdub "from that moment on"** means from the first touch until recording stops (DAW-style touch-and-latch): moves of a touched kind that the playhead reaches are dropped. Mutes count per track.
+- **A switch you make during playback** (not recording) takes over: the song stops following and says so. While recording, it rewrites the rest of the song from there.
+- **Song undo** is the song's own (one pass at a time, `L2 + R2 + LEFT` on S): a pattern switch clears the pattern undo stack, so the song keeps its own copy.
+- **Live FX during playback:** the song's recorded FX play when `R2` isn't held; holding `R2` plays yours over them.
+- **Fades** use `Synth.fadeGain`, on top of the master volume; turning song mode off resets it.
+- **Notes into the song** reuse the instruments' recording path: `Input:isRecording()` is true while the tape rolls, and `Looper:recordEvent` hands the note to the song (`Looper.recordRedirect`).
+- **The switch point** is one mechanism on the looper (`boundaryTick` / `boundaryHook`) that splits a frame exactly: queued and cut switches, mutes on the bar, the song's own steps and the armed recording start all use it.
+- **Left for later:** borrowing another pattern's loop for one track (it would write borrowed notes into a living slot); 1-bar patterns (the Clock page's 2 ↔ 4 toggle, the save format and the top bar's beat marks all assume 2 or 4).
