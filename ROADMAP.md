@@ -175,12 +175,22 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] L9 **Wobble**: face buttons hold chord notes, the D-pad sets the wobble rate
 - [ ] Device check: tempo 240 timing, Pump depth and clicks, the new patches and drum levels (all written without a listen), boot time, Breaks and Wobble feel, group colours
 
+## Phase M · Song mode 📐 (planned) — details in [PHASE_M.md](PHASE_M.md)
+
+- [ ] M0 Living slots: the loop on screen is always a slot and autosaves into it; menu GO TO / COPY TO / CLEAR
+- [ ] M1 Seamless switching: queue (several) or cut, tempo / key / bars per pattern, patches prepared up front
+- [ ] M2 Song mode + the S page: SELECT cycle and SELECT + START tap; face = go to track, D-pad + face = queue / cut / copy / clear; mutes on the bar; fades
+- [ ] M3 The song strip in place of the chord strip, with a focus zoom on the playing pattern
+- [ ] M4 Recording the song: L2 on S rolls the tape; switches, mutes, FX, fades and notes (as takes); overdub keeps what you don't touch
+- [ ] M5 Stopped S = writing grid with track C's grammar; song rows on the Track page
+- [ ] M6 Finish: 1-bar patterns, first-run prompts, docs, device checks
+
 ## Phase J · Later
 
 - [x] Menu on `SELECT + START` (hold 0.3 s): save / load pattern slots A–H, font set, song mode placeholder
 - [x] Pattern slots A–H: each one a whole session (= a scene in FUTURE_PLANS §8.1), its own file
 - [ ] Device check: the hold timing, the slot list legibility, save time on the SD card
-- [ ] Song mode: a chain of the slots ❓ what a "song" is (FUTURE_PLANS §8)
+- [ ] Song mode → planned as Phase M
 - [ ] Export loop to `.wav`
 - [ ] Optional `.wav` sample loading
 
