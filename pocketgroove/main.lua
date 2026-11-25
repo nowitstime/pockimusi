@@ -16,6 +16,7 @@ local Modes       = require("src.modes")
 local Chrome      = require("src.ui.chrome")
 local Display     = require("src.ui.display")
 local Autosave    = require("src.autosave")
+local Patterns    = require("src.patterns")
 
 local math_min = math.min
 
@@ -33,6 +34,7 @@ function love.load()
     Chrome:init()
     Display:init(Chrome)       -- remembered look (CRISP / PIXEL) and fullscreen
     Autosave:load()            -- the last session comes back
+    Patterns.ensureSlot()      -- and always lives in a pattern slot
     Synth:startPregen()        -- the other sounds, a little each frame
 end
 

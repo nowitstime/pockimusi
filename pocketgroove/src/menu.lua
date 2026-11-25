@@ -11,9 +11,12 @@
 --   START         close
 --
 -- Items:
---   SAVE PATTERN  the loop on screen into a slot A–H (src/patterns.lua)
---   LOAD PATTERN  a slot back onto the screen
---   SONG MODE     not built yet (FUTURE_PLANS §8); the slots will be its parts
+--   GO TO PATTERN switch to slot A–H; the loop on screen is kept in its own
+--                 slot first (living slots, src/patterns.lua). An empty slot
+--                 starts a new pattern with the same setup
+--   COPY PATTERN  the loop on screen into another slot (asks if it's full)
+--   CLEAR PATTERN empty a slot (asks first; not the one on screen)
+--   SONG MODE     on / off (PHASE_M)
 --   FONTS         the font set (src/ui/fonts.lua), changed live
 --
 -- Opening waits until every button is let go, so the hold that opened it
@@ -31,16 +34,17 @@ local Menu = {
     MESSAGE_TIME = 2.4,
 
     ITEMS = {
-        { id = "SAVE",  label = "SAVE PATTERN", hint = "KEEP THIS LOOP IN A SLOT" },
-        { id = "LOAD",  label = "LOAD PATTERN", hint = "BRING A SLOT BACK" },
-        { id = "SONG",  label = "SONG MODE",    hint = "COMING SOON" },
+        { id = "GOTO",  label = "GO TO PATTERN", hint = "SWITCH - NOTHING IS LOST" },
+        { id = "COPY",  label = "COPY PATTERN",  hint = "THIS LOOP INTO ANOTHER SLOT" },
+        { id = "CLEAR", label = "CLEAR PATTERN", hint = "EMPTY A SLOT" },
+        { id = "SONG",  label = "SONG MODE",     hint = "COMING SOON" },
         { id = "FONTS", label = "FONTS",        hint = "LEFT / RIGHT TO CHANGE" },
     },
 
     open = false,
     closing = false,         -- closed; waiting for every button to be let go
     waitRelease = false,     -- just opened; waiting for every button to be let go
-    page = "ROOT",           -- ROOT, SAVE, LOAD
+    page = "ROOT",           -- ROOT, GOTO, COPY, CLEAR
     row = 1,                 -- cursor on the top list
     slotRow = 1,             -- cursor on the slot list
     confirm = nil,           -- the slot waiting for a second B
@@ -87,23 +91,26 @@ function Menu:refreshSlots()
     end
 end
 
--- The slot the cursor starts on: the current pattern's, else (saving) the
--- first empty one, (loading) the first full one
-local function startRow(menu, wantEmpty)
-    for i, s in ipairs(Patterns.SLOTS) do
-        if s == Session.patternSlot then return i end
+-- The slot the cursor starts on: going to, the current pattern; copying,
+-- the first empty slot; clearing, the first full one that isn't on screen
+local function startRow(menu, page)
+    if page == "GOTO" then
+        for i, s in ipairs(Patterns.SLOTS) do
+            if s == Session.patternSlot then return i end
+        end
     end
     for i, s in ipairs(Patterns.SLOTS) do
         local sum = menu.slots[s]
-        if sum and (sum.empty == true) == wantEmpty then return i end
+        if sum and s ~= Session.patternSlot and (sum.empty == true) == (page == "COPY") then return i end
     end
     return 1
 end
 
 function Menu:openSlots(page)
+    Patterns.flush()             -- so the list shows the pattern on screen as it is
     self:refreshSlots()
     self.page, self.confirm = page, nil
-    self.slotRow = startRow(self, page == "SAVE")
+    self.slotRow = startRow(self, page)
 end
 
 function Menu:changeFonts(dir)
@@ -126,7 +133,7 @@ local function updateRoot(menu)
 
     if Input.pressed.A then return menu:close() end
     if not Input.pressed.B then return end
-    if item.id == "SAVE" or item.id == "LOAD" then
+    if item.id == "GOTO" or item.id == "COPY" or item.id == "CLEAR" then
         menu:openSlots(item.id)
     elseif item.id == "FONTS" then
         menu:changeFonts(1)
@@ -149,28 +156,36 @@ local function updateSlots(menu)
 
     local slot = Patterns.SLOTS[menu.slotRow]
     local sum = menu.slots[slot] or {}
-    if menu.page == "SAVE" then
+    local isNow = (slot == Session.patternSlot)
+    if menu.page == "GOTO" then
+        if isNow then return menu:close("ALREADY ON PATTERN " .. slot) end
+        if sum.broken then return menu:say("PATTERN " .. slot .. " COULDN'T BE READ") end
+        local ok, err = Patterns.goTo(slot)
+        if ok then return menu:close(sum.empty and ("NEW PATTERN " .. slot) or ("PATTERN " .. slot)) end
+        menu:say(err)
+    elseif menu.page == "COPY" then
+        if isNow then return menu:say("THAT'S THE PATTERN ON SCREEN") end
         if not sum.empty and menu.confirm ~= slot then
             menu.confirm = slot
-            return menu:say("B AGAIN TO SAVE OVER PATTERN " .. slot)
+            return menu:say("B AGAIN TO COPY OVER PATTERN " .. slot)
         end
-        local ok, err = Patterns.save(slot)
-        if ok then return menu:close("SAVED PATTERN " .. slot) end
+        local ok, err = Patterns.copyTo(slot)
+        if ok then
+            return menu:close("COPIED " .. (Session.patternSlot or "LOOP") .. " TO " .. slot)
+        end
         menu.confirm = nil
         menu:say(err)
     else
-        if sum.empty then
-            menu.confirm = nil
-            return menu:say("PATTERN " .. slot .. " IS EMPTY")
-        end
+        if isNow then return menu:say("CAN'T CLEAR THE PATTERN ON SCREEN") end
+        if sum.empty then return menu:say("PATTERN " .. slot .. " IS ALREADY EMPTY") end
         if menu.confirm ~= slot then
             menu.confirm = slot
-            return menu:say("B AGAIN TO LOAD " .. slot .. " - THE LOOP ON SCREEN IS REPLACED")
+            return menu:say("B AGAIN TO CLEAR PATTERN " .. slot)
         end
-        local ok, err = Patterns.load(slot)
-        if ok then return menu:close("LOADED PATTERN " .. slot) end
+        Patterns.clear(slot)
         menu.confirm = nil
-        menu:say(err)
+        menu:refreshSlots()
+        menu:say("CLEARED PATTERN " .. slot)
     end
 end
 

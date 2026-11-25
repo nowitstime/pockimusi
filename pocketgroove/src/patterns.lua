@@ -101,27 +101,122 @@ function Patterns.summary(slot)
     return out
 end
 
--- Save the loop on screen into `slot`. Returns true, or false + message.
-function Patterns.save(slot)
+-- Write already-encoded session text into `slot`'s file. Returns true, or
+-- false + message.
+function Patterns.writeText(slot, text)
     if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
-    local prev = Session.patternSlot
-    Session.patternSlot = slot
-    local ok, text = pcall(Save.encode, Session.snapshot())
-    if not ok then
-        Session.patternSlot = prev
-        log("pattern save failed: " .. tostring(text))
-        return false, "SAVE FAILED - SEE LOG"
-    end
     local saved = (os and os.time) and os.time() or 0
     local fileText = string.format('{slot="%s",saved=%d,session=%s}', slot, saved, text)
     local name = Patterns.fileName(slot)
     local written, err = love.filesystem.write(name, fileText)
     if not written then
-        Session.patternSlot = prev
         log("couldn't write " .. name .. ": " .. tostring(err))
         return false, "SAVE FAILED - SEE LOG"
     end
-    log(string.format("saved %s (%.1f KB)", name, #fileText / 1024))
+    return true, #fileText
+end
+
+-- The loop on screen as session text, as if it lived in `slot`
+local function encodeAs(slot)
+    local prev = Session.patternSlot
+    Session.patternSlot = slot
+    local ok, text = pcall(Save.encode, Session.snapshot())
+    Session.patternSlot = prev
+    if not ok then log("pattern encode failed: " .. tostring(text)) end
+    return ok and text or nil
+end
+
+-- Save the loop on screen into `slot` and make it the current pattern.
+-- Returns true, or false + message.
+function Patterns.save(slot)
+    if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
+    local text = encodeAs(slot)
+    if not text then return false, "SAVE FAILED - SEE LOG" end
+    local ok, err = Patterns.writeText(slot, text)
+    if not ok then return false, err end
+    Session.patternSlot = slot
+    log(string.format("saved %s (%.1f KB)", Patterns.fileName(slot), err / 1024))
+    return true
+end
+
+-- Copy the loop on screen into another slot; the current pattern stays
+function Patterns.copyTo(slot)
+    if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
+    local text = encodeAs(slot)
+    if not text then return false, "COPY FAILED - SEE LOG" end
+    local ok, err = Patterns.writeText(slot, text)
+    if not ok then return false, err end
+    return true
+end
+
+-- Empty a slot (not the one on screen: it would be written straight back)
+function Patterns.clear(slot)
+    if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
+    if slot == Session.patternSlot then return false, "THAT'S THE PATTERN ON SCREEN" end
+    local fs = love.filesystem
+    if fs.getInfo and fs.getInfo(Patterns.fileName(slot)) then fs.remove(Patterns.fileName(slot)) end
+    return true
+end
+
+-- Write the loop on screen into its own slot now (before leaving it)
+function Patterns.flush()
+    local slot = Session.patternSlot
+    if not slot then return true end
+    local text = encodeAs(slot)
+    if not text then return false end
+    return (Patterns.writeText(slot, text))
+end
+
+-- The first slot with no file, or nil
+function Patterns.firstEmpty()
+    local fs = love.filesystem
+    for _, s in ipairs(Patterns.SLOTS) do
+        if not (fs.getInfo and fs.getInfo(Patterns.fileName(s))) then return s end
+    end
+    return nil
+end
+
+-- Living slots: the loop on screen always belongs to a slot. A session from
+-- before (no slot) takes the first empty one; with every slot full it stays
+-- without one until you go to a slot.
+function Patterns.ensureSlot()
+    if Session.patternSlot then return Session.patternSlot end
+    local s = Patterns.firstEmpty()
+    if s then Session.patternSlot = s end      -- its file comes with the next save
+    return s
+end
+
+-- Go to another slot: the loop on screen is written into its own slot
+-- first, so nothing is lost. An empty slot starts a fresh pattern with the
+-- same instruments, sounds, tempo and key, and no notes.
+function Patterns.goTo(slot)
+    if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
+    if slot == Session.patternSlot then return true end
+    local fs = love.filesystem
+    local exists = fs.getInfo and fs.getInfo(Patterns.fileName(slot))
+    if exists then
+        local data, reason = Patterns.read(slot)
+        if not data then return false, "PATTERN " .. slot .. " COULDN'T BE READ" end
+    end
+    Patterns.flush()
+    if exists then
+        local ok, err = Patterns.load(slot)
+        if not ok then return false, err end
+        Looper:showToast("PATTERN " .. slot)
+        return true
+    end
+    -- empty: same setup, no notes, no chords
+    Looper:silenceAll()
+    for i = 1, #Looper.tracks do
+        local t = Looper.tracks[i]
+        t.events = {}
+        t.muted = false
+        Looper:touch(t)
+    end
+    Looper.undoStack = {}
+    Session.patternSlot = slot
+    Patterns.flush()
+    Looper:showToast("NEW PATTERN " .. slot)
     return true
 end
 

@@ -10,13 +10,15 @@
 -- (playback alone never changes the session), at least INTERVAL seconds
 -- after the last save, at a moment with no buttons held; if buttons stay
 -- busy, after MAX_WAIT seconds anyway. Also on quit and focus loss.
--- A file is written only when its text actually changed.
+-- A file is written only when its text actually changed. The current
+-- pattern's slot file (src/patterns.lua) is written along with it.
 -- ============================================================================
 
 local Input   = require("src.input")
 local Looper  = require("src.looper")
 local Save    = require("src.save")
 local Session = require("src.session")
+local Patterns = require("src.patterns")
 
 local Autosave = {
     SLOTS = { "session_a.txt", "session_b.txt" },
@@ -146,6 +148,8 @@ function Autosave:saveNow()
     self.lastText = text
     self.nextSlot = (self.nextSlot % #self.SLOTS) + 1
     self.failed = false
+    -- Living slots: the pattern on screen is kept in its slot as well
+    if Session.patternSlot then Patterns.writeText(Session.patternSlot, text) end
     log(string.format("saved %s (seq %d, %.1f KB, %.0f ms)", name, seq, #fileText / 1024,
         (love.timer.getTime() - t0) * 1000))
     return true

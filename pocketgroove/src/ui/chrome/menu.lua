@@ -67,7 +67,7 @@ local function footer(self, hints)
 end
 
 local function currentLabel()
-    return Session.patternSlot and ("NOW: PATTERN " .. Session.patternSlot) or "NOW: NOT SAVED TO A SLOT"
+    return Session.patternSlot and ("NOW: PATTERN " .. Session.patternSlot) or "NOW: NO SLOT - GO TO ONE"
 end
 
 function Chrome:drawMenuRoot()
@@ -182,8 +182,9 @@ end
 
 function Chrome:drawMenuSlots()
     local C, col = Config.COLORS, accent()
-    local saving = (Menu.page == "SAVE")
-    frame(self, saving and "SAVE PATTERN" or "LOAD PATTERN", currentLabel())
+    local TITLES = { GOTO = "GO TO PATTERN", COPY = "COPY PATTERN", CLEAR = "CLEAR PATTERN" }
+    local HINTS = { GOTO = "B  GO THERE", COPY = "B  COPY HERE", CLEAR = "B  CLEAR" }
+    frame(self, TITLES[Menu.page] or "PATTERNS", currentLabel())
     local rh, gap, top = 36, 4, Y + 52
     for i, slot in ipairs(Patterns.SLOTS) do
         local y = top + (i - 1) * (rh + gap)
@@ -237,8 +238,7 @@ function Chrome:drawMenuSlots()
             self:menuText(tag, xr - tw + 6, cy, self.fontTiny, C.BG)
         end
     end
-    footer(self, saving and "UP / DOWN  SLOT     B  SAVE HERE     A  BACK     START  CLOSE"
-                         or "UP / DOWN  SLOT     B  LOAD     A  BACK     START  CLOSE")
+    footer(self, "UP / DOWN  SLOT     " .. (HINTS[Menu.page] or "B  CHOOSE") .. "     A  BACK     START  CLOSE")
 end
 
 function Chrome:drawMenu()
