@@ -256,12 +256,19 @@ function Chrome:getControlLabels(def, state, mode)
     local activeMap = {}
 
     -- The face buttons mute tracks 1-4 (Mix page and live FX): a muted one is lit
+    -- (song mode: a mute waiting for the next bar shows as it will be, with a ">")
     local function muteLabels()
         local labels = {}
         for btn, slot in pairs({ B = 1, A = 2, Y = 3, X = 4 }) do
             local muted = Looper.tracks[slot].muted
-            labels[btn] = muted and ("M" .. slot .. " [M]") or ("M" .. slot)
-            activeMap[btn] = muted
+            local pending = Song.pendingMutes[slot]
+            if pending ~= nil then
+                labels[btn] = pending and ("M" .. slot .. " >M") or ("M" .. slot .. " >ON")
+                activeMap[btn] = pending
+            else
+                labels[btn] = muted and ("M" .. slot .. " [M]") or ("M" .. slot)
+                activeMap[btn] = muted
+            end
         end
         return labels
     end

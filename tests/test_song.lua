@@ -664,4 +664,22 @@ return {
         H.truthy(L.playing and Song.playing, "playing")
         H.eq(Song.stepIdx, 1, "from the top")
     end },
+
+    { "on the Live FX page a song-mode mute shows at once (waiting for the bar)", function()
+        local M = boot()
+        local L = M.Looper
+        local Chrome = require("src.ui.chrome")
+        M.Song:setOn(true); M.Song:goToPage()
+        L:resetPlayhead()
+        H.play(0.3)
+        H.hold("R2"); H.tap("B")
+        local _, face, _, active = Chrome:getControlLabels(M.Instruments:getTrackInstrument(L.activeTrack), nil, "FX")
+        H.truthy(active.B, "lit straight away")
+        H.falsy(L.tracks[1].muted, "the mute itself waits for the bar")
+        Chrome:draw()
+        H.tap("B")
+        _, face, _, active = Chrome:getControlLabels(M.Instruments:getTrackInstrument(L.activeTrack), nil, "FX")
+        H.falsy(active.B, "pressed again: back off")
+        H.release("R2"); H.play(0.05)
+    end },
 }

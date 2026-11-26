@@ -162,4 +162,6 @@ Changed after the first build (playtest feedback): the queue takes any order, re
 
 ### Bugs
 
-To be listed from playtesting on the device (📱 checks above).
+From playtesting on the device (📱 checks above).
+
+- [x] Live FX / Mix page: a song-mode mute (waiting for the bar) didn't light or unlight its button until the page was opened again. It now shows at once, as it will be (`M1 >M` / `M1 >ON`).
