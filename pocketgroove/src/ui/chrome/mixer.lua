@@ -36,6 +36,9 @@ function Chrome:drawMixerView(t)
         local lvl = isMaster and Synth.masterVolume or trk.volume
         local isSelected = (Modes.mixTrack == i)
         local isMuted = not isMaster and trk.muted or false
+        -- song mode: a mute waiting for the next bar shows as it will be
+        local SongM = package.loaded["src.song"]
+        if not isMaster and SongM and SongM.pendingMutes[i] ~= nil then isMuted = SongM.pendingMutes[i] end
         local col = isMaster and C.TEXT or self:trackColor(i)
 
         if isSelected then

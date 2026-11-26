@@ -108,6 +108,7 @@ function Session.snapshot()
         scaleIndex = Theory.scaleIndex,
         masterVolume = Synth.masterVolume,
         patternSlot = Session.patternSlot,
+        songMode = Session.songMode or nil,
         tracks = tracks,
     }
 end
@@ -210,7 +211,15 @@ local function restoreEvent(raw, loop)
     return ev
 end
 
-function Session.restore(data)
+-- For song takes (src/song.lua): the same checks, with positions kept by the
+-- song itself (`at`), so `loop` is only the longest a note may be
+Session.restoreEvent = restoreEvent
+Session.plainEvent = function(ev) return snapshotEvent(ev, 1e9) end
+
+-- opts.live (song mode, a pattern switch while playing): the clock, the
+-- song position, record and the track you're on are left alone, and no toast.
+function Session.restore(data, opts)
+    local live = opts and opts.live
     if type(data) ~= "table" then return false, "not a session" end
     if data.format ~= Session.FORMAT then
         return false, "session format " .. tostring(data.format) .. " (this version reads " .. Session.FORMAT .. ")"
@@ -219,7 +228,10 @@ function Session.restore(data)
     -- Stop everything that is sounding or held first
     Instruments:releaseAll()
     Looper:silenceAll()
-    Input.recLatched = false
+    if not live then
+        Input.recLatched = false
+        Session.songMode = (data.songMode == true)
+    end
 
     -- Globals
     Looper.bpm = int(data.bpm, Config.MIN_BPM, Config.MAX_BPM, Config.DEFAULT_BPM)
@@ -317,9 +329,10 @@ function Session.restore(data)
         Looper:touch(lane)
     end
 
-    Looper.activeTrack = int(data.activeTrack, 1, #Looper.tracks, 1)
-    Looper.currentTakeId = maxTake
+    if maxTake > Looper.currentTakeId or not live then Looper.currentTakeId = maxTake end
     Looper.undoStack = {}
+    if live then return true end
+    Looper.activeTrack = int(data.activeTrack, 1, #Looper.tracks, 1)
     Looper:seek(0.0)
     Looper.pass = 0
     Looper:showToast("SESSION RESTORED")

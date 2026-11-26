@@ -205,7 +205,7 @@ function Input:getFingering()
 end
 
 function Input:isRecording()
-    if self.recLatched then return true end
+    if self.recLatched or self.songRolling then return true end
     if self.down.L2 and not self.down.R2 and not self.comboUsed.L2 then return true end
     return false
 end

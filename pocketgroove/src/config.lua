@@ -87,6 +87,11 @@ function Config.shade(c, k)
     return s
 end
 
+-- Song mode (PHASE_M): the S page's aurora, as an instrument has its colour
+Config.COLORS.SONG   = hex("5EEAD4")   -- teal
+Config.COLORS.SONG_2 = hex("A5B4FC")   -- periwinkle
+Config.COLORS.SONG_3 = hex("F0ABFC")   -- pink
+
 Config.TRACK_COLORS = {
     Config.COLORS.ORANGE,
     Config.COLORS.CYAN,

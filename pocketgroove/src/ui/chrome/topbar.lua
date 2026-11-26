@@ -34,6 +34,10 @@ function Chrome:drawTopBar()
     local instCol = self:trackColor(sl)
     local grid = Looper:getTrackGrid(sl)
     local mode = Modes.current or "NORMAL"
+    local Song = package.loaded["src.song"]
+    local songOn = Song and Song:isOn()
+    local songPage = songOn and Song.page and (self:isPlayMode(mode) or mode == "TRACK")
+    if songPage then instCol = Config.COLORS.SONG end
 
     -- Frame with corner accent diamonds
     self:drawFrame(8, 6, 624, 38, C.GRID, 1, instCol)
@@ -47,7 +51,7 @@ function Chrome:drawTopBar()
 
     self:setColor(C.TEXT)
     love.graphics.setFont(self.fontSmall)
-    love.graphics.print(string.format("%s - %s", Looper:slotLabel(sl), track and track.name or "TRK"), 36, 17)
+    love.graphics.print(songPage and "S - SONG" or string.format("%s - %s", Looper:slotLabel(sl), track and track.name or "TRK"), 36, 17)
 
     -- Hairline dividers & Metadata
     self:setColor(C.GRID)
@@ -73,10 +77,19 @@ function Chrome:drawTopBar()
 
     love.graphics.setFont(self.fontTiny)
     self:setColor(C.MUTED)
-    love.graphics.print("LOOP", 210, 11)
-    love.graphics.setFont(self.fontSmall)
-    self:setColor(C.TEXT)
-    love.graphics.print(Looper.bars .. " BAR", 210, 21)
+    if songOn then
+        -- song mode: the pattern playing, and its length
+        local Session = require("src.session")
+        love.graphics.print("SONG", 210, 11)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(Config.COLORS.SONG)
+        love.graphics.print((Session.patternSlot or "-") .. " " .. Looper.bars .. "B", 210, 21)
+    else
+        love.graphics.print("LOOP", 210, 11)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(C.TEXT)
+        love.graphics.print(Looper.bars .. " BAR", 210, 21)
+    end
 
     self:setColor(C.GRID)
     love.graphics.line(256, 13, 256, 37)
@@ -139,6 +152,13 @@ function Chrome:drawTopBar()
     }
     local mc = modeConfigs[mode] or modeConfigs.NORMAL
     -- Count-in: recording is armed and the beats left are counted down
+    if Song and Song.recording then
+        mc = { label = "SONG REC", icon = "DOT", stroke = C.RED, fill = C.RED, txt = C.BG, iconCol = C.BG }
+    elseif Song and Song.armed then
+        mc = { label = "SONG ARMED", icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }
+    elseif Song and Song.playing and mode == "NORMAL" then
+        mc = { label = "SONG", icon = "PLAY", stroke = C.SONG, fill = C.PANEL_HI, txt = C.SONG, iconCol = C.SONG }
+    end
     local countBeats = Modes:countInBeats()
     if countBeats and mode == "NORMAL" then
         mc = { label = "COUNT-IN  " .. countBeats, icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }

@@ -13,6 +13,7 @@ local Synth       = require("src.synth")
 local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Menu        = require("src.menu")
+local Song        = require("src.song")
 
 local clamp = Config.clamp
 
@@ -63,9 +64,12 @@ local function setLiveFx(stutter, half, duck, crush)
     Synth.fxBitcrush   = crush
 end
 
+-- R2 + face: mute / unmute. In song mode it lands on the next bar.
 local function face_mutes()
     for btn, slot in pairs(MUTE_BUTTON) do
-        if Input.pressed[btn] then Looper:toggleMute(slot) end
+        if Input.pressed[btn] then
+            if Song:isOn() then Song:queueMute(slot) else Looper:toggleMute(slot) end
+        end
     end
 end
 
@@ -172,6 +176,15 @@ local function updateRecord()
     if not Input.released.L2 then return end
 
     local used = Input.comboUsed.L2
+    -- Song mode: L2 on S rolls the song tape; L2 anywhere stops it
+    if not used and Input.l2HoldTime < Modes.TAP_MAX and (Song.recording or Song.armed) then
+        Song:stopRecording()
+        return
+    end
+    if not used and Input.l2HoldTime < Modes.TAP_MAX and Song.page and Song:isOn() and not Input.recLatched then
+        Song:startRecording()
+        return
+    end
     if not used and Input.l2HoldTime < Modes.TAP_MAX then
         if Modes.arm then
             cancelCountIn("COUNT-IN CANCELLED")
@@ -235,6 +248,18 @@ end
 function handlers.ERASE(ctx)
     Input.comboUsed.L2, Input.comboUsed.R2 = true, true
     local tIdx = Looper.activeTrack
+    -- On S the Erase page works on the queue: B takes the last one out, X empties it
+    if Song.page then
+        if Input.pressed.B then
+            local slot = Song:popQueue()
+            Looper:showToast(slot and (slot .. " TAKEN OUT OF THE QUEUE") or "THE QUEUE IS EMPTY")
+        elseif Input.pressed.X then
+            Song:clearQueue()
+            Looper:showToast("QUEUE EMPTIED")
+        end
+        if Input.pressed.LEFT or Input.pressed.L1 then Song:undo() end
+        return true
+    end
     for _, btn in ipairs(FACE) do
         if Input.pressed[btn] then
             local actions, label = Modes:eraseTarget(ctx.def, ctx.state, btn)
@@ -243,7 +268,7 @@ function handlers.ERASE(ctx)
     end
     if Input.pressed.LEFT or Input.pressed.L1 then
         Instruments:releaseAll()      -- held notes end on the instrument that started them
-        Looper:undo()
+        if Song.page then Song:undo() else Looper:undo() end
     end
     if Input.pressed.START then
         Looper:clearTrack(tIdx)
@@ -334,6 +359,21 @@ end
 function handlers.TRACK(ctx, dt)
     Input.comboUsed.SELECT = true
     local page = Modes.trackPage
+    -- On S: the song's rows (src/song.lua)
+    if Song.page then
+        local rows = Song:rows()
+        if Modes.previous ~= "TRACK" then page.row = 1 end
+        page.row = clamp(page.row, 1, #rows)
+        if Input.repeated.UP or Input.repeated.DOWN then
+            page.row = Input.repeated.UP and ((page.row - 2) % #rows) + 1 or (page.row % #rows) + 1
+            Song.confirmRow = nil
+        end
+        if Input.pressed.L1 then Song:moveCursor(-1) end
+        if Input.pressed.R1 then Song:moveCursor(1) end
+        local delta = (Input.repeated.LEFT and -1) or (Input.repeated.RIGHT and 1) or nil
+        if delta then Song:cycleRow(rows[page.row].key, delta) end
+        return true
+    end
     local def, state = ctx.def, ctx.state
     local track = Looper.tracks[Looper.activeTrack]
     local rows = Instruments:getSoundRows(def, state, track)
@@ -494,6 +534,11 @@ end
 -- and the L2 + START clear still apply.
 function handlers.FX()
     face_mutes()
+    -- R2 + L1 / R1: song mode fades, from any page
+    if Song:isOn() then
+        if Input.down.L1 and not Input.down.R1 then Song.fadeDir = -1
+        elseif Input.down.R1 and not Input.down.L1 then Song.fadeDir = 1 end
+    end
     setLiveFx(Input.down.UP, Input.down.DOWN, Input.down.LEFT, Input.down.RIGHT)
     return false
 end
@@ -504,7 +549,17 @@ end
 function updateSelectTap()
     if not Input.released.SELECT then return end
     if not Input.comboUsed.SELECT and not Input.comboUsed.L2 and Input.selectHoldTime < Modes.TAP_MAX then
-        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> 1
+        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> 1. In song mode the face
+        -- buttons on S reach the tracks, so SELECT goes home to S, and from S
+        -- to track C (the one track the face buttons don't reach).
+        if Song:isOn() then
+            if Song.page then
+                Song:leavePage(Looper.LANE)
+            else
+                Song:goToPage()
+            end
+            return
+        end
         Looper.activeTrack = (Looper.activeTrack % #Looper.tracks) + 1
         local nextTrack = Looper.tracks[Looper.activeTrack]
         if nextTrack and nextTrack.isLane then
@@ -521,6 +576,13 @@ local function updateStartTap()
         return
     end
     local now = love.timer.getTime()
+    -- Song mode with a song: a double tap plays it from the top (a single
+    -- tap pauses and carries on, as always)
+    if (now - Input.lastStartTapTime) < Modes.DOUBLE_TAP and Song:isOn() and Song:hasSong() then
+        Song:playFromTop()
+        Input.lastStartTapTime = now
+        return
+    end
     if (now - Input.lastStartTapTime) < Modes.DOUBLE_TAP then
         -- Back to bar 1.1 from silence: whatever is still ringing (a stuck
         -- note, echo and reverb tails) stops
@@ -568,8 +630,13 @@ function Modes:update(dt)
     self.previous = self.current
     self.current = self:resolve()
 
+    -- A quick SELECT + START tap (let go before the menu opens): to S
+    if self.previous == "MENU_HOLD" and self.current ~= "MENU_HOLD" and not Menu:isActive() then
+        Song:goToPage()
+    end
+
     if self.current ~= "FX" then
-        setLiveFx(false, false, false, false)
+        setLiveFx(Song:playbackFx())          -- the song's recorded FX, or none
     end
 
     local def, state = Instruments:getTrackInstrument(Looper.activeTrack)
@@ -581,6 +648,12 @@ function Modes:update(dt)
             Input:clearReleasedCombos()
             return true
         end
+    end
+
+    -- The S page owns the play controls (src/song.lua)
+    if Song.page and not handler then
+        Song:updatePage(dt)
+        blocked = true
     end
 
     updateSelectTap()

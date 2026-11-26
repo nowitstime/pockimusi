@@ -117,9 +117,9 @@ Colour changes chord by chord; octave is set once. This answers SPEC §3.3's ope
 
 ---
 
-## 8. Song building ❓
+## 8. Song building → [PHASE_M.md](PHASE_M.md)
 
-Still being thought through. The proposal below is a starting point, not a decision.
+Decided and built in Phase M (SPEC §10.2). The proposal below was the starting point and is kept for the record; where it differs, PHASE_M wins.
 
 ### 8.1 Scenes
 

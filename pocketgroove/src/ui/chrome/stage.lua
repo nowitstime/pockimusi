@@ -12,6 +12,7 @@ local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Harmony     = require("src.harmony")
 local Display     = require("src.ui.display")
+local Song        = require("src.song")
 
 local clamp      = Config.clamp
 local math_floor = math.floor
@@ -35,6 +36,10 @@ function Chrome:drawCenterStage()
     local instCol = self:trackColor(sl)
     local mode = Modes.current or "NORMAL"
     local playMode = self:isPlayMode(mode)
+    -- The S page (song mode): this stage, with the song's labels and view
+    local songPage = Song.page and playMode
+    local songRows = Song.page and mode == "TRACK"
+    if songPage then instCol = Config.COLORS.SONG end
     local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
     local kind = self:viewKind(def)
@@ -43,9 +48,10 @@ function Chrome:drawCenterStage()
     -- Frame: the instrument's dark stage, sky and halo while playing; a
     -- solid mode-coloured border on a settings page or while recording
     local borderCol = (mode == "NORMAL") and Config.shade(instCol, 0.45) or (Config.MODE_COLORS[mode] or C.GRID)
+    if Song.recording and playMode then borderCol = C.RED end
     self:drawFrame(8, 50, 624, 306, borderCol, 1)
     self.haloDrawn = false
-    if playMode then
+    if playMode and not songPage then
         self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
     end
     if mode == "ERASE" or mode == "NEW" then
@@ -53,7 +59,7 @@ function Chrome:drawCenterStage()
         love.graphics.rectangle("fill", 9, 51, 622, 304, 6, 6)
     end
     self:setColor(borderCol)
-    love.graphics.setLineWidth((mode == "NORMAL") and 1 or 2)
+    love.graphics.setLineWidth((mode == "NORMAL" and not Song.recording) and 1 or 2)
     love.graphics.rectangle("line", 8, 50, 624, 306, 6, 6)
     love.graphics.setLineWidth(1)
 
@@ -74,7 +80,13 @@ function Chrome:drawCenterStage()
     -- Shoulder capsules
     local lOn, rOn = Input.down.L1, Input.down.R1
     local l1Label, r1Label = "L1: -", "R1: +"
-    if mode == "TRACK" and track.isLane then
+    if songPage and Song:writing() then
+        l1Label, r1Label = "L1: < STEP", "R1: STEP >"
+    elseif songRows then
+        l1Label, r1Label = "L1: < STEP", "R1: STEP >"
+    elseif songPage then
+        l1Label, r1Label = "L1: FADE OUT", "R1: FADE IN"
+    elseif mode == "TRACK" and track.isLane then
         l1Label, r1Label = "L1: -", "R1: -"
     elseif mode == "TRACK" then
         l1Label, r1Label = "L1: < INSTRUMENT", "R1: INSTRUMENT >"
@@ -140,7 +152,7 @@ function Chrome:drawCenterStage()
     shoulder(18, l1Label, lOn)
     shoulder(510, r1Label, rOn, true)
 
-    local titleStr = def.name
+    local titleStr = songPage and "SONG" or def.name
     if mode == "TRACK" then titleStr = "TRACK " .. Looper:slotLabel(sl)
     elseif mode == "MIX" then titleStr = "MIX"
     elseif mode == "TRANSPORT" then titleStr = "CLOCK"
@@ -149,7 +161,12 @@ function Chrome:drawCenterStage()
     elseif mode == "FX" then titleStr = "LIVE FX"
     end
 
-    if mode == "TRACK" then
+    if songRows then
+        self:setColor(accent)
+        love.graphics.setFont(self.fontMed)
+        local tw = self.fontMed:getWidth("TRACK S - SONG")
+        love.graphics.print("TRACK S - SONG", math_floor(320 - tw * 0.5), 62)
+    elseif mode == "TRACK" then
         -- the instruments are tabs (L1 / R1), in place of a title
         self:drawInstrumentTabs(track, accent)
     else
@@ -166,6 +183,20 @@ function Chrome:drawCenterStage()
     local dpadLabels, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, mode)
     local activeDir = Input:get8WayDirection()
     local guideDir = playMode and def.getGuideDir and def:getGuideDir(state) or nil
+    if songPage then
+        dpadLabels, faceLabels, activeMap, guideDir = self:songLabels()
+        flashMap = {}
+        if Song:writing() and Song.pointing then
+            faceLabels = { B = "WRITE", A = "", Y = "COPY", X = "CLEAR" }
+        end
+    elseif songRows then
+        faceLabels = { B = "", A = "", Y = "", X = "" }
+        activeMap = {}
+    elseif Song.page and mode == "ERASE" then
+        dpadLabels = { LEFT = "UNDO SONG" }
+        faceLabels = { B = "UNQUEUE", A = "", Y = "", X = "EMPTY Q" }
+        activeMap = {}
+    end
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
@@ -180,6 +211,12 @@ function Chrome:drawCenterStage()
     local dpadSubtitle = dpadSub[mode] or (def.getDpadSubtitle and def:getDpadSubtitle(state))
         or instSub[def.id] or instSub[kind] or "D-PAD"
     local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
+    if songPage then
+        dpadSubtitle = "D-PAD: PATTERNS (HOLD)"
+        faceSubtitle = Song.pointing and ("FACE: ACT ON " .. Song.pointing) or "FACE: GO TO TRACK"
+    elseif songRows then
+        faceSubtitle = "FACE: -"
+    end
     if mode == "TRACK" and def.NO_FX then faceSubtitle = "TRACK C IS SILENT" end
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
@@ -189,6 +226,8 @@ function Chrome:drawCenterStage()
     -- Center Column Visualizer (x: 204..436, y: 90..314)
     if mode == "MIX" then
         self:drawMixerView(t)
+    elseif songRows then
+        self:drawSongRows(accent)
     elseif mode == "TRACK" then
         self:drawTrackPageView(def, state, track, accent)
     elseif mode == "TRANSPORT" then
@@ -197,6 +236,10 @@ function Chrome:drawCenterStage()
         self:drawEraseView(track, def)
     elseif mode == "NEW" then
         self:drawFreshSessionView()
+    elseif songPage and Song:writing() and not Song.pointing then
+        self:drawSongGrid(accent)
+    elseif songPage then
+        self:drawSongView(accent)
     else
         self:drawInstrumentVisualizer(def, state, track, instCol, t)
     end
@@ -213,12 +256,19 @@ function Chrome:getControlLabels(def, state, mode)
     local activeMap = {}
 
     -- The face buttons mute tracks 1-4 (Mix page and live FX): a muted one is lit
+    -- (song mode: a mute waiting for the next bar shows as it will be, with a ">")
     local function muteLabels()
         local labels = {}
         for btn, slot in pairs({ B = 1, A = 2, Y = 3, X = 4 }) do
             local muted = Looper.tracks[slot].muted
-            labels[btn] = muted and ("M" .. slot .. " [M]") or ("M" .. slot)
-            activeMap[btn] = muted
+            local pending = Song.pendingMutes[slot]
+            if pending ~= nil then
+                labels[btn] = pending and ("M" .. slot .. " >M") or ("M" .. slot .. " >ON")
+                activeMap[btn] = pending
+            else
+                labels[btn] = muted and ("M" .. slot .. " [M]") or ("M" .. slot)
+                activeMap[btn] = muted
+            end
         end
         return labels
     end

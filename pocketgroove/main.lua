@@ -16,6 +16,8 @@ local Modes       = require("src.modes")
 local Chrome      = require("src.ui.chrome")
 local Display     = require("src.ui.display")
 local Autosave    = require("src.autosave")
+local Patterns    = require("src.patterns")
+local Song        = require("src.song")
 
 local math_min = math.min
 
@@ -33,12 +35,15 @@ function love.load()
     Chrome:init()
     Display:init(Chrome)       -- remembered look (CRISP / PIXEL) and fullscreen
     Autosave:load()            -- the last session comes back
+    Patterns.ensureSlot()      -- and always lives in a pattern slot
+    Song:load()                -- the song (song mode)
     Synth:startPregen()        -- the other sounds, a little each frame
 end
 
 -- Save on the way out, and when the app goes to the background
 function love.quit()
     Autosave:saveNow()
+    if Song:hasSong() then Song:save() end
     return false
 end
 
@@ -52,7 +57,9 @@ function love.update(dt)
     Input:update(dt)
     local controlsBlocked = Modes:update(dt)
 
+    Song:update(dt)            -- song mode: fades and the next switch point
     Looper:update(dt)
+    Song:afterLooper()         -- the song position follows the playhead
 
     Instruments:update(dt, controlsBlocked)
     Synth:update(dt)

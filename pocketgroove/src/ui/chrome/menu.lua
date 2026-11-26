@@ -11,6 +11,7 @@ local Menu     = require("src.menu")
 local Session  = require("src.session")
 local Patterns = require("src.patterns")
 local Fonts    = require("src.ui.fonts")
+local Song     = require("src.song")
 
 local clamp      = Config.clamp
 local math_floor = math.floor
@@ -67,17 +68,17 @@ local function footer(self, hints)
 end
 
 local function currentLabel()
-    return Session.patternSlot and ("NOW: PATTERN " .. Session.patternSlot) or "NOW: NOT SAVED TO A SLOT"
+    return Session.patternSlot and ("NOW: PATTERN " .. Session.patternSlot) or "NOW: NO SLOT - GO TO ONE"
 end
 
 function Chrome:drawMenuRoot()
     local C, col = Config.COLORS, accent()
     frame(self, "MENU", currentLabel())
-    local rh, top = 62, Y + 58
+    local rh, top = (#Menu.ITEMS > 5) and 50 or 62, Y + 58
     for i, item in ipairs(Menu.ITEMS) do
         local y = top + (i - 1) * (rh + 6)
         local cur = (i == Menu.row)
-        local soon = (item.id == "SONG")
+        local soon = false
         if cur then
             self:setColor(col, 0.16)
             love.graphics.rectangle("fill", X + 16, y, W - 32, rh, 8, 8)
@@ -93,7 +94,11 @@ function Chrome:drawMenuRoot()
         self:menuText(item.hint, X + 52, y + rh * 0.5 + 12, self.fontTiny, soon and C.DIM or C.MUTED)
 
         local xr = X + W - 34
-        if item.id == "FONTS" then
+        if item.id == "SONG" then
+            local on = Song:isOn()
+            self:menuTextRight(on and "<  ON  >" or "<  OFF  >", xr, y + rh * 0.5, self.fontMed,
+                on and Config.COLORS.SONG or (cur and col or C.TEXT))
+        elseif item.id == "FONTS" then
             local name = Fonts.set
             local f = self.fontMed
             self:menuTextRight("<  " .. name .. "  >", xr, y + rh * 0.5, f, cur and col or C.TEXT)
@@ -182,8 +187,9 @@ end
 
 function Chrome:drawMenuSlots()
     local C, col = Config.COLORS, accent()
-    local saving = (Menu.page == "SAVE")
-    frame(self, saving and "SAVE PATTERN" or "LOAD PATTERN", currentLabel())
+    local TITLES = { GOTO = "GO TO PATTERN", COPY = "COPY PATTERN", CLEAR = "CLEAR PATTERN" }
+    local HINTS = { GOTO = "B  GO THERE", COPY = "B  COPY HERE", CLEAR = "B  CLEAR" }
+    frame(self, TITLES[Menu.page] or "PATTERNS", currentLabel())
     local rh, gap, top = 36, 4, Y + 52
     for i, slot in ipairs(Patterns.SLOTS) do
         local y = top + (i - 1) * (rh + gap)
@@ -237,8 +243,7 @@ function Chrome:drawMenuSlots()
             self:menuText(tag, xr - tw + 6, cy, self.fontTiny, C.BG)
         end
     end
-    footer(self, saving and "UP / DOWN  SLOT     B  SAVE HERE     A  BACK     START  CLOSE"
-                         or "UP / DOWN  SLOT     B  LOAD     A  BACK     START  CLOSE")
+    footer(self, "UP / DOWN  SLOT     " .. (HINTS[Menu.page] or "B  CHOOSE") .. "     A  BACK     START  CLOSE")
 end
 
 function Chrome:drawMenu()

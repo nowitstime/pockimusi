@@ -23,6 +23,12 @@ local Looper = {
     prevTick = 0.0,
     lastClockTime = nil,
     resetPending = false, -- playhead reset: let events on tick 0 fire
+    -- A switch point (song mode, src/song.lua): when the playhead reaches
+    -- boundaryTick, the frame is split there: the loop plays up to it, then
+    -- boundaryHook(tick) runs (it may swap tracks, tempo and loop length)
+    -- and returns where the playhead carries on.
+    boundaryTick = nil,
+    boundaryHook = nil,
     stutterAnchorTick = 0,
 
     -- Playback output: noteHandler(kind, ev, track) with kind "on", "off" or
@@ -360,6 +366,11 @@ end
 function Looper:recordEvent(trackIdx, ev)
     local track = self.tracks[trackIdx]
     if not track then return nil end
+    -- Song recording (src/song.lua) takes the note as a song take instead
+    if self.recordRedirect then
+        local taken = self.recordRedirect(trackIdx, ev)
+        if taken ~= nil then return taken end
+    end
 
     ev.takeId = self.currentTakeId
     ev.len = ev.len or 0
@@ -667,6 +678,24 @@ function Looper:update(dt, handler)
         self.resetPending = false
     end
 
+    -- A switch point inside this frame: play up to it, switch, and spend the
+    -- rest of the frame in what comes next (at its tempo)
+    local b = self.boundaryTick
+    if b and self.boundaryHook and not Synth.fxBeatRepeat and elapsed <= self.GAP_LIMIT
+            and self.tick + advance >= b then
+        local remain = (self.tick + advance - b) / (tps * rate)     -- seconds left
+        self:fireRange(self.prevTick, math_max(self.prevTick, b - 1e-6), handler)
+        local hook = self.boundaryHook
+        self.boundaryTick, self.boundaryHook = nil, nil
+        local start = hook(b) or 0
+        loop = self:getLoopTicks()
+        tps = self:getTicksPerSecond()
+        advance = remain * tps * rate
+        if start >= loop then self.pass = self.pass + math_floor(start / loop) end
+        self.tick = start % loop
+        self.prevTick = self.tick - 1e-6
+    end
+
     if Synth.fxBeatRepeat then
         local nextTick = self.tick + advance
         local anchor = self.stutterAnchorTick
@@ -696,7 +725,16 @@ function Looper:update(dt, handler)
         Synth:trigger("perc_wood", downbeat and 5 or 0, downbeat and 0.55 or 0.32, 0.8)
     end
 
-    local prev, cur = self.prevTick, self.tick
+    self:fireRange(self.prevTick, self.tick, handler)
+end
+
+-- Play every event the playhead crosses in (prev, cur] (wrapping past the
+-- loop end when cur < prev)
+function Looper:fireRange(prev, cur, handler)
+    handler = handler or self.noteHandler
+    if not handler then return end
+    local loop = self:getLoopTicks()
+    local tps = self:getTicksPerSecond()
     local wrapped = (cur < prev)
     local function crossedAt(t)
         if not wrapped then
