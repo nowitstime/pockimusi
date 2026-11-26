@@ -5,8 +5,8 @@
 -- switches between them without stopping the clock:
 --
 --   queue   one or more slots, played in order, each switching in at the end
---           of the loop. A slot can be queued more than once (A, B, A); on
---           S, L2 + R2 + B takes the last one back out, L2 + R2 + X empties it.
+--           of the loop. Any order, repeats too (A, A, B, B, A); on S,
+--           L2 + R2 + B takes the last one back out, L2 + R2 + X empties it.
 --   cut     switch on the next beat, keeping the place in the bar where the
 --           new loop allows.
 --
@@ -124,16 +124,12 @@ function Song:nextSlot()
     return self.queue[1] and self.queue[1].slot or nil
 end
 
--- Add a slot to the end of the queue (the same slot may come more than once).
--- Returns true, or nil, message.
+-- Add a slot to the end of the queue (any slot, as often as you like: the
+-- one playing again means one more loop of it). Returns true, or nil, message.
 function Song:enqueue(slot)
-    local last = self.queue[#self.queue]
-    if (last and last.slot == slot) or (not last and slot == Session.patternSlot) then
-        return nil, "ALREADY PLAYING " .. slot
-    end
     local data, err = prepare(slot)
     if data == false then return nil, err end
-    self.queue[#self.queue + 1] = { slot = slot, data = data }
+    self.queue[#self.queue + 1] = { slot = slot, data = data, writes = Patterns.writes[slot] or 0 }
     return true
 end
 Song.toggleQueue = Song.enqueue
@@ -149,19 +145,26 @@ function Song:cut(slot)
     if slot == Session.patternSlot then return nil, "ALREADY PLAYING " .. slot end
     local data, err = prepare(slot)
     if data == false then return nil, err end
-    self.cutTo = { slot = slot, data = data }
+    self.cutTo = { slot = slot, data = data, writes = Patterns.writes[slot] or 0 }
     return true
 end
 
 -- The switch itself (also used directly, e.g. by the writing grid later)
-function Song:switchTo(slot, data)
+function Song:switchTo(slot, data, writes)
     self:takesOff()
     Patterns.flush()
+    -- the slot was written since it was read (it was on screen and changed): read it again
+    if data and writes and (Patterns.writes[slot] or 0) ~= writes then
+        data = Patterns.read(slot) or data
+    end
     if Session.patternSlot then
         self.history[#self.history + 1] = { slot = Session.patternSlot, bars = Looper.bars }
         if #self.history > 4 then table.remove(self.history, 1) end
     end
-    if data then
+    if slot == Session.patternSlot then
+        -- the one playing again: it carries on as it is
+        data = nil
+    elseif data then
         local called, ok, err = pcall(Session.restore, data.session, { live = true })
         if not called then ok, err = false, ok end
         if not ok then
@@ -169,7 +172,7 @@ function Song:switchTo(slot, data)
             Looper:showToast("PATTERN " .. slot .. " COULDN'T BE LOADED")
             return false
         end
-    else
+    elseif slot ~= Session.patternSlot then
         Patterns.blank()
     end
     Session.patternSlot = slot
@@ -462,7 +465,7 @@ function Song:update(dt)
         switchFn = function(at)
             self.cutTo = nil
             self:catchUp(at)
-            self:switchTo(target.slot, target.data)
+            self:switchTo(target.slot, target.data, target.writes)
             Looper.pass = 0
             local pos = at % Looper:getLoopTicks()
             self:userSwitched(target.slot, pos)
@@ -479,7 +482,7 @@ function Song:update(dt)
                 if q == target then table.remove(self.queue, i) break end
             end
             self:catchUp(at0)
-            self:switchTo(target.slot, target.data)
+            self:switchTo(target.slot, target.data, target.writes)
             Looper.pass = 0
             self:userSwitched(target.slot, 0)
             return 0

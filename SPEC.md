@@ -452,7 +452,7 @@ Turn it on in the menu (`SONG MODE`, saved with the session). The instrument pag
 | On S | Clock running | Clock stopped (writing) |
 | :-- | :-- | :-- |
 | Face alone | Go to that track (B 1, A 2, Y 3, X 4) | The same |
-| D-pad held + `B` | Add that pattern to the queue (any order, repeats allowed: A, B, A) | Write it into the step under the cursor, step on |
+| D-pad held + `B` | Add that pattern to the queue (any order, repeats too: A, A, B, B, A; the one playing again = one more loop of it) | Write it into the step under the cursor, step on |
 | D-pad held + `A` | Cut to it on the next beat | — |
 | D-pad held + `Y` | Copy the playing pattern into it (asks over a full slot) | The same |
 | D-pad held + `X` (hold) | Clear that slot | The same |
@@ -460,7 +460,7 @@ Turn it on in the menu (`SONG MODE`, saved with the session). The instrument pag
 | `R2` + face | Mute / unmute, landing on the next bar | That track in / out on the step |
 | `L2` | Record the song (below) | — |
 | `L2 + R2` + `B` / `X` | Take the last queued pattern out / empty the queue | The same |
-| `START` | Play the song from the top / stop | The same |
+| `START` | Tap: pause / carry on. Double tap: play the song from the top (anywhere in song mode) | The same |
 | hold `SELECT` | The song's rows | The same |
 
 - **Switching** never stops the clock: a queued pattern switches in at the loop end (or the next bar: `SWITCH ON` row), a cut on the next beat. The pattern left behind is kept in its slot; the next one brings its own tempo, key, scale and loop length; track C starts from its first bar. Turning song mode on reads every slot and prepares its sounds.

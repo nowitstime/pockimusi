@@ -22,7 +22,7 @@ Part of [ROADMAP.md](ROADMAP.md). Takes the "patterns / song" half of Phase J. B
 | S page | A page like every other: compass on the left, face diamond on the right, display in the middle, hint strip, tape deck. Aurora is its colour, as red is the drums' | Visual consistency; the special look lives in the strip and the badge |
 | Reaching S | In song mode **`SELECT` goes home to S** from any track, and from S to track C. A quick **`SELECT + START` tap** also goes to S (holding still opens the menu). Song mode off, `SELECT` cycles as before | The face buttons on S reach tracks 1–4, so cycling through six places is too much |
 | Face buttons on S | **Alone:** go to track 1–4 (B A Y X). **D-pad held + face:** act on the pattern pointed at: `B` queue (loop end), `A` cut (now), `Y` copy the playing pattern here, `X` held clear | The control grammar: the D-pad says where, the face buttons do it |
-| Queue | **Several patterns can be queued**, repeats allowed (A → B → A): each D-pad + `B` adds one to the end. `L2 + R2 + B` on S takes the last one out, `L2 + R2 + X` empties it | Line up C → D → B ahead, as Elektron and Pocket Operators allow |
+| Queue | **Several patterns can be queued**, any order, repeats too (A, A, B, B, A): each D-pad + `B` adds one to the end. `L2 + R2 + B` on S takes the last one out, `L2 + R2 + X` empties it | Line up C → D → B ahead, as Elektron and Pocket Operators allow |
 | Mutes | `R2` + face, as on every page. In song mode a mute lands **on the next bar** | Build-ups without new controls |
 | FX | `R2` + D-pad, as on every page | Same buttons, now recordable |
 | Fades | `L1 / R1` on S; **`R2 + L1 / R1`** on any page | Fade while playing an instrument |
@@ -42,7 +42,7 @@ Each can change after playing it.
 - **Tempo and key at a switch:** jump at the boundary, no ramp. The Clock page edits the playing pattern's tempo and key.
 - **Cut:** switches on the next beat (not mid-beat), keeping the bar position where the new loop allows.
 - **Song recording start:** on an empty song, recording starts at the next loop boundary and the playing pattern is step 1. On an existing song it starts where the song is (overdub).
-- **`START` on S:** play the song from the top / stop. Elsewhere, unchanged.
+- **`START` in song mode:** a tap pauses and carries on as always; a double tap plays the song from the top.
 - **At the end:** STOP (rows: STOP, LOOP, FADE OUT).
 - **One song per session**, saved as `song.txt` beside the pattern files.
 - **A song take after an instrument change:** it keeps the instrument it was played on.
@@ -138,19 +138,19 @@ Each can change after playing it.
 
 ## Next: decisions to make, and what's left
 
-Changed after the first build (playtest feedback): the queue allows repeats (A → B → A) and loses its "press again to take it out"; `L2 + R2 + B / X` on S take the last one out / empty it. `SELECT` in song mode goes home to S (and S → C) instead of cycling through six places.
+Changed after the first build (playtest feedback): the queue takes any order, repeats too (A, A, B, B, A), and loses its "press again to take it out"; `L2 + R2 + B / X` on S take the last one out / empty it. `SELECT` in song mode goes home to S (and S → C) instead of cycling through six places. A double `START` tap in song mode plays the song from the top (a single tap pauses, as always). A queued pattern that changed after it was queued is read again at the switch; the one playing queued again just carries on.
 
 ### Decisions ❓
 
 | # | Question | As built | Options |
 | :-- | :-- | :-- | :-- |
-| 1 | Taking a pattern out of the queue | `L2 + R2 + B` last one out, `L2 + R2 + X` empty | Keep · D-pad + `B` held = remove · the writing grid edits the queue |
+| 1 | Taking a pattern out of the queue (repeats now allowed: A, A, B, B, A) | `L2 + R2 + B` last one out, `L2 + R2 + X` empty | Keep · D-pad + `B` held = remove · the writing grid edits the queue |
 | 2 | `SELECT + START` tap | Goes to S (now the same as `SELECT`) | Keep as a second way · free it for something else (e.g. play the song) |
 | 3 | A song take where a later pattern puts another instrument in that slot | Plays on whatever instrument is in the slot | Keep · play on the instrument it was recorded on · don't play there |
-| 4 | Track colours when patterns change instruments | By instrument (as today), so a slot can change colour | By instrument · fixed per slot |
+| 4 | Track colours when patterns change instruments | ✅ Decided: by instrument (a slot can change colour) | — |
 | 5 | Overdub "touch" | A touched kind is replaced until you stop recording | Keep · only while you hold it (touch, not latch) |
 | 6 | A switch you make while the song plays back | The song stops following | Keep · it jumps the song to that pattern's next step · it is ignored |
-| 7 | `START` on S | Plays from the top | Top · from the step cursor |
+| 7 | `START` in song mode | ✅ Decided: tap = pause / carry on, double tap = play from the top | — |
 | 8 | Cut timing | Next beat | Beat · bar · a row |
 | 9 | At the end | `STOP` (row: `LOOP`) | Default `STOP` or `LOOP` |
 

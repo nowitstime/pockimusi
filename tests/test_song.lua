@@ -88,19 +88,22 @@ return {
         H.eq(M.Session.patternSlot, "C", "then C")
     end },
 
-    { "a pattern can be queued again later (A, B, A); L2 + R2 + B on S takes the last out", function()
+    { "any queue order, repeats too (B, A, A); L2 + R2 + B on S takes the last out", function()
         local M = boot()
         local L = M.Looper
         twoPatterns(M, { bpmB = L.bpm })
         L:resetPlayhead()
         H.truthy(M.Song:enqueue("B"), "B")
         H.truthy(M.Song:enqueue("A"), "then A again")
-        H.falsy(M.Song:enqueue("A"), "not the same one twice in a row")
-        H.eq(#M.Song.queue, 2, "B, A")
+        H.truthy(M.Song:enqueue("A"), "and A once more")
+        H.eq(#M.Song.queue, 3, "B, A, A")
         H.play(L:getLoopDuration() + 0.1)
         H.eq(M.Session.patternSlot, "B", "B")
         H.play(L:getLoopDuration())
         H.eq(M.Session.patternSlot, "A", "back to A")
+        H.play(L:getLoopDuration())
+        H.eq(M.Session.patternSlot, "A", "A again")
+        H.eq(#M.Song.queue, 0, "all played")
         M.Song:setOn(true); M.Song:goToPage()
         M.Song:enqueue("B"); M.Song:enqueue("A")
         H.hold("L2", "R2"); H.tap("B"); H.release("L2", "R2"); H.play(0.05)
@@ -228,7 +231,7 @@ return {
         H.tap("B")
         H.truthy(M.Song:isQueued("B"), "queued")
         H.tap("B")
-        H.eq(#M.Song.queue, 1, "not twice in a row")
+        H.eq(#M.Song.queue, 2, "B twice in a row is fine")
         H.tap("A")
         H.eq(M.Song.cutTo and M.Song.cutTo.slot, "B", "cut waiting")
         H.release("UP", "RIGHT")
@@ -433,8 +436,8 @@ return {
         M.Patterns.goTo("A")
         L.tracks[2].muted = false
         local hits = spy(M)
-        H.tap("START")
-        H.truthy(Song.playing, "playing")
+        H.tap("START"); H.tap("START")
+        H.truthy(Song.playing, "a double START tap plays it from the top")
         H.eq(M.Session.patternSlot, "A", "from A")
         H.play(Song.data.steps[1].len / L:getTicksPerSecond() + 0.1)
         H.eq(M.Session.patternSlot, "B", "then B, on time")
@@ -618,5 +621,47 @@ return {
         Chrome:draw()
         H.hold("SELECT"); H.play(0.3); Chrome:draw()
         H.release("SELECT"); H.play(0.1)
+    end },
+
+    { "queueing the pattern playing keeps your edits to it", function()
+        local M = boot()
+        local L = M.Looper
+        twoPatterns(M, { bpmB = L.bpm })
+        L:resetPlayhead()
+        M.Song:enqueue("B")
+        M.Song:enqueue("A")
+        H.tap("L2"); H.tap("Y"); H.tap("L2")          -- A changes after it was queued
+        local n = #L.tracks[1].events
+        H.play(L:getLoopDuration() * 2 + 0.1)
+        H.eq(M.Session.patternSlot, "A", "back on A")
+        H.eq(#L.tracks[1].events, n, "with the note added after queueing")
+        M.Song:enqueue("A")
+        H.tap("L2"); H.tap("A"); H.tap("L2")
+        local n2 = #L.tracks[1].events
+        H.play(L:getLoopDuration())
+        H.eq(#L.tracks[1].events, n2, "A again just carries on")
+    end },
+
+    { "song mode: a single START tap pauses and carries on, a double tap plays the song from the top", function()
+        local M = boot()
+        local L = M.Looper
+        local Song = M.Song
+        Song:setOn(true)
+        local loop = L:getLoopTicks()
+        Song.data = { steps = {
+            { slot = "A", start = 0, len = loop, mutes = { false, false, false, false }, moves = {}, takes = {} },
+            { slot = "A", start = 0, len = loop, mutes = { false, false, false, false }, moves = {}, takes = {} } } }
+        Song:playFromTop()
+        H.play(L:getLoopDuration() + 0.3)
+        H.eq(Song.stepIdx, 2, "on step 2")
+        H.tap("START"); H.play(0.5)
+        H.falsy(L.playing, "paused")
+        H.tap("START")
+        H.truthy(L.playing, "carries on")
+        H.eq(Song.stepIdx, 2, "still step 2")
+        H.play(0.5)
+        H.tap("START"); H.tap("START")
+        H.truthy(L.playing and Song.playing, "playing")
+        H.eq(Song.stepIdx, 1, "from the top")
     end },
 }

@@ -576,9 +576,10 @@ local function updateStartTap()
         return
     end
     local now = love.timer.getTime()
-    -- On S: START plays the song from the top, or stops it
-    if Song.page and Song:hasSong() then
-        if Song.playing then Song:stop() else Song:playFromTop() end
+    -- Song mode with a song: a double tap plays it from the top (a single
+    -- tap pauses and carries on, as always)
+    if (now - Input.lastStartTapTime) < Modes.DOUBLE_TAP and Song:isOn() and Song:hasSong() then
+        Song:playFromTop()
         Input.lastStartTapTime = now
         return
     end

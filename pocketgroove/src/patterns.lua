@@ -18,6 +18,7 @@ local Looper  = require("src.looper")
 
 local Patterns = {
     SLOTS = { "A", "B", "C", "D", "E", "F", "G", "H" },
+    writes = {},       -- slot -> how many times its file was written this run
 }
 
 local function log(msg)
@@ -117,6 +118,7 @@ end
 function Patterns.writeText(slot, text)
     if not Patterns.isSlot(slot) then return false, "no slot " .. tostring(slot) end
     if Patterns.lastWritten then Patterns.lastWritten[slot] = nil end
+    Patterns.writes[slot] = (Patterns.writes[slot] or 0) + 1   -- song mode: is a slot read earlier still current?
     local saved = (os and os.time) and os.time() or 0
     local fileText = string.format('{slot="%s",saved=%d,session=%s}', slot, saved, text)
     local name = Patterns.fileName(slot)
