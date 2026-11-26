@@ -192,6 +192,10 @@ function Chrome:drawCenterStage()
     elseif songRows then
         faceLabels = { B = "", A = "", Y = "", X = "" }
         activeMap = {}
+    elseif Song.page and mode == "ERASE" then
+        dpadLabels = { LEFT = "UNDO SONG" }
+        faceLabels = { B = "UNQUEUE", A = "", Y = "", X = "EMPTY Q" }
+        activeMap = {}
     end
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)

@@ -88,14 +88,26 @@ return {
         H.eq(M.Session.patternSlot, "C", "then C")
     end },
 
-    { "queueing a queued pattern takes it out", function()
+    { "a pattern can be queued again later (A, B, A); L2 + R2 + B on S takes the last out", function()
         local M = boot()
-        twoPatterns(M)
-        H.truthy(M.Song:toggleQueue("B"), "in")
-        H.eq(M.Song:toggleQueue("B"), false, "out")
-        H.eq(#M.Song.queue, 0, "empty")
-        H.play(M.Looper:getLoopDuration() + 0.2)
-        H.eq(M.Session.patternSlot, "A", "still A")
+        local L = M.Looper
+        twoPatterns(M, { bpmB = L.bpm })
+        L:resetPlayhead()
+        H.truthy(M.Song:enqueue("B"), "B")
+        H.truthy(M.Song:enqueue("A"), "then A again")
+        H.falsy(M.Song:enqueue("A"), "not the same one twice in a row")
+        H.eq(#M.Song.queue, 2, "B, A")
+        H.play(L:getLoopDuration() + 0.1)
+        H.eq(M.Session.patternSlot, "B", "B")
+        H.play(L:getLoopDuration())
+        H.eq(M.Session.patternSlot, "A", "back to A")
+        M.Song:setOn(true); M.Song:goToPage()
+        M.Song:enqueue("B"); M.Song:enqueue("A")
+        H.hold("L2", "R2"); H.tap("B"); H.release("L2", "R2"); H.play(0.05)
+        H.eq(#M.Song.queue, 1, "last one out")
+        H.eq(M.Song.queue[1].slot, "B", "B stays")
+        H.hold("L2", "R2"); H.tap("X"); H.release("L2", "R2"); H.play(0.05)
+        H.eq(#M.Song.queue, 0, "emptied")
     end },
 
     { "a cut switches on the next beat and keeps the place in the bar", function()
@@ -165,21 +177,21 @@ return {
         H.eq(#hits - before, 1, "one clap in B's next loop")
     end },
 
-    { "song mode adds S to the SELECT cycle", function()
+    { "in song mode SELECT goes home to S, and from S to track C", function()
         local M = boot()
         local L = M.Looper
         L.activeTrack = 4
         H.tap("SELECT")
-        H.truthy(L.tracks[L.activeTrack].isLane, "C")
-        H.tap("SELECT")
-        H.eq(L.activeTrack, 1, "without song mode, back to 1")
+        H.truthy(L.tracks[L.activeTrack].isLane, "song mode off: 4 -> C as before")
         M.Song:setOn(true)
-        L.activeTrack = 4
-        H.tap("SELECT"); H.tap("SELECT")
-        H.truthy(M.Song.page, "S after C")
+        L.activeTrack = 2
         H.tap("SELECT")
-        H.falsy(M.Song.page, "S -> 1")
-        H.eq(L.activeTrack, 1, "track 1")
+        H.truthy(M.Song.page, "track 2 -> S")
+        H.tap("SELECT")
+        H.falsy(M.Song.page, "S -> C")
+        H.truthy(L.tracks[L.activeTrack].isLane, "track C")
+        H.tap("SELECT")
+        H.truthy(M.Song.page, "C -> S")
     end },
 
     { "a quick SELECT + START tap goes to S (song mode only)", function()
@@ -204,7 +216,7 @@ return {
         H.eq(n, 0, "no note recorded")
     end },
 
-    { "on S, D-pad + B queues and unqueues, A cuts", function()
+    { "on S, D-pad + B queues, A cuts", function()
         local M = boot()
         twoPatterns(M, { bpmB = M.Looper.bpm })
         M.Song:setOn(true); M.Song:goToPage()
@@ -216,7 +228,7 @@ return {
         H.tap("B")
         H.truthy(M.Song:isQueued("B"), "queued")
         H.tap("B")
-        H.falsy(M.Song:isQueued("B"), "taken out")
+        H.eq(#M.Song.queue, 1, "not twice in a row")
         H.tap("A")
         H.eq(M.Song.cutTo and M.Song.cutTo.slot, "B", "cut waiting")
         H.release("UP", "RIGHT")

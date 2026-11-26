@@ -446,19 +446,20 @@ Event = {
 
 Turn it on in the menu (`SONG MODE`, saved with the session). The instrument pages don't change; song mode adds one page (**S**), one strip and one red badge.
 
-- **Reaching S:** `SELECT` taps go 1 → 2 → 3 → 4 → C → **S** → 1; a quick `SELECT + START` tap goes to S from anywhere.
+- **Reaching S:** in song mode a `SELECT` tap on any track goes back to S, and on S it goes to track C (the one track the face buttons don't reach); a quick `SELECT + START` tap also goes to S. Song mode off, `SELECT` cycles 1 → 2 → 3 → 4 → C as before.
 - **S** is a page like the others in the song's aurora colour (`Config.COLORS.SONG`): the compass shows patterns A–H (lower case = empty, a number = its place in the queue, the playing one marked), the face diamond the four tracks, the middle NOW → NEXT, "in N beats", the bar progress and this pattern's chords.
 
 | On S | Clock running | Clock stopped (writing) |
 | :-- | :-- | :-- |
 | Face alone | Go to that track (B 1, A 2, Y 3, X 4) | The same |
-| D-pad held + `B` | Queue that pattern (several queue in order; again takes it out) | Write it into the step under the cursor, step on |
+| D-pad held + `B` | Add that pattern to the queue (any order, repeats allowed: A, B, A) | Write it into the step under the cursor, step on |
 | D-pad held + `A` | Cut to it on the next beat | — |
 | D-pad held + `Y` | Copy the playing pattern into it (asks over a full slot) | The same |
 | D-pad held + `X` (hold) | Clear that slot | The same |
 | `L1 / R1` | Fade out / in | Step cursor back / on |
 | `R2` + face | Mute / unmute, landing on the next bar | That track in / out on the step |
 | `L2` | Record the song (below) | — |
+| `L2 + R2` + `B` / `X` | Take the last queued pattern out / empty the queue | The same |
 | `START` | Play the song from the top / stop | The same |
 | hold `SELECT` | The song's rows | The same |
 

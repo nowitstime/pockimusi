@@ -20,9 +20,9 @@ Part of [ROADMAP.md](ROADMAP.md). Takes the "patterns / song" half of Phase J. B
 | Slots | **Living slots.** What's on screen is always a slot ("pattern B") and autosaves into it. The menu's LOAD becomes **GO TO**, SAVE becomes **COPY TO**, plus **CLEAR**. No revert | One model in and out of song mode. Copy first if you want to keep a version |
 | Turning it on | Menu → `SONG MODE: ON / OFF` | Off, the app is exactly as today |
 | S page | A page like every other: compass on the left, face diamond on the right, display in the middle, hint strip, tape deck. Aurora is its colour, as red is the drums' | Visual consistency; the special look lives in the strip and the badge |
-| Reaching S | `SELECT` taps cycle 1 → 2 → 3 → 4 → C → **S** → 1. From anywhere, a quick **`SELECT + START` tap** goes to S (holding still opens the menu) | S is reached like track C; the tap is the fast way home while performing |
+| Reaching S | In song mode **`SELECT` goes home to S** from any track, and from S to track C. A quick **`SELECT + START` tap** also goes to S (holding still opens the menu). Song mode off, `SELECT` cycles as before | The face buttons on S reach tracks 1–4, so cycling through six places is too much |
 | Face buttons on S | **Alone:** go to track 1–4 (B A Y X). **D-pad held + face:** act on the pattern pointed at: `B` queue (loop end), `A` cut (now), `Y` copy the playing pattern here, `X` held clear | The control grammar: the D-pad says where, the face buttons do it |
-| Queue | **Several patterns can be queued**: each D-pad + `B` adds one to the end of the queue; `B` on one already queued takes it out | Line up C → D → B ahead, as Elektron and Pocket Operators allow |
+| Queue | **Several patterns can be queued**, repeats allowed (A → B → A): each D-pad + `B` adds one to the end. `L2 + R2 + B` on S takes the last one out, `L2 + R2 + X` empties it | Line up C → D → B ahead, as Elektron and Pocket Operators allow |
 | Mutes | `R2` + face, as on every page. In song mode a mute lands **on the next bar** | Build-ups without new controls |
 | FX | `R2` + D-pad, as on every page | Same buttons, now recordable |
 | Fades | `L1 / R1` on S; **`R2 + L1 / R1`** on any page | Fade while playing an instrument |
@@ -133,3 +133,33 @@ Each can change after playing it.
 - **Notes into the song** reuse the instruments' recording path: `Input:isRecording()` is true while the tape rolls, and `Looper:recordEvent` hands the note to the song (`Looper.recordRedirect`).
 - **The switch point** is one mechanism on the looper (`boundaryTick` / `boundaryHook`) that splits a frame exactly: queued and cut switches, mutes on the bar, the song's own steps and the armed recording start all use it.
 - **Left for later:** borrowing another pattern's loop for one track (it would write borrowed notes into a living slot); 1-bar patterns (the Clock page's 2 ↔ 4 toggle, the save format and the top bar's beat marks all assume 2 or 4).
+
+---
+
+## Next: decisions to make, and what's left
+
+Changed after the first build (playtest feedback): the queue allows repeats (A → B → A) and loses its "press again to take it out"; `L2 + R2 + B / X` on S take the last one out / empty it. `SELECT` in song mode goes home to S (and S → C) instead of cycling through six places.
+
+### Decisions ❓
+
+| # | Question | As built | Options |
+| :-- | :-- | :-- | :-- |
+| 1 | Taking a pattern out of the queue | `L2 + R2 + B` last one out, `L2 + R2 + X` empty | Keep · D-pad + `B` held = remove · the writing grid edits the queue |
+| 2 | `SELECT + START` tap | Goes to S (now the same as `SELECT`) | Keep as a second way · free it for something else (e.g. play the song) |
+| 3 | A song take where a later pattern puts another instrument in that slot | Plays on whatever instrument is in the slot | Keep · play on the instrument it was recorded on · don't play there |
+| 4 | Track colours when patterns change instruments | By instrument (as today), so a slot can change colour | By instrument · fixed per slot |
+| 5 | Overdub "touch" | A touched kind is replaced until you stop recording | Keep · only while you hold it (touch, not latch) |
+| 6 | A switch you make while the song plays back | The song stops following | Keep · it jumps the song to that pattern's next step · it is ignored |
+| 7 | `START` on S | Plays from the top | Top · from the step cursor |
+| 8 | Cut timing | Next beat | Beat · bar · a row |
+| 9 | At the end | `STOP` (row: `LOOP`) | Default `STOP` or `LOOP` |
+
+### Not built
+
+- **Borrowed loops** (a step's track plays another pattern's loop). Needs a per-step track override that is never written back into a living slot.
+- **1-bar patterns.** Changes the Clock page's 2 ↔ 4 toggle (2 → 4 → 1?), the save format and the top bar's beat marks.
+- **Tempo ramps**, several songs, `.wav` export of the song (audio engine v2).
+
+### Bugs
+
+To be listed from playtesting on the device (📱 checks above).

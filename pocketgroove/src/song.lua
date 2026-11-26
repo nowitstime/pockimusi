@@ -5,7 +5,8 @@
 -- switches between them without stopping the clock:
 --
 --   queue   one or more slots, played in order, each switching in at the end
---           of the loop. Queueing a slot that is already queued takes it out.
+--           of the loop. A slot can be queued more than once (A, B, A); on
+--           S, L2 + R2 + B takes the last one back out, L2 + R2 + X empties it.
 --   cut     switch on the next beat, keeping the place in the bar where the
 --           new loop allows.
 --
@@ -123,21 +124,24 @@ function Song:nextSlot()
     return self.queue[1] and self.queue[1].slot or nil
 end
 
--- Add a slot to the end of the queue, or take it out if it is already there.
--- Returns true (queued), false (taken out) or nil, message.
-function Song:toggleQueue(slot)
-    local at = self:isQueued(slot)
-    if at then
-        table.remove(self.queue, at)
-        return false
-    end
-    if slot == Session.patternSlot and #self.queue == 0 then
+-- Add a slot to the end of the queue (the same slot may come more than once).
+-- Returns true, or nil, message.
+function Song:enqueue(slot)
+    local last = self.queue[#self.queue]
+    if (last and last.slot == slot) or (not last and slot == Session.patternSlot) then
         return nil, "ALREADY PLAYING " .. slot
     end
     local data, err = prepare(slot)
     if data == false then return nil, err end
     self.queue[#self.queue + 1] = { slot = slot, data = data }
     return true
+end
+Song.toggleQueue = Song.enqueue
+
+-- Take the last queued pattern back out. Returns its slot, or nil.
+function Song:popQueue()
+    local q = table.remove(self.queue)
+    return q and q.slot or nil
 end
 
 -- Switch on the next beat
@@ -224,7 +228,11 @@ function Song:leavePage(trackSlot)
     if trackSlot then
         Looper.activeTrack = trackSlot
         local t = Looper.tracks[trackSlot]
-        Looper:showToast(string.format("TRACK %d: %s", trackSlot, t and t.name or ""))
+        if t and t.isLane then
+            Looper:showToast("TRACK C: CHORDS - SELECT GOES BACK TO S")
+        else
+            Looper:showToast(string.format("TRACK %d: %s", trackSlot, t and t.name or ""))
+        end
     end
 end
 
@@ -390,10 +398,14 @@ function Song:updatePage(dt)
     elseif writing and Input.pressed.A then
         Looper:showToast("THE CLOCK IS STOPPED - B WRITES " .. slot .. " INTO STEP " .. self.cursor)
     elseif Input.pressed.B then
-        local queued, err = self:toggleQueue(slot)
-        if queued == nil then Looper:showToast(err)
-        elseif queued then Looper:showToast("QUEUED " .. slot .. " (" .. #self.queue .. " WAITING)")
-        else Looper:showToast(slot .. " TAKEN OUT OF THE QUEUE") end
+        local queued, err = self:enqueue(slot)
+        if queued then
+            local order = {}
+            for _, q in ipairs(self.queue) do order[#order + 1] = q.slot end
+            Looper:showToast("QUEUED " .. slot .. " - NEXT: " .. table.concat(order, " "))
+        else
+            Looper:showToast(err)
+        end
     elseif Input.pressed.A then
         local ok, err = self:cut(slot)
         Looper:showToast(ok and ("CUT TO " .. slot .. " ON THE NEXT BEAT") or err)
@@ -418,8 +430,9 @@ function Song:updatePage(dt)
         if before < self.CLEAR_HOLD and self.clearHold >= self.CLEAR_HOLD then
             local ok, err = Patterns.clear(slot)
             if ok then
-                local at = self:isQueued(slot)
-                if at then table.remove(self.queue, at) end
+                for i = #self.queue, 1, -1 do
+                    if self.queue[i].slot == slot then table.remove(self.queue, i) end
+                end
                 self.summaries[slot] = { empty = true }
             end
             Looper:showToast(ok and ("CLEARED " .. slot) or err)
@@ -462,8 +475,9 @@ function Song:update(dt)
             switchAt = math.min(loop, (math.floor(Looper.tick / bar) + 1) * bar)
         end
         switchFn = function(at0)
-            local at = self:isQueued(target.slot)
-            if at then table.remove(self.queue, at) end
+            for i, q in ipairs(self.queue) do
+                if q == target then table.remove(self.queue, i) break end
+            end
             self:catchUp(at0)
             self:switchTo(target.slot, target.data)
             Looper.pass = 0

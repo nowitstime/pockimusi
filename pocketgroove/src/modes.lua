@@ -248,6 +248,18 @@ end
 function handlers.ERASE(ctx)
     Input.comboUsed.L2, Input.comboUsed.R2 = true, true
     local tIdx = Looper.activeTrack
+    -- On S the Erase page works on the queue: B takes the last one out, X empties it
+    if Song.page then
+        if Input.pressed.B then
+            local slot = Song:popQueue()
+            Looper:showToast(slot and (slot .. " TAKEN OUT OF THE QUEUE") or "THE QUEUE IS EMPTY")
+        elseif Input.pressed.X then
+            Song:clearQueue()
+            Looper:showToast("QUEUE EMPTIED")
+        end
+        if Input.pressed.LEFT or Input.pressed.L1 then Song:undo() end
+        return true
+    end
     for _, btn in ipairs(FACE) do
         if Input.pressed[btn] then
             local actions, label = Modes:eraseTarget(ctx.def, ctx.state, btn)
@@ -537,14 +549,15 @@ end
 function updateSelectTap()
     if not Input.released.SELECT then return end
     if not Input.comboUsed.SELECT and not Input.comboUsed.L2 and Input.selectHoldTime < Modes.TAP_MAX then
-        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> [S, in song mode] -> 1
-        if Song.page then
-            Song:leavePage(1)
-            return
-        end
-        local cur = Looper.tracks[Looper.activeTrack]
-        if cur and cur.isLane and Song:isOn() then
-            Song:goToPage()
+        -- 1 -> 2 -> 3 -> 4 -> C (the chord lane) -> 1. In song mode the face
+        -- buttons on S reach the tracks, so SELECT goes home to S, and from S
+        -- to track C (the one track the face buttons don't reach).
+        if Song:isOn() then
+            if Song.page then
+                Song:leavePage(Looper.LANE)
+            else
+                Song:goToPage()
+            end
             return
         end
         Looper.activeTrack = (Looper.activeTrack % #Looper.tracks) + 1

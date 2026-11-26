@@ -52,18 +52,21 @@ Chrome.FOOTER_HINTS = {
                   { "key", { "SELECT" }, "FRESH" } },
     NEW       = { { "key", { "SELECT" }, "HOLD 1 S: CLEAR ALL NOTES" }, { "dpad", "L", "WITH L2+R2: UNDO" } },
     SONG      = { { "face", "XYAB", "GO TO TRACK" }, { "dpad", "UDLR", "HOLD: PATTERNS" }, { "key", { "L1", "R1" }, "FADE" },
-                  { "key", { "R2" }, "+FACE MUTE" }, { "key", { "SELECT" }, "TRACK 1" } },
+                  { "key", { "R2" }, "+FACE MUTE" }, { "key", { "SELECT" }, "CHORDS" } },
     SONG_POINT = { { "face", "B", "QUEUE" }, { "face", "A", "CUT" }, { "face", "Y", "COPY HERE" }, { "face", "X", "HOLD: CLEAR" } },
     SONG_WRITE = { { "dpad", "UDLR", "+B WRITE STEP" }, { "key", { "L1", "R1" }, "STEP" }, { "key", { "R2" }, "+FACE IN/OUT" },
                    { "key", { "START" }, "PLAY" } },
     SONG_WRITE_POINT = { { "face", "B", "WRITE INTO STEP" }, { "face", "Y", "COPY HERE" }, { "face", "X", "HOLD: CLEAR" } },
+    NORMAL_SONG = { { "key", { "L2" }, "RECORD" }, { "key", { "SELECT" }, "BACK TO SONG" }, { "key", { "START" }, "CLOCK" },
+                    { "key", { "SELECT", "R2" }, "MIX" }, { "key", { "L2", "R2" }, "ERASE" } },
+    SONG_ERASE = { { "face", "B", "TAKE LAST OUT OF QUEUE" }, { "face", "X", "EMPTY QUEUE" }, { "dpad", "L", "UNDO SONG PASS" } },
     SONG_ROWS  = { { "dpad", "UD", "ROW" }, { "dpad", "LR", "CHANGE" }, { "key", { "L1", "R1" }, "STEP" } },
     FX        = { { "dpad", "U", "STUTTER" }, { "dpad", "D", "SLOW" }, { "dpad", "L", "FILTER" }, { "dpad", "R", "CRUSH" },
                   { "face", "XYAB", "MUTE 1-4" } },
 }
 Chrome.FOOTER_TAGS = { REC_LATCH = "REC", REC_HOLD = "REC", TRACK = "TRACK", MIX = "MIX", TRANSPORT = "CLOCK",
                        ERASE = "ERASE", NEW = "FRESH", FX = "LIVE FX", SONG = "SONG", SONG_POINT = "SONG",
-                       SONG_WRITE = "WRITE", SONG_WRITE_POINT = "WRITE", SONG_ROWS = "TRACK" }
+                       SONG_WRITE = "WRITE", SONG_WRITE_POINT = "WRITE", SONG_ROWS = "TRACK", SONG_ERASE = "ERASE" }
 -- Pages whose hints stay up even while a toast is showing
 local HELD_PAGES = { TRACK = true, MIX = true, TRANSPORT = true, ERASE = true, NEW = true, FX = true }
 
@@ -283,8 +286,12 @@ function Chrome:drawFooterStrip(def)
                 key = Song.pointing and "SONG_POINT" or "SONG"
             end
         end
+    elseif Song and Song:isOn() and mode == "NORMAL" then
+        key = "NORMAL_SONG"
     elseif Song and Song.page and mode == "TRACK" then
         key = "SONG_ROWS"
+    elseif Song and Song.page and mode == "ERASE" then
+        key = "SONG_ERASE"
     end
 
     if Looper.toastTimer > 0 and not HELD_PAGES[mode] then
@@ -296,7 +303,7 @@ function Chrome:drawFooterStrip(def)
     local col = (mode == "NORMAL") and C.MUTED or (Config.MODE_COLORS[mode] or C.MUTED)
     local x = 18
     local tag = self.FOOTER_TAGS[key]
-    if key ~= mode and key ~= "SONG_ROWS" then col = Config.COLORS.SONG end
+    if key ~= mode and key ~= "SONG_ROWS" and key ~= "SONG_ERASE" and key ~= "NORMAL_SONG" then col = Config.COLORS.SONG end
     if tag then
         local f = self.fontTiny
         local w = f:getWidth(tag) + 14
