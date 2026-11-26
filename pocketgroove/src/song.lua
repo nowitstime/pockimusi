@@ -140,6 +140,15 @@ function Song:popQueue()
     return q and q.slot or nil
 end
 
+-- A slot was emptied: it leaves the queue and a waiting cut (its data was read earlier)
+function Song:slotCleared(slot)
+    for i = #self.queue, 1, -1 do
+        if self.queue[i].slot == slot then table.remove(self.queue, i) end
+    end
+    if self.cutTo and self.cutTo.slot == slot then self.cutTo = nil end
+    self.summaries[slot] = { empty = true }
+end
+
 -- Switch on the next beat
 function Song:cut(slot)
     if slot == Session.patternSlot then return nil, "ALREADY PLAYING " .. slot end
@@ -154,7 +163,7 @@ function Song:switchTo(slot, data, writes)
     self:takesOff()
     Patterns.flush()
     -- the slot was written since it was read (it was on screen and changed): read it again
-    if data and writes and (Patterns.writes[slot] or 0) ~= writes then
+    if writes and (Patterns.writes[slot] or 0) ~= writes then
         data = Patterns.read(slot) or data
     end
     if Session.patternSlot then
@@ -210,6 +219,7 @@ function Song:setOn(on)
         self.page, self.pointing = false, nil
         self:clearQueue()
         self.pendingMutes = {}
+        self.playFx = { s = false, h = false, d = false, c = false }
         Synth.fadeGain = 1.0
         Looper:showToast("SONG MODE OFF")
     end
@@ -432,12 +442,7 @@ function Song:updatePage(dt)
         self.clearHold = self.clearHold + (dt or 0)
         if before < self.CLEAR_HOLD and self.clearHold >= self.CLEAR_HOLD then
             local ok, err = Patterns.clear(slot)
-            if ok then
-                for i = #self.queue, 1, -1 do
-                    if self.queue[i].slot == slot then table.remove(self.queue, i) end
-                end
-                self.summaries[slot] = { empty = true }
-            end
+            if ok then self:slotCleared(slot) end
             Looper:showToast(ok and ("CLEARED " .. slot) or err)
         end
     else
@@ -491,7 +496,10 @@ function Song:update(dt)
     -- the song's own next step (playing back, and not writing a new one at its end)
     local step = self.playing and self.data.steps[self.stepIdx]
     if not switchAt and step and not (self.recording and self.stepIdx == #self.data.steps) then
-        local endAt = Looper.tick + math.max(0, step.len - self.stepPos)
+        local left = step.len - self.stepPos
+        -- past its end (a missed switch point: a hitch, stutter): on the next bar, not mid-bar
+        local endAt = (left > 0) and (Looper.tick + left)
+                      or math.min(loop, (math.floor(Looper.tick / bar) + 1) * bar)
         if endAt <= loop then
             switchAt = endAt
             switchFn = function(at)
@@ -711,7 +719,7 @@ function Song:captureNote(trackIdx, ev)
     ev.len = ev.len or 0
     ev.grid = grid
     ev.takeId = Looper.currentTakeId
-    ev.skipOnce = true                     -- the live press played it
+    ev.skipOnce = (ev.at > self.stepPos) or nil   -- the live press played it (only one still ahead gets crossed)
     step.takes[trackIdx] = step.takes[trackIdx] or {}
     table.insert(step.takes[trackIdx], ev)
     return ev
@@ -851,6 +859,13 @@ function Song:stopRecording()
         return
     end
     if not self.recording then return end
+    -- stopped on the song's last step (the one being written): the song lets
+    -- go and the loop carries on, instead of ending at once mid-bar
+    if self.playing and self.stepIdx == #self.data.steps then
+        self.playing = false
+        self:takesOff()
+        self.playFx = { s = false, h = false, d = false, c = false }
+    end
     self:rolling(false)
     self.touched = {}
     for _, st in ipairs(self.data.steps) do
@@ -870,6 +885,7 @@ function Song:undo()
     self.data, self.undoData = self.undoData, nil
     self.playing = false
     self:takesOff()
+    self.playFx = { s = false, h = false, d = false, c = false }
     self:save()
     Looper:showToast("UNDO: THE SONG BEFORE THAT PASS")
     return true
@@ -881,6 +897,7 @@ function Song:clearSong()
     self.data = { steps = {} }
     self.playing, self.armed = false, false
     self:takesOff()
+    self.playFx = { s = false, h = false, d = false, c = false }
     self:save()
 end
 
@@ -997,7 +1014,11 @@ function Song:cycleRow(key, delta)
         return
     elseif key == "PATTERN" and st then
         self.undoData = copy(self.data)
+        local oldLoop = patternLoop(self, st.slot)
         st.slot = cycle(Patterns.SLOTS, st.slot, delta)
+        local newLoop = patternLoop(self, st.slot)
+        st.len = math.max(1, math.floor(st.len / oldLoop + 0.5)) * newLoop
+        st.start = st.start % newLoop
     elseif key == "LOOPS" and st then
         self.undoData = copy(self.data)
         local loopT = patternLoop(self, st.slot)
