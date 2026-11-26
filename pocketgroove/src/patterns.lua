@@ -83,7 +83,7 @@ function Patterns.summary(slot)
         out.lanes[i] = lane
         if type(t) == "table" then
             local def = type(t.instrumentId) == "string" and Instruments.byId[t.instrumentId]
-            out.instruments[i] = def and def.name or "?"
+            out.instruments[#out.instruments + 1] = def and def.name or "?"
             lane.id, lane.muted = def and def.id or nil, (t.muted == true)
             if type(t.events) == "table" then
                 out.notes = out.notes + #t.events
@@ -169,6 +169,8 @@ function Patterns.clear(slot)
     if slot == Session.patternSlot then return false, "THAT'S THE PATTERN ON SCREEN" end
     local fs = love.filesystem
     if fs.getInfo and fs.getInfo(Patterns.fileName(slot)) then fs.remove(Patterns.fileName(slot)) end
+    Patterns.writes[slot] = (Patterns.writes[slot] or 0) + 1
+    Patterns.lastWritten[slot] = nil
     return true
 end
 

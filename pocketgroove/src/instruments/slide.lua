@@ -419,7 +419,7 @@ function Slide:updateVoices(dt, state, track)
     local loop = Looper:getLoopTicks()
     for ev, p in pairs(state.playing) do
         local v = p.voice
-        if not (v.isSounding and v:isSounding()) then
+        if not (v and v.isSounding and v:isSounding()) then
             state.playing[ev] = nil
             if state.lastPlay == p then state.lastPlay = nil end
         elseif not p.diving then

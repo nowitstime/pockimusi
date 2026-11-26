@@ -301,13 +301,17 @@ function Breaks:updateVoices(dt, state, track)
     end
 end
 
-function Breaks:updateVisuals(dt, state)
+function Breaks:updateVisuals(dt, state, controlsBlocked, isActive)
     for role, v in pairs(state.flash) do
         state.flash[role] = math_max(0.0, v - dt * 5.0)
     end
+    if not isActive or controlsBlocked then
+        state.seg, state.pendingSlice = nil, nil
+        state.order = {}
+    end
     local live = state.seg and state.segs[state.seg.ev]
     if live then
-        local _, total = self:hitList(state, nil)
+        local total = (Library.byId[state.breakId] or Library.byId[Library.ORDER[1]]).bars * Looper.BAR_TICKS
         state.viewPos = (live.pos or 0) / total
         state.viewMode = live.ev.mode
     else
@@ -350,6 +354,7 @@ end
 
 -- Start a live stretch: what it is, and where it starts
 function Breaks:startStretch(state, track, hold, want, where)
+    local prev = state.seg
     self:endStretch(state)
     local ev = { action = want.btn, mode = want.mode, speed = want.speed, vel = 0.85 }
     if want.mode == "stutter" then
@@ -363,7 +368,12 @@ function Breaks:startStretch(state, track, hold, want, where)
     else
         ev.sync = true
     end
-    state.seg = hold(ev, { manual = true })
+    local h = hold(ev, { manual = true })
+    if prev and prev.rec and h and h.rec then
+        local len = (h.rec.tick - prev.rec.tick) % Looper:getLoopTicks()
+        if len > 0 then prev.rec.len = len end
+    end
+    state.seg = h
     state.want = want
 end
 
@@ -383,7 +393,7 @@ end
 
 function Breaks:getActiveButtons(state)
     local on = {}
-    if state.want and state.seg then on[state.want.btn] = true end
+    if state.want and state.seg and state.seg:isHeld() then on[state.want.btn] = true end
     if Input.down.X then on.X = true end
     return on
 end
@@ -418,19 +428,21 @@ function Breaks:updateInput(dt, state, track, play, hold)
         if have.btn ~= want.btn or have.mode ~= want.mode or have.speed ~= want.speed then
             -- a different move: carry on from where the break is
             self:startStretch(state, track, hold, want, { at = (cur.pos or 0) / total })
-        end
-        -- a new direction: jump to that slice at the next 1/8 line (at once
-        -- if the line has only just gone by)
-        if slice and dir ~= state.lastDir then
-            state.pendingSlice = slice
-            if self:justAfterJumpLine() then
-                self:startStretch(state, track, hold, want, { slice = slice })
+            if slice and dir ~= state.lastDir then state.pendingSlice = slice end
+        else
+            -- a new direction: jump to that slice at the next 1/8 line (at once
+            -- if the line has only just gone by)
+            if slice and dir ~= state.lastDir then
+                state.pendingSlice = slice
+                if self:justAfterJumpLine() then
+                    self:startStretch(state, track, hold, want, { slice = slice })
+                    state.pendingSlice = nil
+                end
+            end
+            if state.pendingSlice and self:crossedJumpLine() then
+                self:startStretch(state, track, hold, want, { slice = state.pendingSlice })
                 state.pendingSlice = nil
             end
-        end
-        if state.pendingSlice and self:crossedJumpLine() then
-            self:startStretch(state, track, hold, want, { slice = state.pendingSlice })
-            state.pendingSlice = nil
         end
     end
     state.lastDir = dir

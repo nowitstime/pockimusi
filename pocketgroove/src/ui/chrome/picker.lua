@@ -11,6 +11,7 @@ local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Harmony     = require("src.harmony")
+local Song        = require("src.song")
 local Display     = require("src.ui.display")
 
 local clamp      = Config.clamp
@@ -33,7 +34,7 @@ Chrome.SHELF_CHIPS = 5          -- chips shown for a list without groups
 
 function Chrome:drawPickerShelf()
     local picker = Modes.trackPage.picker
-    if Modes.current ~= "TRACK" or not picker or Modes.trackPage.pending then
+    if Modes.current ~= "TRACK" or Song.page or not picker or Modes.trackPage.pending then
         self.shelfAnim = nil
         return
     end

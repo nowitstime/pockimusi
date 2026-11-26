@@ -150,6 +150,9 @@ end
 
 function Roller:updateVisuals(dt, state, controlsBlocked, isActive)
     Lead.updateVisuals(self, dt, state, controlsBlocked, isActive)
+    if not isActive or controlsBlocked then
+        state.rollBtn, state.rollSkip = nil, nil
+    end
     for i = #state.beads, 1, -1 do
         local b = state.beads[i]
         b.age = b.age + dt

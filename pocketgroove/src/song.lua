@@ -164,7 +164,7 @@ function Song:switchTo(slot, data, writes)
     Patterns.flush()
     -- the slot was written since it was read (it was on screen and changed): read it again
     if writes and (Patterns.writes[slot] or 0) ~= writes then
-        data = Patterns.read(slot) or data
+        data = Patterns.read(slot)
     end
     if Session.patternSlot then
         self.history[#self.history + 1] = { slot = Session.patternSlot, bars = Looper.bars }
@@ -500,8 +500,8 @@ function Song:update(dt)
         -- past its end (a missed switch point: a hitch, stutter): on the next bar, not mid-bar
         local endAt = (left > 0) and (Looper.tick + left)
                       or math.min(loop, (math.floor(Looper.tick / bar) + 1) * bar)
-        if endAt <= loop then
-            switchAt = endAt
+        if endAt <= loop + 1e-4 then
+            switchAt = math.min(endAt, loop)
             switchFn = function(at)
                 self:catchUp(at)
                 return self:nextStep(at)
@@ -581,12 +581,14 @@ function Song:playbackFx()
     return f.s, f.h, f.d, f.c
 end
 
-function Song:takesOff()
+function Song:takesOff(trackIdx)
     local handler = Looper.noteHandler
     for i = #self.sounding, 1, -1 do
         local snd = self.sounding[i]
-        if handler then handler("off", snd.ev, snd.track) end
-        self.sounding[i] = nil
+        if not trackIdx or (snd.track and snd.track.slot == trackIdx) then
+            if handler then handler("off", snd.ev, snd.track) end
+            table.remove(self.sounding, i)
+        end
     end
 end
 
@@ -596,6 +598,10 @@ function Song:advance(d)
     local step = self.data.steps[self.stepIdx]
     if not (self.playing and step) or d <= 0 then return end
     local prev, cur = self.stepPos, self.stepPos + d
+    if self.stepFresh then
+        prev = -1e-6
+        self.stepFresh = false
+    end
     self.stepPos = cur
     if self.recording and self.stepIdx == #self.data.steps and cur > step.len then step.len = cur end
 
@@ -711,7 +717,14 @@ end
 function Song:captureNote(trackIdx, ev)
     local step = self.data.steps[self.stepIdx]
     if not (self.recording and step) then return nil end
-    local grid = Looper:getTrackGrid(trackIdx).stepTicks
+    local loop = Looper:getLoopTicks()
+    local grid
+    if ev.overrideGridSteps then
+        grid = loop / ev.overrideGridSteps
+    else
+        grid = Looper:getTrackGrid(trackIdx).stepTicks
+    end
+    ev.overrideGridSteps = nil
     local now = Looper.tick
     local snapped = grid and (math.floor(now / grid + 0.5) * grid) or math.floor(now + 0.5)
     ev.at = math.max(0, self.stepPos + (snapped - now))
@@ -742,10 +755,12 @@ function Song:nextStep(at)
         return at
     end
     local data = self.nextData
-    if not data or data.slot ~= step.slot then data = { data = (prepare(step.slot)) or nil } end
-    self:switchTo(step.slot, data.data or nil)
+    if not data or data.slot ~= step.slot then
+        data = { data = (prepare(step.slot)) or nil, writes = Patterns.writes[step.slot] or 0 }
+    end
+    self:switchTo(step.slot, data.data or nil, data.writes)
     for i = 1, 4 do Looper.tracks[i].muted = step.mutes[i] and true or false end
-    self.stepIdx, self.stepPos = nextIdx, 0
+    self.stepIdx, self.stepPos, self.stepFresh = nextIdx, 0, true
     self.cursor = nextIdx
     self.lastTick = step.start % Looper:getLoopTicks()
     Looper.pass = 0
@@ -755,7 +770,7 @@ end
 
 function Song:readAhead()
     local n = self.data.steps[self.stepIdx + 1]
-    self.nextData = n and { slot = n.slot, data = (prepare(n.slot)) or nil } or nil
+    self.nextData = n and { slot = n.slot, data = (prepare(n.slot)) or nil, writes = Patterns.writes[n.slot] or 0 } or nil
 end
 
 -- A switch you made (queue or cut) while the song plays
@@ -765,7 +780,7 @@ function Song:userSwitched(slot, pos)
         if step then step.len = self.stepPos end
         for i = #self.data.steps, self.stepIdx + 1, -1 do table.remove(self.data.steps, i) end
         self.data.steps[#self.data.steps + 1] = newStep(slot, pos)
-        self.stepIdx, self.stepPos = #self.data.steps, 0
+        self.stepIdx, self.stepPos, self.stepFresh = #self.data.steps, 0, true
         self.lastTick = pos
         self.nextData = nil
     elseif self.playing then
@@ -796,10 +811,11 @@ function Song:playFromTop()
     self.playFx = { s = false, h = false, d = false, c = false }
     Looper.tick = step.start % Looper:getLoopTicks()
     Looper.prevTick = Looper.tick - 1e-6
+    Looper.resetPending = true
     Looper.pass = 0
     Looper.playing = true
     Looper:syncPhase()
-    self.stepIdx, self.stepPos, self.lastTick = 1, 0, Looper.tick
+    self.stepIdx, self.stepPos, self.stepFresh, self.lastTick = 1, 0, true, Looper.tick
     self.playing = true
     self:readAhead()
     Looper:showToast("PLAYING THE SONG")
@@ -820,15 +836,17 @@ function Song:startRecording()
     if self.recording or self.armed then return end
     self.undoData = copy(self.data)
     self.touched = {}
-    self.lastRecFx, self.lastRecFade = liveFx(), Synth.fadeGain or 1
     if self.playing then
+        self.lastRecFx, self.lastRecFade = liveFx(), Synth.fadeGain or 1
         self:rolling(true)
         Looper:showToast("SONG REC - OVER THE SONG: WHAT YOU DON'T TOUCH STAYS")
     elseif self:hasSong() then
         self:playFromTop()
+        self.lastRecFx, self.lastRecFade = liveFx(), Synth.fadeGain or 1
         self:rolling(true)
         Looper:showToast("SONG REC FROM THE TOP - WHAT YOU DON'T TOUCH STAYS")
     else
+        self.lastRecFx, self.lastRecFade = liveFx(), Synth.fadeGain or 1
         self.armed = true
         Looper.playing = true
         Looper:showToast("SONG REC STARTS ON THE NEXT LOOP")
@@ -846,7 +864,7 @@ end
 function Song:beginRecording()
     self.armed = false
     self.data = { steps = { newStep(Session.patternSlot or "A", 0) } }
-    self.stepIdx, self.stepPos, self.lastTick = 1, 0, 0
+    self.stepIdx, self.stepPos, self.stepFresh, self.lastTick = 1, 0, true, 0
     self.playing = true
     self:rolling(true)
     Looper:showToast("SONG REC - EVERYTHING YOU DO GOES INTO THE SONG")

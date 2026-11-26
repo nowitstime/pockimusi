@@ -543,7 +543,8 @@ function Lane:updateInput(dt, state, track)
     shoulderTaps(state)
 
     -- X: hold for the wheel, tap to stamp
-    if Input.down.X then
+    if Input.pressed.X then state.xOwned = true end
+    if Input.down.X and state.xOwned then
         state.xHeld = state.xHeld + dt
         if not state.wheelOpen and state.xHeld >= self.TAP then
             state.wheelOpen = true
@@ -563,17 +564,20 @@ function Lane:updateInput(dt, state, track)
         return
     end
     if Input.released.X then
-        if state.wheelOpen then
-            if state.hover then
-                state.picked = state.hover
-                Looper:showToast(string.format("PICKED %s - TAP X TO PUT IT DOWN", state.picked))
+        if state.xOwned then
+            if state.wheelOpen then
+                if state.hover then
+                    state.picked = state.hover
+                    Looper:showToast(string.format("PICKED %s - TAP X TO PUT IT DOWN", state.picked))
+                else
+                    Looper:showToast("WHEEL CLOSED - " .. state.picked .. " STAYS PICKED")
+                end
+                self:closeWheel(state)
             else
-                Looper:showToast("WHEEL CLOSED - " .. state.picked .. " STAYS PICKED")
+                self:stamp(state, track)
             end
-            self:closeWheel(state)
-        else
-            self:stamp(state, track)
         end
+        state.xOwned = false
         state.xHeld = 0.0
     end
 
@@ -625,8 +629,13 @@ function Lane:updateVisuals(dt, state, controlsBlocked, isActive)
         local dirKey = (controlsBlocked or not isActive) and "NEUTRAL" or Input:get8WayDirection()
         state.currentChord = self:chordFor(state, dirKey)
     end
+    if not isActive or controlsBlocked then
+        if wheel then self:closeWheel(state) end
+        state.xOwned, state.xHeld = false, 0.0
+        state.L1used, state.R1used = true, true
+    end
     if not isActive then return end
-    if controlsBlocked and wheel then self:closeWheel(state); state.xHeld = 0.0 end
+    wheel = state.wheelOpen
 
     local dpad = self.VIEW.dpad
     for _, d in ipairs(DIRS) do dpad[d] = nil end

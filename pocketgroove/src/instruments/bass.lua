@@ -314,7 +314,7 @@ function Bass:noteOn(ev, state, track, isPlayback)
         -- now (the old note ends on this note's tick)
         local voice
         local prev = state.lastPlay
-        if ev.legato and prev and prev.voice:isSounding() then
+        if ev.legato and prev and prev.voice and prev.voice:isSounding() then
             local since = prev.voice:releasedFor()
             if not since or since <= 0.05 then
                 voice = prev.voice
@@ -327,9 +327,11 @@ function Bass:noteOn(ev, state, track, isPlayback)
             end
         end
         voice = voice or self:startVoice(ev, state, track, semis, glideFrom)
-        local entry = { voice = voice, elapsed = 0.0, lastTick = Looper.tick, semis = semis, base = semis, chord = chord }
-        state.playing[ev] = entry
-        state.lastPlay = entry
+        if voice then
+            local entry = { voice = voice, elapsed = 0.0, lastTick = Looper.tick, semis = semis, base = semis, chord = chord }
+            state.playing[ev] = entry
+            state.lastPlay = entry
+        end
     end
     self:showNote(state, semis)
 end
@@ -364,7 +366,7 @@ function Bass:getDisplayVoice(state)
     local v = h and state.voices[h.ev]
     if v and v.isSounding and v:isSounding() then return v, h.ev end
     local p = state.lastPlay
-    if p and p.voice.isSounding and p.voice:isSounding() then return p.voice end
+    if p and p.voice and p.voice.isSounding and p.voice:isSounding() then return p.voice end
     return nil
 end
 
@@ -402,7 +404,7 @@ function Bass:updateVoices(dt, state, track)
     local loop = Looper:getLoopTicks()
     for ev, p in pairs(state.playing) do
         local v = p.voice
-        if not (v.isSounding and v:isSounding()) then
+        if not (v and v.isSounding and v:isSounding()) then
             state.playing[ev] = nil
             if state.lastPlay == p then state.lastPlay = nil end
         else

@@ -193,14 +193,17 @@ local function restoreEvent(raw, loop)
         if type(raw.bend) == "table" then
             for _, kf in ipairs(raw.bend) do
                 if type(kf) == "table" and type(kf.dt) == "number" and kf.dt >= 0 and kf.dt < loop
-                   and (finite(kf.semis) or finite(kf.bright) or finite(kf.move)) then
+                   and (finite(kf.semis) or finite(kf.bright) or finite(kf.move)
+                        or type(kf.rate) == "string" or type(kf.open) == "boolean") then
                     kfs[#kfs + 1] = { dt = math.floor(kf.dt),
                                       semis = kf.semis ~= nil and num(kf.semis, -48, 48, 0) or nil,
                                       degree = finite(kf.degree) and kf.degree or nil,
                                       octave = finite(kf.octave) and kf.octave or nil,
                                       acc = finite(kf.acc) and kf.acc or nil,
                                       bright = kf.bright ~= nil and num(kf.bright, 0.0, 1.0, nil) or nil,
-                                      move = kf.move ~= nil and num(kf.move, 0.0, 1.0, nil) or nil }
+                                      move = kf.move ~= nil and num(kf.move, 0.0, 1.0, nil) or nil,
+                                      rate = type(kf.rate) == "string" and kf.rate or nil,
+                                      open = type(kf.open) == "boolean" and kf.open or nil }
                 end
             end
             table.sort(kfs, function(a, b) return a.dt < b.dt end)

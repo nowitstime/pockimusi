@@ -217,7 +217,7 @@ function Chrome:drawCenterStage()
     elseif songRows then
         faceSubtitle = "FACE: -"
     end
-    if mode == "TRACK" and def.NO_FX then faceSubtitle = "TRACK C IS SILENT" end
+    if mode == "TRACK" and not songRows and def.NO_FX then faceSubtitle = "TRACK C IS SILENT" end
     local dsw = self.fontTiny:getWidth(dpadSubtitle)
     local fsw = self.fontTiny:getWidth(faceSubtitle)
     love.graphics.print(dpadSubtitle, math_floor(102 - dsw * 0.5), 296)

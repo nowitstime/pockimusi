@@ -250,12 +250,16 @@ function Install.noteOn(Synth, patchId, semis, vel, opts)
     if patch.attack and not (opts.noAttack and pool) then
         v.attack = Synth:trigger(patch.attack, semis + shift, v.vel, opts.decay or patch.attackDecay or 1.0,
                                  opts.glideFrom and (opts.glideFrom + shift), v.trackVolume, track)
-        if v.attack and not pool then v.attack.vibrato = v.vibrato end
+        if v.attack then
+            v.attack.glideRate = v.glideRate
+            if not pool then v.attack.vibrato = v.vibrato end
+        end
     end
     if not pool and not (v.attack and v.attack.elapsed) then return nil end    -- nothing to play
 
     for _, s in ipairs({ src, brightSrc }) do
         s:stop()
+        Synth.sourceTone[s] = nil
         Synth:applyTrackFx(s, track)
         s:setPitch(semisToRatio(startSemis + shift + patch.tune))
         s:setVolume(0.0)
@@ -344,8 +348,16 @@ function Install.updateVoices(Synth, dt)
             local lfo = v.age * v.lfoRate * TWO_PI + v.lfoPhase
             local drift = (v.move > 0.0) and (math_sin(lfo) * v.move * Voice.DRIFT) or 0.0
             local pitch = v.currentSemis + v.shift + vib + drift + fxPitch + v.patch.tune
+            local vol = v.vel
+            if Synth.fxBitcrush then
+                pitch = math_floor(pitch * 0.5) * 2.0 + 0.35
+                vol = math_min(1.0, vol * 1.15)
+            end
+            if v.track and v.track.fx and v.track.fx.on.drive and not Synth.fxSupported then
+                vol = math_min(1.0, vol * (1.0 + v.track.fx.drive * 0.5))
+            end
             local level = v:envelope()
-            local gain = level * v.vel * v.trackVolume * Synth.masterVolume * Synth.fadeGain * Synth.duckEnvelope
+            local gain = level * vol * v.trackVolume * Synth.masterVolume * Synth.fadeGain * Synth.duckEnvelope
                 * Synth:pumpGain(v.track)
             if v.loopSrc then
                 v.loopSrc:setPitch(semisToRatio(pitch))

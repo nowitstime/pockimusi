@@ -194,7 +194,7 @@ local function updateRecord()
             Input.recLatched = not Input.recLatched
             Looper:showToast(Input.recLatched and (Modes.warned or "[REC] RECORD LATCHED (TAP L2 TO STOP)") or "RECORD STOPPED")
         end
-    elseif Input.recLatched and Input.l2HoldTime >= Modes.TAP_MAX then
+    elseif not used and Input.recLatched and Input.l2HoldTime >= Modes.TAP_MAX then
         -- Releasing a held punch-in also clears the latch
         Input.recLatched = false
         Looper:showToast("PUNCH-IN COMPLETE")

@@ -173,12 +173,12 @@ Synth.PREGEN_BUDGET = 0.002
 -- Build a drum sound now if it is still waiting to be built (a sound the
 -- background job is half way through is finished first)
 function Synth:ensureDrum(id)
-    local build = self.lazyDrums[id]
-    if not build then return end
     if self.drumBuilding == id then
         while self.drumBuilding == id and self.pregen do self:stepPregen(0) end
         return
     end
+    local build = self.lazyDrums[id]
+    if not build then return end
     self.lazyDrums[id] = nil
     build()
 end
@@ -222,8 +222,15 @@ function Synth:startPregen()
 end
 
 function Synth:stopPregen()
-    -- a drum sound half built is finished, so it is never left without a pool
-    while self.drumBuilding and self.pregen do self:stepPregen(0) end
+    -- a drum sound or patch half built is finished, so it is never left without a pool
+    local function building()
+        if self.drumBuilding then return true end
+        for _, p in pairs(self.patches) do
+            if p.building then return true end
+        end
+        return false
+    end
+    while building() and self.pregen do self:stepPregen(0) end
     self.pregen = nil
 end
 
@@ -358,7 +365,7 @@ function Synth:applyFilter(src, track)
     if not self.fxSupported then return end
     local fx = track and track.fx
     local high = self.sourceTone[src] or 1.0
-    if fx and fx.on.tone then high = math.max(0.03, 1.0 - fx.tone * 0.97) end
+    if fx and fx.on.tone then high = high * math.max(0.03, 1.0 - fx.tone * 0.97) end
     high = high * (1.0 - self.lpEnvelope * self.LP_DEPTH)
     if high < 0.999 then
         pcall(src.setFilter, src, { type = "lowpass", volume = 1.0, highgain = math.max(0.02, high) })
@@ -418,6 +425,7 @@ function Synth:panic()
             for _, name in ipairs(names) do pcall(src.setEffect, src, name, false) end
         end
         self.sourceFx = setmetatable({}, { __mode = "k" })
+        self.sourceTone = setmetatable({}, { __mode = "k" })
         local Looper = package.loaded["src.looper"]
         for slot = 1, 4 do
             for _, name in ipairs(self.FX_SEND_ORDER) do
@@ -449,7 +457,7 @@ end
 -- (a soft drum hit). A sound with variants (Synth.VARIANTS) takes the next
 -- one in turn, so repeated hits are never quite the same.
 function Synth:trigger(soundName, pitchSemis, volume, decayMod, glideFromSemis, trackVolume, track, tone)
-    if self.lazyDrums[soundName] then self:ensureDrum(soundName) end
+    if self.lazyDrums[soundName] or self.drumBuilding == soundName then self:ensureDrum(soundName) end
     local variants = self.VARIANTS[soundName]
     if variants then
         local n = (self.variantTurn[soundName] or 0) % #variants + 1
@@ -581,7 +589,7 @@ function Synth:update(dt)
         else
             if v.hasGlide then
                 local diff = v.targetSemis - v.currentSemis
-                v.currentSemis = v.currentSemis + diff * math_min(1.0, dt * 18.0)
+                v.currentSemis = v.currentSemis + diff * math_min(1.0, dt * (v.glideRate or 18.0))
             end
             local vibOffset = v.vibrato and (math_sin(v.elapsed * 38.0) * 0.35) or 0.0
             local pitchRatio = clamp(2.0 ^ ((v.currentSemis + vibOffset + fxPitchOffset) / 12.0), 0.125, 8.0)

@@ -185,6 +185,7 @@ local function updateSlots(menu)
         end
         local ok, err = Patterns.copyTo(slot)
         if ok then
+            Song.summaries[slot] = Patterns.summary(slot)
             return menu:close("COPIED " .. (Session.patternSlot or "LOOP") .. " TO " .. slot)
         end
         menu.confirm = nil

@@ -11,6 +11,7 @@ local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Harmony     = require("src.harmony")
+local Song        = require("src.song")
 local Display     = require("src.ui.display")
 
 local clamp      = Config.clamp
@@ -146,6 +147,21 @@ function Chrome:drawEraseView(track, def)
     local C = Config.COLORS
     self:setColor(C.RED)
     love.graphics.setFont(self.fontLarge)
+    if Song.page then
+        local ew = self.fontLarge:getWidth("SONG ERASE")
+        love.graphics.print("SONG ERASE", math_floor(320 - ew * 0.5), 142)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(C.TEXT)
+        love.graphics.print("B - Remove last from queue", 232, 178)
+        love.graphics.print("X - Empty queue", 232, 202)
+        love.graphics.print("LEFT / L1 - Undo last song pass", 232, 226)
+        love.graphics.print("START - Clear song", 232, 250)
+        self:setColor(C.MUTED)
+        local nSteps = Song.data and Song.data.steps and #Song.data.steps or 0
+        local nQueue = Song.queue and #Song.queue or 0
+        love.graphics.print(string.format("%d STEPS IN SONG  -  %d QUEUED", nSteps, nQueue), 232, 276)
+        return
+    end
     local ew = self.fontLarge:getWidth("ASTRAL ERASE")
     love.graphics.print("ASTRAL ERASE", math_floor(320 - ew * 0.5), 142)
 

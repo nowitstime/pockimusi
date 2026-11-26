@@ -119,6 +119,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
     local snarePhase = 0.0
     local snarePrevNoise = 0.0
     local snareAnalogSD = Synth:createBuffer(0.25, function(t)
+        if t == 0 then snarePhase, snarePrevNoise = 0.0, 0.0 end
         local freq = 110.0 + 70.0 * math_exp(-t * 28.0)
         snarePhase = (snarePhase + freq / Config.SAMPLE_RATE) % 1.0
         local tri = 4.0 * math_abs(snarePhase - 0.5) - 1.0
@@ -135,6 +136,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
     -- 7. TIGHT RIM SNARE (0.18s): Poppy high-pitched rim snare with fast crisp decay
     local sTightPhase = 0.0
     local snareTightSD = Synth:createBuffer(0.18, function(t)
+        if t == 0 then sTightPhase = 0.0 end
         local freq = 165.0 + 120.0 * math_exp(-t * 42.0)
         sTightPhase = sTightPhase + (TWO_PI * freq / Config.SAMPLE_RATE)
         local body = math_sin(sTightPhase) * math_exp(-t * 30.0) * 0.75
@@ -145,6 +147,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
     -- 8. LO-FI BOX SNARE (0.22s): Dusty boxy vintage drum-machine snare
     local sLofiPrev = 0.0
     local snareLofiSD = Synth:createBuffer(0.22, function(t)
+        if t == 0 then sLofiPrev = 0.0 end
         local n = whiteNoise()
         sLofiPrev = sLofiPrev * 0.45 + n * 0.55
         local body = math_sin(TWO_PI * (135.0 + 50.0 * math_exp(-t * 30.0)) * t) * math_exp(-t * 20.0) * 0.7
@@ -155,6 +158,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
     -- 9. FAT GATED SNARE (0.28s): Big 80s synthwave snare with gated noise plateau
     local sGatePhase = 0.0
     local snareGatedSD = Synth:createBuffer(0.28, function(t)
+        if t == 0 then sGatePhase = 0.0 end
         local freq = 128.0 + 90.0 * math_exp(-t * 32.0)
         sGatePhase = sGatePhase + (TWO_PI * freq / Config.SAMPLE_RATE)
         local body = math_sin(sGatePhase) * math_exp(-t * 16.0) * 0.75
@@ -166,6 +170,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
     -- 10. BRUSH SNARE (0.20s): Soft swishy brush attack snare
     local sBrushPrev = 0.0
     local snareBrushSD = Synth:createBuffer(0.20, function(t)
+        if t == 0 then sBrushPrev = 0.0 end
         local n = whiteNoise()
         local hp = n - sBrushPrev
         sBrushPrev = n * 0.6
@@ -234,6 +239,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
     -- 16. STUDIO CLAP (0.22s): Three 8ms micro-bursts followed by reverb noise tail
     local clapPrev = 0.0
     local clapStudioSD = Synth:createBuffer(0.22, function(t)
+        if t == 0 then clapPrev = 0.0 end
         local n = whiteNoise()
         local filtered = n - 0.65 * clapPrev
         clapPrev = n
@@ -245,7 +251,7 @@ function DrumsBank.buildSounds(Synth, whiteNoise)
             env = math_exp(-(t - 0.011) * 120.0)
         elseif t >= 0.022 and t < 0.030 then
             env = math_exp(-(t - 0.022) * 100.0)
-        else
+        elseif t >= 0.030 then
             env = 0.58 * math_exp(-(t - 0.030) * 16.0)
         end
         local wood = math_sin(TWO_PI * 820.0 * t) * math_exp(-t * 55.0) * 0.25

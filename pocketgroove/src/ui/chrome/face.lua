@@ -11,6 +11,7 @@ local Looper      = require("src.looper")
 local Instruments = require("src.instruments")
 local Modes       = require("src.modes")
 local Harmony     = require("src.harmony")
+local Song        = require("src.song")
 local Display     = require("src.ui.display")
 
 local clamp      = Config.clamp
@@ -163,8 +164,11 @@ function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeM
         local fl = (flashMap and flashMap[btn]) or 0.0
         local isActive = (activeMap and activeMap[btn]) or (Input.down[btn] and not Input.down.R2)
         local btnCol = col
-        if Modes.current == "MIX" and Looper.tracks[btn == "B" and 1 or (btn == "A" and 2 or (btn == "Y" and 3 or 4))].muted then
-            btnCol = C.RED
+        if Modes.current == "MIX" then
+            local slot = btn == "B" and 1 or (btn == "A" and 2 or (btn == "Y" and 3 or 4))
+            local pending = Song.pendingMutes[slot]
+            local muted = (pending ~= nil) and pending or Looper.tracks[slot].muted
+            if muted then btnCol = C.RED end
         end
         local lit = isActive or fl > 0.5
 

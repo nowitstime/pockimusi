@@ -234,7 +234,7 @@ function Wobble:updateInput(dt, state, track, play, hold)
             local semis = self:pitchFor(state, deg, octave, chordNow)
             local prev = state.handles[#state.handles]
             local ev = { action = btn, degree = deg, octave = octave, semis = semis, vel = 0.9,
-                         rate = state.rate, open = state.open or nil }
+                         rate = state.rate, wobbleOpen = state.open or nil }
             -- a new note while one is held: glide to it on the same voice
             local legato = prev and physicallyHeld(prev)
             if legato then
@@ -289,13 +289,13 @@ function Wobble:startVoice(ev, state, track, semis, glideFrom)
         track = track,
         glideFrom = glideFrom,
         glideRate = self:getGlideRate(state),
-        bright = self:toneAt(state, ev.rate, ev.open, self:wobbleTick(state)),
+        bright = self:toneAt(state, ev.rate, ev.wobbleOpen, self:wobbleTick(state)),
     })
 end
 
 -- The rate and OPEN in effect `elapsed` ticks into a recorded note
 local function rateAt(ev, elapsed)
-    local rate, open = ev.rate, ev.open
+    local rate, open = ev.rate, ev.wobbleOpen
     local bend = ev.bend
     if bend then
         for i = 1, #bend do

@@ -280,6 +280,8 @@ function Looper:silenceTrack(trackIdx)
         track.sounding[ev] = nil
         if handler then handler("off", ev, track) end
     end
+    local Song = package.loaded["src.song"]
+    if Song and Song.takesOff then Song:takesOff(trackIdx) end
 end
 
 function Looper:silenceAll()
@@ -413,7 +415,8 @@ function Looper:recordEvent(trackIdx, ev)
     -- Plays ahead of the playhead (where swing puts it, too): the live press
     -- already played it
     local ahead = (snapped + self:getSwingOffset(ev, track) - now) % loop
-    if ahead > 0 and ahead < loop * 0.05 then
+    local skipWin = math_max(loop * 0.05, (step or 0) * 0.6)
+    if ahead > 0 and ahead < skipWin then
         ev.skipOnce = true
     end
 
@@ -674,7 +677,7 @@ function Looper:update(dt, handler)
 
     self.prevTick = self.tick
     if self.resetPending then
-        self.prevTick = -1e-6                   -- so events on tick 0 fire
+        self.prevTick = self.tick - 1e-6        -- so events on tick 0 / step.start fire
         self.resetPending = false
     end
 

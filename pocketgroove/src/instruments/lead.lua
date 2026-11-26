@@ -326,6 +326,13 @@ function Lead:arpFire(state, track, hold, deg, octave, stepsPerLoop, offset)
         { fixedLen = math_max(1, math_floor(gate - (offset or 0))), recLen = gate }, chord)
 end
 
+function Lead:updateVisuals(dt, state, controlsBlocked, isActive)
+    Bass.updateVisuals(self, dt, state)
+    if not isActive or controlsBlocked then
+        state.arpBtn, state.arpSkip, state.arpPos = nil, nil, nil
+    end
+end
+
 function Lead:updateArp(dt, state, track, hold, deg, octave)
     -- The newest held arp button is in charge
     local pressed

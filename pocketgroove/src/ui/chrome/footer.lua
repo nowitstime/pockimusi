@@ -299,7 +299,7 @@ function Chrome:drawFooterStrip(def)
         return
     end
     local hints = self.FOOTER_HINTS[key] or self.FOOTER_HINTS.NORMAL
-    if mode == "TRACK" and def and def.NO_FX then hints = self.FOOTER_HINTS.TRACK_LANE end
+    if mode == "TRACK" and key ~= "SONG_ROWS" and def and def.NO_FX then hints = self.FOOTER_HINTS.TRACK_LANE end
     local col = (mode == "NORMAL") and C.MUTED or (Config.MODE_COLORS[mode] or C.MUTED)
     local x = 18
     local tag = self.FOOTER_TAGS[key]
