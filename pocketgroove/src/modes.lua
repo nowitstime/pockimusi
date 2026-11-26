@@ -268,7 +268,7 @@ function handlers.ERASE(ctx)
     end
     if Input.pressed.LEFT or Input.pressed.L1 then
         Instruments:releaseAll()      -- held notes end on the instrument that started them
-        if Song.page then Song:undo() else Looper:undo() end
+        Looper:undo()
     end
     if Input.pressed.START then
         Looper:clearTrack(tIdx)

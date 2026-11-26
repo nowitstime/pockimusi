@@ -170,7 +170,11 @@ local function updateSlots(menu)
     if menu.page == "GOTO" then
         if isNow then return menu:close("ALREADY ON PATTERN " .. slot) end
         if sum.broken then return menu:say("PATTERN " .. slot .. " COULDN'T BE READ") end
+        -- song mode stays as it is (the slot's file carries its own flag)
+        local wasSong = Session.songMode
+        if Song.playing or Song.recording or Song.armed then Song:stop() end
         local ok, err = Patterns.goTo(slot)
+        Session.songMode = wasSong
         if ok then return menu:close(sum.empty and ("NEW PATTERN " .. slot) or ("PATTERN " .. slot)) end
         menu:say(err)
     elseif menu.page == "COPY" then
@@ -192,7 +196,7 @@ local function updateSlots(menu)
             menu.confirm = slot
             return menu:say("B AGAIN TO CLEAR PATTERN " .. slot)
         end
-        Patterns.clear(slot)
+        if Patterns.clear(slot) then Song:slotCleared(slot) end
         menu.confirm = nil
         menu:refreshSlots()
         menu:say("CLEARED PATTERN " .. slot)
