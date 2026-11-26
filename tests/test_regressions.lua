@@ -247,4 +247,215 @@ return {
         H.eq(#M.Looper.tracks[2].events, 1, "only the good event")
         H.play(5.0)                                -- and the loop plays without an error
     end },
+
+    -- ------------------------------------------------------------------
+    -- Code review pass 2 regressions
+    -- ------------------------------------------------------------------
+    { "Song:playFromTop fires beat-1 pattern events and at==0 take notes/moves", function()
+        local M = H.loadMain()
+        local L, Song, Patterns = M.Looper, require("src.song"), require("src.patterns")
+        H.play(0.05)
+        L.tracks[1].events = { { action = "B", tick = 0, len = 0, vel = 0.9 } }
+        Patterns.flush()
+        local fired = {}
+        local orig = L.noteHandler
+        L:setNoteHandler(function(kind, ev, track)
+            if kind == "on" then fired[#fired + 1] = { track = track.slot, action = ev.action, at = ev.at, tick = ev.tick } end
+            return orig(kind, ev, track)
+        end)
+        Song.data = {
+            steps = {
+                {
+                    slot = M.Session.patternSlot or "A",
+                    start = 0,
+                    len = L:getLoopTicks(),
+                    mutes = { false, false, false, false },
+                    moves = { { at = 0, kind = "fade", gain = 0.5 } },
+                    takes = { [3] = { { action = "B", tick = 0, at = 0, len = 240, vel = 0.9, semis = 0, degree = 1, octave = 0 } } },
+                },
+            },
+        }
+        H.truthy(Song:playFromTop(), "started")
+        H.play(0.1)
+        local sawPat, sawTake = false, false
+        for _, f in ipairs(fired) do
+            if f.track == 1 and f.tick == 0 and f.at == nil then sawPat = true end
+            if f.track == 3 and f.at == 0 then sawTake = true end
+        end
+        H.truthy(sawPat, "beat-1 pattern event fired")
+        H.truthy(sawTake, "at==0 song take note fired")
+        H.near(M.Synth.fadeGain, 0.5, "at==0 fade move fired")
+    end },
+
+    { "pausing or muting silences sounding song take notes", function()
+        local M = H.loadMain()
+        local L, Song = M.Looper, require("src.song")
+        H.play(0.05)
+        Song.data = {
+            steps = {
+                {
+                    slot = M.Session.patternSlot or "A",
+                    start = 0,
+                    len = L:getLoopTicks(),
+                    mutes = { false, false, false, false },
+                    moves = {},
+                    takes = { [3] = { { action = "B", tick = 0, at = 0, len = 1920, vel = 0.9, semis = 0, degree = 1, octave = 0 } } },
+                },
+            },
+        }
+        Song:playFromTop()
+        H.play(0.1)
+        H.eq(#Song.sounding, 1, "take note sounding")
+        L:toggleMute(3)
+        H.eq(#Song.sounding, 0, "muting track 3 silenced its take note")
+
+        L:toggleMute(3)
+        Song:playFromTop()
+        H.play(0.1)
+        H.eq(#Song.sounding, 1, "take note sounding again")
+        L:setPlaying(false)
+        H.eq(#Song.sounding, 0, "pausing silenced all take notes")
+    end },
+
+    { "Song:startRecording from stopped with fadeGain < 1 preserves existing fade moves", function()
+        local M = H.loadMain()
+        local L, Song, S = M.Looper, require("src.song"), M.Synth
+        H.play(0.05)
+        Song.data = {
+            steps = {
+                {
+                    slot = M.Session.patternSlot or "A",
+                    start = 0,
+                    len = L:getLoopTicks(),
+                    mutes = { false, false, false, false },
+                    moves = { { at = 240, kind = "fade", gain = 0.4 } },
+                    takes = {},
+                },
+            },
+        }
+        S.fadeGain = 0.25
+        Song:startRecording()
+        H.play(0.5)
+        H.falsy(Song.touched.fade, "fade was not falsely marked touched")
+        H.eq(#Song.data.steps[1].moves, 1, "existing fade move preserved")
+        Song:stop()
+    end },
+
+    { "Wobble OPEN flag and rate/open bend keyframes survive release and session restore", function()
+        local M = H.loadMain()
+        local L, Session = M.Looper, M.Session
+        H.play(0.05)
+        M.Instruments:swapTrackInstrument(3, "wobble")
+        H.tap("SELECT"); H.tap("SELECT")
+        H.tap("L2")                                -- latch record
+        H.hold("L1", "R1", "B"); H.play(0.15)      -- start note with OPEN held
+        H.release("L1", "R1"); H.hold("RIGHT"); H.play(0.15) -- bend to 1/16, open=false
+        H.release("RIGHT", "B"); H.play(0.05)
+        H.tap("L2")
+        local ev = L.tracks[3].events[1]
+        H.truthy(ev, "recorded wobble note")
+        H.truthy(ev.wobbleOpen, "wobbleOpen survived release")
+        H.eq(ev.open, nil, "looper runtime open cleared")
+        local snap = Session.snapshot()
+        H.truthy(Session.restore(snap), "restored")
+        local rev = L.tracks[3].events[1]
+        H.truthy(rev and rev.wobbleOpen, "wobbleOpen survived restore")
+        H.truthy(rev.bend and #rev.bend >= 1, "bend keyframes survived restore")
+        H.eq(rev.bend[1].rate, "1/16", "rate keyframe preserved")
+        H.eq(rev.bend[1].open, false, "open keyframe preserved")
+    end },
+
+    { "Synth:applyFilter multiplies sourceTone with track TONE and noteOn clears stale sourceTone", function()
+        local M = H.loadMain()
+        local S, L = M.Synth, M.Looper
+        S.fxSupported = true
+        local lastFilter
+        local fakeSrc = { setFilter = function(_, f) lastFilter = f end }
+        local track = L.tracks[3]
+        track.fx.on.tone = true
+        track.fx.tone = 0.5                        -- tone factor = 1 - 0.5*0.97 = 0.515
+        S.sourceTone[fakeSrc] = 0.5
+        S:applyFilter(fakeSrc, track)
+        H.truthy(lastFilter and lastFilter.highgain < 0.3, "sourceTone multiplied with track TONE")
+
+        local v1 = S:noteOn("bass_neuro", 0, 0.9, { track = track })
+        H.truthy(v1 and v1.loopSrc, "got loopSrc")
+        S.sourceTone[v1.loopSrc] = 0.2
+        v1:kill()
+        local v2 = S:noteOn("bass_neuro", 0, 0.9, { track = track })
+        H.eq(S.sourceTone[v2.loopSrc], nil, "reused loopSrc cleared stale sourceTone")
+    end },
+
+    { "Synth:ensureDrum finishes a half-built lazy drum instead of dropping it", function()
+        local M = H.fresh()
+        local S = M.Synth
+        S:init()
+        S:startPregen()
+        local target = S.lazyOrder[1]
+        H.truthy(target, "has a lazy drum")
+        -- step once with 0 budget so the coroutine starts building `target` and yields mid-buffer
+        S:stepPregen(0)
+        H.eq(S.drumBuilding, target, "drum is mid-build")
+        local v = S:trigger(target, 0, 0.9, 1.0, nil, 1.0, M.Looper.tracks[1])
+        H.truthy(v, "trigger finished the half-built drum instead of dropping it")
+        S:stopPregen()
+    end },
+
+    { "Lane closes X wheel on track switch and ignores unowned X release", function()
+        local M = H.loadMain()
+        local L = M.Looper
+        H.play(0.05)
+        -- Go to Track C (5 = LANE)
+        for _ = 1, 4 do H.tap("SELECT") end
+        H.eq(L.activeTrack, L.LANE, "on Track C")
+        H.hold("X"); H.play(0.4)                   -- open wheel
+        H.hold("UP"); H.play(0.05)                 -- hover a progression
+        local st = L.tracks[L.LANE].state
+        H.truthy(st.wheelOpen and st.preview, "wheel open with preview")
+        H.tap("SELECT")                            -- leave Track C while X still held
+        H.falsy(st.wheelOpen, "wheel closed on track switch")
+        H.eq(st.preview, nil, "preview cleared on track switch")
+        H.release("UP", "X"); H.play(0.05)
+        -- Return to Track C, open Transport page, press X there, release START then X: must not stamp
+        for _ = 1, 4 do H.tap("SELECT") end
+        local before = #L.tracks[L.LANE].events
+        H.hold("START"); H.play(0.3)               -- enter TRANSPORT page
+        H.hold("X"); H.play(0.05)                  -- press X while Transport blocks Track C
+        H.release("START"); H.play(0.05)
+        H.release("X"); H.play(0.05)
+        H.eq(#L.tracks[L.LANE].events, before, "unowned X release did not stamp")
+    end },
+
+    { "holding L2+R2 combo while record is latched keeps recLatched on", function()
+        local M = H.loadMain()
+        H.play(0.05)
+        H.tap("L2")
+        H.truthy(M.Input.recLatched, "record latched")
+        H.hold("L2", "R2"); H.play(0.4)
+        H.release("R2", "L2"); H.play(0.05)
+        H.truthy(M.Input.recLatched, "still latched after L2+R2 combo")
+    end },
+
+    { "1/4 grid early press in a 2-bar loop does not double-trigger", function()
+        local M = H.fresh(); local L = M.Looper
+        L.tracks[1].gridIndex = 1                  -- 1/4 (480 ticks)
+        local loop = L:getLoopTicks()              -- 3840 (2 bars)
+        startAt(L, (480 - 220) / loop)             -- 220 ticks before beat 2 (> 5% of 3840)
+        local ev = L:recordEvent(1, { action = "B", vel = 0.8 })
+        H.truthy(ev.skipOnce, "skipOnce set for 220-tick forward snap")
+        local fired = H.run(L, 0.5)
+        H.eq(#fired, 0, "no immediate double-trigger")
+    end },
+
+    { "Patterns.summary handles missing track slots without sparse holes", function()
+        local M = H.loadMain()
+        local Patterns = require("src.patterns")
+        local snap = M.Session.snapshot()
+        snap.tracks[2] = nil
+        H.files["pattern_b.txt"] = "{seq=1,saved=1,session=" .. M.Save.encode(snap) .. "}"
+        local sum = Patterns.summary("B")
+        H.truthy(sum and not sum.empty, "summary built")
+        local joined = table.concat(sum.instruments, " / ")
+        H.truthy(#joined > 0, "dense table.concat succeeded")
+    end },
 }

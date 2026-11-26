@@ -620,6 +620,7 @@ function Song:advance(d)
                 self.playFx = { s = m.s, h = m.h, d = m.d, c = m.c }
             elseif m.kind == "fade" then
                 Synth.fadeGain = Config.clamp(m.gain or 1, 0, 1)
+                self.lastRecFade = Synth.fadeGain
             end
         end
         i = i + 1

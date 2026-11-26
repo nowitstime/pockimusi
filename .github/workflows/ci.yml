@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LuaJIT
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luajit
+
+      - name: Run Lua test suite
+        run: luajit tests/run.lua
+
+      - name: Build PocketGroove.love
+        run: python3 build.py
+
+      - name: Upload PocketGroove.love artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketGroove.love
+          path: pocketgroove/PocketGroove.love
