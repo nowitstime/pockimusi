@@ -40,6 +40,9 @@ function Chrome:drawCenterStage()
     local songPage = Song.page and playMode
     local songRows = Song.page and mode == "TRACK"
     if songPage then instCol = Config.COLORS.SONG end
+    if self.MOCK and mode == "TRACK" and not songRows and not track.isLane then
+        return self:drawMockTrackStage(def, state, track, instCol, love.timer.getTime())
+    end
     local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
     local kind = self:viewKind(def)
