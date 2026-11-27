@@ -149,8 +149,10 @@ function Chrome:drawCenterStage()
         self:setColor(on and C.BG or C.TEXT)
         if on then self:printBold(text, math_floor(tx), ty) else love.graphics.print(text, math_floor(tx), ty) end
     end
-    shoulder(18, l1Label, lOn)
-    shoulder(510, r1Label, rOn, true)
+    if not (mode == "TRACK" and not songRows) then
+        shoulder(18, l1Label, lOn)
+        shoulder(510, r1Label, rOn, true)
+    end
 
     local titleStr = songPage and "SONG" or def.name
     if mode == "TRACK" then titleStr = "TRACK " .. Looper:slotLabel(sl)
@@ -167,7 +169,7 @@ function Chrome:drawCenterStage()
         local tw = self.fontMed:getWidth("TRACK S - SONG")
         love.graphics.print("TRACK S - SONG", math_floor(320 - tw * 0.5), 62)
     elseif mode == "TRACK" then
-        -- the instruments are tabs (L1 / R1), in place of a title
+        -- Style 2 compact group + instrument pill header (with L1 / R1 caps)
         self:drawInstrumentTabs(track, accent)
     else
         self:setColor(playMode and C.TEXT or accent)
@@ -176,8 +178,10 @@ function Chrome:drawCenterStage()
         love.graphics.print(titleStr, math_floor(320 - tw * 0.5), 62)
     end
 
-    self:setColor(playMode and C.GRID or accent, playMode and 0.6 or 0.35)
-    love.graphics.line(212, 82, 428, 82)
+    if not (mode == "TRACK" and not songRows) then
+        self:setColor(playMode and C.GRID or accent, playMode and 0.6 or 0.35)
+        love.graphics.line(212, 82, 428, 82)
+    end
 
     -- Left: Star D-Pad & Right: Circle Face Buttons (drawn in the page accent)
     local dpadLabels, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, mode)
@@ -192,6 +196,8 @@ function Chrome:drawCenterStage()
     elseif songRows then
         faceLabels = { B = "", A = "", Y = "", X = "" }
         activeMap = {}
+    elseif mode == "TRACK" then
+        dpadLabels = {}       -- clean unlabelled compass on Track page
     elseif Song.page and mode == "ERASE" then
         dpadLabels = { LEFT = "UNDO SONG" }
         faceLabels = { B = "UNQUEUE", A = "", Y = "", X = "EMPTY Q" }
@@ -199,29 +205,6 @@ function Chrome:drawCenterStage()
     end
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
-
-    self:setColor(C.MUTED)
-    love.graphics.setFont(self.fontTiny)
-    local dpadSub = {
-        TRACK = "D-PAD: ROW - VALUE", MIX = "D-PAD: LEVEL", TRANSPORT = "D-PAD: SCALE - KEY",
-        ERASE = "D-PAD: UNDO", FX = "D-PAD: PUNCH-IN FX",
-    }
-    local instSub = { breaks = "D-PAD: JUMP TO A SLICE", drums = "D-PAD: EXPRESSION", harp = "D-PAD: HARMONY", bass = "D-PAD: SCALE DEGREE", pad = "D-PAD: TONE", lead = "D-PAD: SCALE DEGREE" }
-    local faceSub = { TRACK = "FACE: EFFECTS ON / OFF", MIX = "FACE: MUTES", TRANSPORT = "FACE: TIMING", ERASE = "FACE: CLEAR", FX = "FACE: MUTES" }
-    local dpadSubtitle = dpadSub[mode] or (def.getDpadSubtitle and def:getDpadSubtitle(state))
-        or instSub[def.id] or instSub[kind] or "D-PAD"
-    local faceSubtitle = faceSub[mode] or "FACE: TRIGGERS"
-    if songPage then
-        dpadSubtitle = "D-PAD: PATTERNS (HOLD)"
-        faceSubtitle = Song.pointing and ("FACE: ACT ON " .. Song.pointing) or "FACE: GO TO TRACK"
-    elseif songRows then
-        faceSubtitle = "FACE: -"
-    end
-    if mode == "TRACK" and not songRows and def.NO_FX then faceSubtitle = "TRACK C IS SILENT" end
-    local dsw = self.fontTiny:getWidth(dpadSubtitle)
-    local fsw = self.fontTiny:getWidth(faceSubtitle)
-    love.graphics.print(dpadSubtitle, math_floor(102 - dsw * 0.5), 296)
-    love.graphics.print(faceSubtitle, math_floor(538 - fsw * 0.5), 296)
 
     -- Center Column Visualizer (x: 204..436, y: 90..314)
     if mode == "MIX" then

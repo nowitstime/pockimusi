@@ -294,4 +294,72 @@ return {
         H.eq(#L.tracks[4].events, 1, "one note")
         H.near(L.tracks[4].events[1].len / L:getTicksPerSecond(), 0.9, "its whole length", 0.05)
     end },
+
+    -- ------------------------------------------------------------------
+    -- 4-slot swappable effects & 1-filter-per-track rule
+    -- ------------------------------------------------------------------
+    { "swappable FX slots enforce one filter per track and no duplicates", function()
+        local M, L = boot()
+        -- Default: X=tone (filter), Y=drive, A=echo, B=space
+        H.eq(L:getTrackFxId(1, "X"), "tone", "default X is tone")
+        -- Putting a 2nd filter on Y is rejected with toast
+        H.falsy(L:setTrackFxSlot(1, "Y", "hpf"), "second filter rejected")
+        H.eq(L.toastText, "ONLY ONE FILTER PER TRACK", "toast warns")
+        H.eq(L:getTrackFxId(1, "Y"), "drive", "Y unchanged")
+        -- Replacing the existing filter on X with hpf succeeds
+        H.truthy(L:setTrackFxSlot(1, "X", "hpf"), "replacing existing filter allowed")
+        H.eq(L:getTrackFxId(1, "X"), "hpf", "X is now hpf")
+        -- Swapping A to chorus and B to ring succeeds
+        H.truthy(L:setTrackFxSlot(1, "A", "chorus"), "A -> chorus")
+        H.truthy(L:setTrackFxSlot(1, "B", "ring"), "B -> ring")
+        -- Duplicating chorus onto Y is rejected
+        H.falsy(L:setTrackFxSlot(1, "Y", "chorus"), "duplicate rejected")
+        H.eq(L:getTrackFxId(1, "Y"), "drive", "Y unchanged")
+    end },
+
+    { "swapped HPF and RADIO filters apply highpass and bandpass via Synth:applyFilter", function()
+        local M, L = boot()
+        local S = M.Synth
+        S.fxSupported = true
+        local lastFilter
+        local fakeSrc = { setFilter = function(_, f) lastFilter = f end }
+        local trk = L.tracks[1]
+        H.truthy(L:setTrackFxSlot(1, "X", "hpf"), "X -> hpf")
+        L:toggleTrackFx(1, "X")
+        S:applyFilter(fakeSrc, trk)
+        H.eq(lastFilter and lastFilter.type, "highpass", "HPF uses highpass")
+
+        H.truthy(L:setTrackFxSlot(1, "X", "radio"), "X -> radio")
+        S:applyFilter(fakeSrc, trk)
+        H.eq(lastFilter and lastFilter.type, "bandpass", "RADIO uses bandpass")
+    end },
+
+    { "custom FX slots survive Session.snapshot and Session.restore", function()
+        local M, L = boot()
+        H.truthy(L:setTrackFxSlot(3, "X", "radio"), "X -> radio")
+        H.truthy(L:setTrackFxSlot(3, "A", "chorus"), "A -> chorus")
+        H.truthy(L:setTrackFxSlot(3, "B", "flange"), "B -> flange")
+        L:toggleTrackFx(3, "A")
+        L:adjustTrackFx(3, "A", 0.2)
+        local snap = M.Session.snapshot()
+        H.truthy(M.Session.restore(snap), "restored")
+        H.eq(L:getTrackFxId(3, "X"), "radio", "X restored")
+        H.eq(L:getTrackFxId(3, "A"), "chorus", "A restored")
+        H.eq(L:getTrackFxId(3, "B"), "flange", "B restored")
+        H.truthy(L.tracks[3].fx.on.chorus, "chorus still on")
+        H.near(L.tracks[3].fx.chorus, 0.6, "chorus amount restored", 0.01)
+    end },
+
+    { "Track page FX row swaps the slot right above its amount row", function()
+        local M, L = boot()
+        H.hold("SELECT"); H.play(0.3)
+        H.tap("A")                             -- focus A AMT
+        H.tap("UP")                            -- right above A AMT is A FX
+        local rows = M.Instruments:getSoundRows(M.Instruments:getTrackInstrument(1), L.tracks[1].state, L.tracks[1])
+        H.eq(rows[M.Modes.trackPage.row].key, "FX_TYPE_A", "on A FX row")
+        H.tap("RIGHT")                         -- swaps slot A
+        H.play(0.1)
+        H.truthy(L:getTrackFxId(1, "A") ~= "echo", "slot A swapped")
+        H.release("SELECT"); H.play(0.05)
+    end },
 }

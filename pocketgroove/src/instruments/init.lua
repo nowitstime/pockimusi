@@ -110,6 +110,7 @@ function Instruments:getSoundRows(def, state, track)
         rows = { { key = "PATCH", label = "PATCH", value = name, items = { { label = name } }, index = 1 } }
     end
     for _, row in ipairs(rows) do
+        row.section = "SOUND"
         if row.key == "FOLLOW" and row.value == "ON" and not require("src.harmony"):hasChords() then
             row.note = "NO CHORDS YET"          -- drawn after the value; ON plays as OFF until then
         end
@@ -121,15 +122,43 @@ function Instruments:getSoundRows(def, state, track)
         for i, lvl in ipairs(Synth.PUMP_LEVELS) do items[i] = { label = lvl.label } end
         local pi = track.pump or 1
         if def.group ~= "RHYTHM" then         -- the rhythm instruments are what it listens to
-            rows[#rows + 1] = { key = "PUMP", label = "PUMP", kind = "setting", value = items[pi].label,
-                                items = items, index = pi }
+            rows[#rows + 1] = { key = "PUMP", label = "PUMP", kind = "setting", section = "SOUND",
+                                value = items[pi].label, items = items, index = pi }
         end
-        for _, slot in ipairs(Looper.FX_ORDER) do
-            local on = track.fx.on[slot]
+        local filterBtn = Looper:getTrackFilterBtn(track.slot)
+        for _, btn in ipairs(Looper.FX_BUTTON_ORDER) do
+            local fxId = Looper:getTrackFxId(track.slot, btn)
+            local fxDef = Synth.FX_BY_ID[fxId] or Synth.FX_CATALOG[1]
+            local amt = track.fx[fxId] or 0.5
+            local on = track.fx.on[fxId] == true
+
+            local usedOther = {}
+            for _, b in ipairs(Looper.FX_BUTTON_ORDER) do
+                if b ~= btn then usedOther[Looper:getTrackFxId(track.slot, b)] = true end
+            end
+            local fxItems = {}
+            for i, f in ipairs(Synth.FX_CATALOG) do
+                local dupFilter = f.isFilter and filterBtn and filterBtn ~= btn
+                local dupSlot = usedOther[f.id] == true
+                fxItems[i] = {
+                    id = f.id, label = f.label, full = f.full, group = f.group,
+                    disabled = dupFilter or dupSlot,
+                    disabledFilter = dupFilter,
+                }
+            end
             rows[#rows + 1] = {
-                key = "FX_" .. slot, label = FX_LABELS[slot], kind = "fx", slot = slot, on = on,
-                amount = track.fx[slot], button = Looper.FX_BUTTONS[slot],
-                value = on and (math.floor(track.fx[slot] * 100 + 0.5) .. "%") or "OFF",
+                key = "FX_TYPE_" .. btn,
+                label = btn .. " FX",
+                kind = "fx_type", section = "EFFECTS", button = btn, slot = fxId,
+                value = fxDef.label,
+                items = fxItems, index = fxDef.index,
+            }
+            rows[#rows + 1] = {
+                key = "FX_" .. btn,
+                label = btn .. " AMT",
+                kind = "fx", section = "EFFECTS", slot = fxId, button = btn, on = on,
+                amount = amt,
+                value = on and (math.floor(amt * 100 + 0.5) .. "%") or "OFF",
             }
         end
     end
@@ -138,12 +167,30 @@ end
 
 -- LEFT / RIGHT on a Track page row: setting rows change their value, sound
 -- rows change the sound (with a preview unless `quiet`), effect rows change
--- the amount in 10 % steps
+-- the amount in 10 % steps, FX type row swaps the effect in the active slot
 function Instruments:cycleRow(def, state, rowIdx, delta, track, quiet)
     local row = self:getSoundRows(def, state, track)[rowIdx]
     if not row then return end
     if row.kind == "fx" then
-        Looper:adjustTrackFx(track.slot, row.slot, delta * 0.1)
+        Looper:adjustTrackFx(track.slot, row.button or row.slot, delta * 0.1)
+    elseif row.kind == "fx_type" and track and row.items then
+        local n = #row.items
+        local idx = row.index or 1
+        local warnedFilter = false
+        for _ = 1, n do
+            idx = ((idx - 1 + delta) % n) + 1
+            local cand = row.items[idx]
+            if cand.disabledFilter then
+                warnedFilter = true
+            elseif not cand.disabled then
+                Looper:setTrackFxSlot(track.slot, row.button, cand.id)
+                if warnedFilter then
+                    Looper:showToast("ONLY ONE FILTER PER TRACK - " .. cand.label)
+                end
+                return
+            end
+        end
+        if warnedFilter then Looper:showToast("ONLY ONE FILTER PER TRACK") end
     elseif row.key == "PUMP" and track then
         local n = #require("src.synth").PUMP_LEVELS
         track.pump = (((track.pump or 1) - 1 + delta) % n) + 1

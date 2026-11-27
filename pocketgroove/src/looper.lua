@@ -86,8 +86,11 @@ function Looper:init(Instruments)
             volume = 0.80,
             pump = 1,          -- PUMP row: index into Synth.PUMP_LEVELS (1 = off)
             swing = 0.50,      -- 0.50 = straight .. 0.75 = heavy (applied at playback)
-            fx = { tone = 0.5, drive = 0.5, echo = 0.4, space = 0.5,
-                   on = { tone = false, drive = false, echo = false, space = false } },
+            fx = {
+                slots = { X = "tone", Y = "drive", A = "echo", B = "space" },
+                tone = 0.5, drive = 0.5, echo = 0.4, space = 0.5,
+                on = { tone = false, drive = false, echo = false, space = false },
+            },
             muted = false,
             events = {},
             rev = 0,           -- bumped whenever the events change (Looper:touch; Harmony's cache)
@@ -240,29 +243,88 @@ function Looper:adjustSwing(trackIdx, delta)
     self:showToast(string.format("TRACK %d SWING: %d%%", trackIdx, math_floor(track.swing * 100 + 0.5)))
 end
 
--- Track page effect slots on the face buttons
+-- Track page effect slots on the face buttons (defaults; each track has track.fx.slots)
+Looper.FX_BUTTON_ORDER = { "X", "Y", "A", "B" }
 Looper.FX_SLOTS = { X = "tone", Y = "drive", A = "echo", B = "space" }
 Looper.FX_ORDER = { "tone", "drive", "echo", "space" }
 Looper.FX_BUTTONS = { tone = "X", drive = "Y", echo = "A", space = "B" }
 
+function Looper:getTrackFxId(trackIdx, btn)
+    local track = self.tracks[trackIdx]
+    if not track or not track.fx then return self.FX_SLOTS[btn] end
+    if track.fx.slots and track.fx.slots[btn] then return track.fx.slots[btn] end
+    return self.FX_SLOTS[btn]
+end
+
+-- Button holding a filter on this track (or nil if none)
+function Looper:getTrackFilterBtn(trackIdx)
+    local track = self.tracks[trackIdx]
+    if not track or not track.fx then return nil end
+    for _, btn in ipairs(self.FX_BUTTON_ORDER) do
+        local id = self:getTrackFxId(trackIdx, btn)
+        if Synth:isFilterFx(id) then return btn, id end
+    end
+    return nil
+end
+
+function Looper:setTrackFxSlot(trackIdx, btn, fxId)
+    local track = self.tracks[trackIdx]
+    if not track or not track.fx or not btn or not Synth.FX_BY_ID[fxId] then return false end
+    track.fx.slots = track.fx.slots or { X = "tone", Y = "drive", A = "echo", B = "space" }
+    local oldId = track.fx.slots[btn]
+    if oldId == fxId then return true end
+
+    -- Max 1 filter per track
+    if Synth:isFilterFx(fxId) then
+        local fBtn = self:getTrackFilterBtn(trackIdx)
+        if fBtn and fBtn ~= btn then
+            self:showToast("ONLY ONE FILTER PER TRACK")
+            return false
+        end
+    end
+    -- Don't duplicate the same effect onto two slots of the same track
+    for _, other in ipairs(self.FX_BUTTON_ORDER) do
+        if other ~= btn and track.fx.slots[other] == fxId then
+            self:showToast(Synth.FX_BY_ID[fxId].label .. " IS ALREADY ON " .. other)
+            return false
+        end
+    end
+
+    local wasOn = oldId and track.fx.on[oldId] or false
+    local oldAmt = oldId and track.fx[oldId] or 0.5
+    if oldId then track.fx.on[oldId] = false end
+    track.fx.slots[btn] = fxId
+    if track.fx[fxId] == nil then track.fx[fxId] = oldAmt end
+    track.fx.on[fxId] = wasOn
+    Synth:configureTrackFx(track)
+    self:showToast(string.format("TRACK %d %s: %s", trackIdx, btn, Synth.FX_BY_ID[fxId].label))
+    return true
+end
+
 function Looper:toggleTrackFx(trackIdx, slot)
     local track = self.tracks[trackIdx]
     if not track or not slot then return end
+    if self.FX_SLOTS[slot] then slot = self:getTrackFxId(trackIdx, slot) end
+    track.fx[slot] = track.fx[slot] or 0.5
     track.fx.on[slot] = not track.fx.on[slot]
     if track.fx.on[slot] and track.fx[slot] <= 0.0 then track.fx[slot] = 0.5 end
     Synth:configureTrackFx(track)
-    self:showToast(string.format("TRACK %d %s: %s", trackIdx, slot:upper(),
+    local label = (Synth.FX_BY_ID[slot] and Synth.FX_BY_ID[slot].label) or slot:upper()
+    self:showToast(string.format("TRACK %d %s: %s", trackIdx, label,
         track.fx.on[slot] and (math_floor(track.fx[slot] * 100 + 0.5) .. "%") or "OFF"))
 end
 
 function Looper:adjustTrackFx(trackIdx, slot, delta)
     local track = self.tracks[trackIdx]
     if not track or not slot then return end
+    if self.FX_SLOTS[slot] then slot = self:getTrackFxId(trackIdx, slot) end
+    local cur = track.fx[slot] or 0.5
     -- whole percent, so ten 10 % steps down from 100 % land on exactly 0
-    track.fx[slot] = math_floor(math_max(0.0, math.min(1.0, track.fx[slot] + delta)) * 100 + 0.5) / 100
+    track.fx[slot] = math_floor(math_max(0.0, math.min(1.0, cur + delta)) * 100 + 0.5) / 100
     track.fx.on[slot] = track.fx[slot] > 0.0
     Synth:configureTrackFx(track)
-    self:showToast(string.format("TRACK %d %s: %d%%", trackIdx, slot:upper(), math_floor(track.fx[slot] * 100 + 0.5)))
+    local label = (Synth.FX_BY_ID[slot] and Synth.FX_BY_ID[slot].label) or slot:upper()
+    self:showToast(string.format("TRACK %d %s: %d%%", trackIdx, label, math_floor(track.fx[slot] * 100 + 0.5)))
 end
 
 Looper.FLAM_TIME = 0.028 -- seconds between grace note and main hit

@@ -314,11 +314,11 @@ return {
         local page = function() return package.loaded["src.modes"].trackPage end
         H.hold("SELECT"); H.play(0.3)
         local seen = {}
-        for _ = 1, 12 do
+        for _ = 1, 16 do
             H.tap("DOWN")
             seen[page().row] = true
         end
-        for i = 1, 12 do H.truthy(seen[i], "row " .. i) end
+        for i = 1, 16 do H.truthy(seen[i], "row " .. i) end
         H.release("SELECT"); H.play(0.1)
     end },
 

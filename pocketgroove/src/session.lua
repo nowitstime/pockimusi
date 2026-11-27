@@ -292,9 +292,30 @@ function Session.restore(data, opts)
 
         local fx = type(raw.fx) == "table" and raw.fx or {}
         local on = type(fx.on) == "table" and fx.on or {}
-        for _, slotName in ipairs(Looper.FX_ORDER) do
-            track.fx[slotName] = num(fx[slotName], 0.0, 1.0, track.fx[slotName])
-            track.fx.on[slotName] = (on[slotName] == true)
+        local rawSlots = type(fx.slots) == "table" and fx.slots or {}
+        track.fx.slots = { X = "tone", Y = "drive", A = "echo", B = "space" }
+        local usedFx, hasFilter = {}, false
+        for _, btn in ipairs(Looper.FX_BUTTON_ORDER) do
+            local candidate = rawSlots[btn]
+            if type(candidate) == "string" and Synth.FX_BY_ID[candidate] and not usedFx[candidate] then
+                if not Synth:isFilterFx(candidate) or not hasFilter then
+                    track.fx.slots[btn] = candidate
+                    usedFx[candidate] = true
+                    if Synth:isFilterFx(candidate) then hasFilter = true end
+                end
+            end
+        end
+        track.fx.on = {}
+        local slotSet = {}
+        for _, id in pairs(track.fx.slots) do slotSet[id] = true end
+        for _, defFx in ipairs(Synth.FX_CATALOG) do
+            local id = defFx.id
+            if fx[id] ~= nil or slotSet[id] then
+                track.fx[id] = num(fx[id], 0.0, 1.0, track.fx[id] or 0.5)
+            end
+            if on[id] ~= nil or slotSet[id] then
+                track.fx.on[id] = (on[id] == true)
+            end
         end
         Synth:configureTrackFx(track)
 

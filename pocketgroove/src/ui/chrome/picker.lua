@@ -148,15 +148,16 @@ function Chrome:drawPickerShelf()
         local it = items[i]
         local x = cx0 + (i - from) * (cw + gap)
         local isCur = (i == idx)
-        self:setColor(isCur and col or C.DIM, a)
+        local dis = it.disabled and not isCur
+        self:setColor(isCur and col or C.DIM, dis and (0.35 * a) or a)
         love.graphics.rectangle("line", x, cy, cw, ch, 8, 8)
         local font = isCur and self.fontMed or self.fontSmall
         love.graphics.setFont(font)
-        self:setColor(isCur and C.TEXT or C.MUTED, a)
+        self:setColor(isCur and C.TEXT or (dis and C.DIM or C.MUTED), dis and (0.45 * a) or a)
         love.graphics.print(it.label, math_floor(x + (cw - font:getWidth(it.label)) * 0.5), cy + ch * 0.5 - 13)
         local num = string.format("%02d", i)
         love.graphics.setFont(self.fontTiny)
-        self:setColor(C.MUTED, a)
+        self:setColor(dis and C.DIM or C.MUTED, dis and (0.45 * a) or a)
         love.graphics.print(num, math_floor(x + (cw - self.fontTiny:getWidth(num)) * 0.5), cy + ch * 0.5 + 5)
     end
 

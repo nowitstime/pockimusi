@@ -42,7 +42,7 @@ function Chrome:drawMoonGauge(x, y, r, amount, on, col)
     love.graphics.setLineWidth(1)
 end
 
-Chrome.ROWS_SHOWN = 6
+Chrome.ROWS_SHOWN = 9
 
 -- The instruments as a carousel across the top of the Track page. The
 -- selected one (the instrument previewed with L1 / R1, else the track's own)
@@ -108,58 +108,56 @@ end
 
 function Chrome:drawInstrumentTabs(track, col)
     local C = Config.COLORS
-    local font = self.fontTiny
     if track.isLane then
-        -- track C is always the chords: one title, no tabs
         love.graphics.setFont(self.fontMed)
         self:setColor(col)
         local t = "TRACK C - CHORDS"
-        love.graphics.print(t, math_floor(320 - self.fontMed:getWidth(t) * 0.5), 62)
+        love.graphics.print(t, math_floor(320 - self.fontMed:getWidth(t) * 0.5), 60)
         return
     end
     local pending = Modes.trackPage.pending
     local selectedId = pending or track.instrumentId
-    local y, h, pad = 60, 18, 7
-    local groups = {}
-    love.graphics.setFont(font)
-    for _, tab in ipairs(self:tabLayout(self:tabPosition(track))) do
-        local inst = tab.inst
-        local label = inst.shortName or inst.name
-        local w = font:getWidth(label) + pad * 2
-        local x = math_floor(tab.x - w * 0.5)
-        local a = tab.alpha
-        local textCol = C.MUTED
-        if inst.id == selectedId then
-            -- the centre: filled while it is only a preview
-            self:setColor(col, (pending and 1.0 or 0.12) * a)
-            love.graphics.rectangle("fill", x, y, w, h, h * 0.5, h * 0.5)
-            self:setColor(col, a)
-            love.graphics.rectangle("line", x, y, w, h, h * 0.5, h * 0.5)
-            textCol = pending and C.BG or C.TEXT
-        elseif inst.id == track.instrumentId then
-            -- the track's own keeps its outline while another is previewed
-            self:setColor(col, 0.12 * a)
-            love.graphics.rectangle("fill", x, y, w, h, h * 0.5, h * 0.5)
-            self:setColor(col, a)
-            love.graphics.rectangle("line", x, y, w, h, h * 0.5, h * 0.5)
-        end
-        self:setColor(textCol, a)
-        love.graphics.print(label, x + pad, y + math_floor((h - self:lineHeight(font)) * 0.5))
-        -- the instrument's group: a short bar in the group's colour under the tab
-        local group = Instruments:groupOf(inst)
-        self:setColor(group.rgb, a)
-        love.graphics.rectangle("fill", math_floor(tab.x - 6), y + h + 3, 12, 2)
-        groups[#groups + 1] = { x = tab.x, w = w, group = group, a = a }
-    end
-    -- a hairline where one group ends and the next begins
-    for i = 2, #groups do
-        local l, r = groups[i - 1], groups[i]
-        if l.group ~= r.group then
-            local mx = math_floor((l.x + l.w * 0.5 + r.x - r.w * 0.5) * 0.5) + 0.5
-            self:setColor(C.MUTED, math_min(l.a, r.a) * 0.7)
-            love.graphics.line(mx, y + 2, mx, y + h - 2)
-        end
-    end
+    self:tabPosition(track)
+    local inst = Instruments:getDefinition(selectedId)
+    local group = Instruments:groupOf(inst)
+    local idx = self:selectedTab(track)
+    local n = #Instruments.catalog
+    local gc = group.rgb
+
+    -- Compact L1 / R1 caps flanking the group + instrument pill (Style 2)
+    local lOn, rOn = Input.down.L1, Input.down.R1
+    self:drawCapsule(194, 57, 28, 20, "L1", col, lOn and col or Config.shade(col, 0.14), lOn and C.BG or col, self.fontTiny)
+    self:drawCapsule(418, 57, 28, 20, "R1", col, rOn and col or Config.shade(col, 0.14), rOn and C.BG or col, self.fontTiny)
+
+    -- Center pill: GROUP · INSTRUMENT   idx/N
+    local px, py, pw, ph = 228, 57, 184, 20
+    self:setColor(gc, pending and 0.9 or 0.18)
+    love.graphics.rectangle("fill", px, py, pw, ph, ph * 0.5, ph * 0.5)
+    self:setColor(gc, 0.85)
+    love.graphics.rectangle("line", px, py, pw, ph, ph * 0.5, ph * 0.5)
+
+    local fhTiny = self:lineHeight(self.fontTiny)
+    local fhSmall = self:lineHeight(self.fontSmall)
+    local tyTiny = math_floor(py + (ph - fhTiny) * 0.5)
+    local tySmall = math_floor(py + (ph - fhSmall) * 0.5)
+
+    love.graphics.setFont(self.fontTiny)
+    local gLabel = group.id
+    self:setColor(pending and C.BG or gc)
+    love.graphics.print(gLabel, px + 10, tyTiny)
+
+    local gx = px + 10 + self.fontTiny:getWidth(gLabel) + 6
+    self:setColor(pending and C.BG or C.DIM, 0.8)
+    love.graphics.print("-", gx, tyTiny)
+
+    love.graphics.setFont(self.fontSmall)
+    self:setColor(pending and C.BG or C.TEXT)
+    love.graphics.print(inst.name, gx + 10, tySmall)
+
+    love.graphics.setFont(self.fontTiny)
+    local countStr = string.format("%d/%d", idx, n)
+    self:setColor(pending and C.BG or C.MUTED)
+    love.graphics.print(countStr, math_floor(px + pw - 10 - self.fontTiny:getWidth(countStr)), tyTiny)
 end
 
 -- A previewed instrument swap takes the place of the rows
@@ -198,110 +196,82 @@ function Chrome:drawTrackPageView(def, state, track, col)
     local rows = Instruments:getSoundRows(def, state, track)
     local sel = Modes.trackPage.row
     local n = #rows
-    local y0, step = 102, 25
-    local nx = 226
-    -- At most ROWS_SHOWN rows fit above the effect moons: a longer list
-    -- scrolls with the cursor
     local shown = math_min(n, self.ROWS_SHOWN)
-    local first = clamp(sel - 2, 1, n - shown + 1)
+    local first = clamp(sel - math_floor(shown * 0.5), 1, n - shown + 1)
     local last = first + shown - 1
 
-    -- Value column starts after the widest label (KIT, X ... COLOUR)
+    -- Value column starts after the widest label
     local labelW = 0
-    for _, row in ipairs(rows) do
-        labelW = math.max(labelW, self.fontTiny:getWidth(row.label))
+    for i = first, last do
+        labelW = math.max(labelW, self.fontTiny:getWidth(rows[i].label))
     end
-    local valueX = math.max(282, 250 + labelW + 10)
+    local valueX = math.max(274, 204 + labelW + 10)
 
-    self:setColor(col, 0.3)
-    for yy = y0, y0 + (shown - 1) * step, 4 do
-        love.graphics.line(nx, yy, nx, yy + 1)
-    end
-    -- More rows above / below
-    self:setColor(col, 0.9)
+    -- Scroll arrows on the right edge when the list scrolls
+    self:setColor(col, 0.85)
     if first > 1 then
-        love.graphics.polygon("fill", nx - 4, y0 - 12, nx + 4, y0 - 12, nx, y0 - 17)
+        love.graphics.polygon("fill", 442, 88, 448, 88, 445, 83)
     end
     if last < n then
-        local by = y0 + (shown - 1) * step + 12
-        love.graphics.polygon("fill", nx - 4, by, nx + 4, by, nx, by + 5)
+        love.graphics.polygon("fill", 442, 308, 448, 308, 445, 313)
     end
 
+    -- Clean Style 1 hairline rows with SOUND / EFFECTS section subtitles
+    local y = 94
+    local lastSec = nil
     for i = first, last do
         local row = rows[i]
-        local y = y0 + (i - first) * step
+        local sec = row.section
+        if sec and sec ~= lastSec then
+            if lastSec ~= nil then y = y + 3 end
+            love.graphics.setFont(self.fontTiny)
+            self:setColor(col, 0.55)
+            love.graphics.print(sec, 194, y - 5)
+            self:setColor(col, 0.18)
+            love.graphics.line(194 + self.fontTiny:getWidth(sec) + 6, y, 446, y)
+            y = y + 14
+            lastSec = sec
+        end
+
         local isSel = (i == sel)
         local isFx = (row.kind == "fx")
-        local isSetting = (row.kind == "setting")
         local off = isFx and not row.on
-        -- Marker: sounds are stars, settings hollow rings, effects small moons
+
         if isSel then
-            self:setColor(col, 0.7)
-            self:drawDashedCircle(nx, y, 11, 2, 3)
-            self:drawCapsule(240, y - 11, 192, 22, "", col, col, col, self.fontSmall, 0.22)
-        end
-        local markCol = isSel and col or C.DIM
-        if isFx then
-            self:setColor(markCol, isSel and 1.0 or (row.on and 0.75 or 0.45))
-            love.graphics.circle(row.on and "fill" or "line", nx, y, isSel and 4.5 or 3)
-        elseif isSetting then
-            self:setColor(markCol, isSel and 1.0 or 0.5)
-            love.graphics.setLineWidth(isSel and 1.5 or 1)
-            love.graphics.circle("line", nx, y, isSel and 5 or 3.2)
-            love.graphics.setLineWidth(1)
-        else
-            self:drawStarGlint(nx, y, isSel and 7 or ((i == 1) and 4.0 or 2.8), markCol, isSel and 1.0 or 0.5)
+            self:setColor(col, 0.18)
+            love.graphics.rectangle("fill", 192, y - 9, 256, 19, 5, 5)
+            self:setColor(col)
+            love.graphics.rectangle("fill", 192, y - 6, 3, 13, 1, 1)
         end
 
         love.graphics.setFont(self.fontTiny)
-        self:setColor(isSel and col or C.MUTED, isSel and 1.0 or 0.55)
-        love.graphics.print(row.label, 250, y - 6)
+        self:setColor(isSel and col or C.MUTED, isSel and 1.0 or (off and 0.42 or 0.58))
+        love.graphics.print(row.label, 202, y - 5)
 
         local shownValue = row.note and (row.value .. " - " .. row.note) or row.value
-        local value = isSel and ("<  " .. shownValue .. "  >") or shownValue
+        local value = isSel and ("< " .. shownValue .. " >") or shownValue
         love.graphics.setFont(self.fontSmall)
-        self:setColor((isSel and not off) and C.TEXT or C.MUTED, isSel and 1.0 or 0.62)
+        self:setColor((isSel and not off) and C.TEXT or C.MUTED, isSel and 1.0 or (off and 0.42 or 0.68))
         love.graphics.print(value, valueX, y - 7)
 
         if row.amount then
-            -- Numbers get a bar: there is no list to pick from
-            local bx, bw = 376, 46
-            self:setColor(C.DIM, isSel and 1.0 or 0.55)
+            local bx, bw = 382, 60
+            self:setColor(C.DIM, isSel and 0.8 or 0.45)
             love.graphics.rectangle("fill", bx, y - 2, bw, 4, 2, 2)
             if not off then
-                self:setColor(isSel and col or C.MUTED, isSel and 1.0 or 0.6)
-                love.graphics.rectangle("fill", bx, y - 2, math.max(2, bw * clamp(row.amount, 0, 1)), 4, 2, 2)
+                self:setColor(col, isSel and 1.0 or 0.6)
+                love.graphics.rectangle("fill", bx, y - 2, math.max(3, bw * clamp(row.amount, 0, 1)), 4, 2, 2)
             end
         elseif isSel then
             love.graphics.setFont(self.fontTiny)
             self:setColor(col)
             local hint = row.items and (#row.items > 1) and string.format("%d/%d", row.index or 1, #row.items) or (row.hint or "")
-            local hx = math_floor(424 - self.fontTiny:getWidth(hint))
-            -- only where a long value leaves room
+            local hx = math_floor(442 - self.fontTiny:getWidth(hint))
             if valueX + self.fontSmall:getWidth(value) + 6 <= hx then
-                love.graphics.print(hint, hx, y - 6)
+                love.graphics.print(hint, hx, y - 5)
             end
         end
-    end
-
-    -- Effects as moon phases, with the face button that switches each one
-    -- (track C is silent: no effects)
-    for i, slot in ipairs(track.isLane and {} or Looper.FX_ORDER) do
-        local x = 236 + (i - 1) * 56
-        local on = track.fx.on[slot]
-        local amt = track.fx[slot]
-        self:drawMoonGauge(x, 276, 9, amt, on, col)
-        if rows[sel] and rows[sel].slot == slot then
-            self:setColor(col, 0.7)
-            self:drawDashedCircle(x, 276, 13, 2, 3)
-        end
-        love.graphics.setFont(self.fontTiny)
-        local name = Looper.FX_BUTTONS[slot] .. " " .. slot:upper()
-        self:setColor(on and C.TEXT or C.MUTED, on and 1.0 or 0.65)
-        love.graphics.print(name, math_floor(x - self.fontTiny:getWidth(name) * 0.5), 291)
-        local pct = on and (math_floor(amt * 100 + 0.5) .. "%") or "OFF"
-        self:setColor(on and col or C.MUTED, on and 1.0 or 0.55)
-        love.graphics.print(pct, math_floor(x - self.fontTiny:getWidth(pct) * 0.5), 302)
+        y = y + 20
     end
 end
 

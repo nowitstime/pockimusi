@@ -313,12 +313,34 @@ function Synth:init()
 end
 
 -- ============================================================================
--- Per-track effects (Track page: X tone, Y drive, A echo, B space)
--- Uses OpenAL EFX through LÖVE: tone = low-pass filter on the voice, the
--- others are per-track effect sends. Without EFX, drive falls back to a gain
--- boost and the rest are silent no-ops.
+-- Per-track effects (4 swappable slots on Track page: X, Y, A, B)
+-- Uses OpenAL EFX through LÖVE: FILTER effects (max 1 per track) run as the
+-- voice's direct filter; GRIT / MOD / SPACE effects run as per-track sends.
+-- Without EFX, drive falls back to a gain boost and the rest are silent no-ops.
 -- ============================================================================
-Synth.FX_SEND_ORDER = { "space", "echo", "drive" } -- priority when sends are limited
+Synth.FX_CATALOG = {
+    { id = "tone",   label = "TONE",   full = "TONE - LOW-PASS FILTER",   group = "FILTER", isFilter = true },
+    { id = "hpf",    label = "HPF",    full = "HPF - HIGH-PASS FILTER",   group = "FILTER", isFilter = true },
+    { id = "radio",  label = "RADIO",  full = "RADIO - BAND-PASS FILTER", group = "FILTER", isFilter = true },
+    { id = "drive",  label = "DRIVE",  full = "DRIVE - DISTORTION",       group = "GRIT" },
+    { id = "punch",  label = "PUNCH",  full = "PUNCH - COMPRESSOR",       group = "GRIT" },
+    { id = "chorus", label = "CHORUS", full = "CHORUS - STEREO DETUNE",   group = "MOD" },
+    { id = "flange", label = "FLANGE", full = "FLANGE - JET SWEEP",       group = "MOD" },
+    { id = "ring",   label = "RING",   full = "RING - RING MODULATOR",    group = "MOD" },
+    { id = "echo",   label = "ECHO",   full = "ECHO - STEREO DELAY",      group = "SPACE" },
+    { id = "space",  label = "SPACE",  full = "SPACE - HALL REVERB",      group = "SPACE" },
+}
+Synth.FX_BY_ID = {}
+for i, def in ipairs(Synth.FX_CATALOG) do
+    def.index = i
+    Synth.FX_BY_ID[def.id] = def
+end
+Synth.FX_SEND_ORDER = { "space", "echo", "chorus", "flange", "ring", "punch", "drive" }
+
+function Synth:isFilterFx(id)
+    local def = self.FX_BY_ID[id]
+    return def and def.isFilter == true or false
+end
 
 function Synth:initTrackFx()
     self.sourceFx = setmetatable({}, { __mode = "k" })
@@ -331,23 +353,47 @@ function Synth:initTrackFx()
     end
 end
 
-function Synth:fxName(trackSlot, slot)
-    return "trk" .. trackSlot .. "_" .. slot
+function Synth:fxName(trackSlot, fxId)
+    return "trk" .. trackSlot .. "_" .. fxId
 end
 
--- (Re)configure one track's effect units after its amounts change
+local function buildFxConfig(id, amt)
+    amt = clamp(amt or 0.5, 0.0, 1.0)
+    if id == "space" then
+        return { type = "reverb", gain = 0.32, decaytime = 0.6 + amt * 3.4, density = 1.0, diffusion = 1.0 }
+    elseif id == "echo" then
+        return { type = "echo", delay = 0.11 + amt * 0.09, tapdelay = 0.2 + amt * 0.2,
+                 feedback = 0.25 + amt * 0.5, damping = 0.4, spread = -0.8 }
+    elseif id == "drive" then
+        return { type = "distortion", gain = 0.2 + amt * 0.6, edge = 0.2 + amt * 0.7,
+                 lowcut = 80, center = 3600, bandwidth = 3600 }
+    elseif id == "punch" then
+        return { type = "compressor", enable = true }
+    elseif id == "chorus" then
+        return { type = "chorus", waveform = "triangle", rate = 0.8 + amt * 2.4,
+                 depth = 0.25 + amt * 0.65, feedback = 0.15 + amt * 0.35, delay = 0.012 }
+    elseif id == "flange" then
+        return { type = "flanger", waveform = "sine", rate = 0.25 + amt * 1.5,
+                 depth = 0.3 + amt * 0.65, feedback = 0.2 + amt * 0.55, delay = 0.002 }
+    elseif id == "ring" then
+        return { type = "ringmodulator", waveform = "sine", frequency = 80 + amt * 720, highcut = 2400 }
+    end
+    return nil
+end
+
+-- (Re)configure one track's effect units after its amounts or slots change
 function Synth:configureTrackFx(track)
     if not self.fxSupported or not track then return end
     local fx = track.fx
-    local settings = {
-        space = { type = "reverb", gain = 0.32, decaytime = 0.6 + fx.space * 3.4, density = 1.0, diffusion = 1.0 },
-        echo  = { type = "echo", delay = 0.11 + fx.echo * 0.09, tapdelay = 0.2 + fx.echo * 0.2,
-                  feedback = 0.25 + fx.echo * 0.5, damping = 0.4, spread = -0.8 },
-        drive = { type = "distortion", gain = 0.2 + fx.drive * 0.6, edge = 0.2 + fx.drive * 0.7,
-                  lowcut = 80, center = 3600, bandwidth = 3600 },
-    }
-    for slot, cfg in pairs(settings) do
-        pcall(love.audio.setEffect, self:fxName(track.slot, slot), cfg)
+    if not fx then return end
+    local slots = fx.slots or { X = "tone", Y = "drive", A = "echo", B = "space" }
+    local seen = {}
+    for _, fxId in pairs(slots) do
+        if not self:isFilterFx(fxId) and not seen[fxId] then
+            seen[fxId] = true
+            local cfg = buildFxConfig(fxId, fx[fxId])
+            if cfg then pcall(love.audio.setEffect, self:fxName(track.slot, fxId), cfg) end
+        end
     end
 end
 
@@ -359,15 +405,41 @@ Synth.METER_FALL  = 2.5      -- level per second
 Synth.METER_HOLD  = 0.8      -- seconds the peak mark stays
 Synth.METER_HOT   = 0.9      -- master estimate above this is likely to clip
 
--- The low-pass on one source: the track's TONE times the master sweep, times
--- the source's own tone (a soft drum hit is darker: Synth.sourceTone)
+-- Active filter effect on a track (at most one: tone, hpf, or radio)
+local function activeFilterSlot(fx)
+    if not fx or not fx.on then return nil, 0 end
+    local slots = fx.slots
+    if slots then
+        for _, id in pairs(slots) do
+            if Synth:isFilterFx(id) and fx.on[id] then return id, fx[id] or 0.5 end
+        end
+    elseif fx.on.tone then
+        return "tone", fx.tone or 0.5
+    end
+    return nil, 0
+end
+
+-- Direct source filter: active track filter (TONE / HPF / RADIO) combined with
+-- master LP sweep and per-source tone (Synth.sourceTone)
 function Synth:applyFilter(src, track)
     if not self.fxSupported then return end
     local fx = track and track.fx
-    local high = self.sourceTone[src] or 1.0
-    if fx and fx.on.tone then high = high * math.max(0.03, 1.0 - fx.tone * 0.97) end
-    high = high * (1.0 - self.lpEnvelope * self.LP_DEPTH)
-    if high < 0.999 then
+    local high = (self.sourceTone[src] or 1.0) * (1.0 - self.lpEnvelope * self.LP_DEPTH)
+    local low = 1.0
+    local fId, fAmt = activeFilterSlot(fx)
+    if fId == "tone" then
+        high = high * math.max(0.03, 1.0 - fAmt * 0.97)
+    elseif fId == "hpf" then
+        low = math.max(0.03, 1.0 - fAmt * 0.97)
+    elseif fId == "radio" then
+        low = math.max(0.05, 1.0 - fAmt * 0.95)
+        high = high * math.max(0.08, 1.0 - fAmt * 0.85)
+    end
+    if low < 0.999 and high < 0.999 then
+        pcall(src.setFilter, src, { type = "bandpass", volume = 1.0, lowgain = math.max(0.02, low), highgain = math.max(0.02, high) })
+    elseif low < 0.999 then
+        pcall(src.setFilter, src, { type = "highpass", volume = 1.0, lowgain = math.max(0.02, low) })
+    elseif high < 0.999 then
         pcall(src.setFilter, src, { type = "lowpass", volume = 1.0, highgain = math.max(0.02, high) })
     else
         pcall(src.setFilter, src)
@@ -387,11 +459,16 @@ function Synth:applyTrackFx(src, track)
     self:applyFilter(src, track)
     if not fx then return end
 
+    local activeSlots = {}
+    local slots = fx.slots or { X = "tone", Y = "drive", A = "echo", B = "space" }
+    for _, id in pairs(slots) do activeSlots[id] = true end
+
     local applied, used = {}, 0
-    for _, slot in ipairs(self.FX_SEND_ORDER) do
-        if fx.on[slot] and used < self.maxSends then
-            local name = self:fxName(track.slot, slot)
-            local sendGain = (slot == "drive") and 1.0 or clamp(0.25 + fx[slot] * 0.75, 0.0, 1.0)
+    for _, fxId in ipairs(self.FX_SEND_ORDER) do
+        if activeSlots[fxId] and fx.on[fxId] and used < self.maxSends then
+            local name = self:fxName(track.slot, fxId)
+            local amt = fx[fxId] or 0.5
+            local sendGain = (fxId == "drive" or fxId == "punch") and 1.0 or clamp(0.25 + amt * 0.75, 0.0, 1.0)
             local ok = pcall(src.setEffect, src, name, { type = "lowpass", volume = sendGain, highgain = 1.0 })
             if ok then
                 table.insert(applied, name)

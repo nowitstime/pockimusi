@@ -159,8 +159,69 @@ function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeM
     self:drawStarGlint(cx, cy, 7, shade(col, 0.8), 1.0)
 
     local btnOrder = { "X", "Y", "A", "B" }
+    local isTrackFx = (Modes.current == "TRACK" and not Song.page
+                       and Looper.tracks[Looper.activeTrack] and not Looper.tracks[Looper.activeTrack].isLane)
+    local selFxBtn
+    if isTrackFx then
+        local track = Looper.tracks[Looper.activeTrack]
+        local def, state = Instruments:getTrackInstrument(Looper.activeTrack)
+        local rows = Instruments:getSoundRows(def, state, track)
+        local cur = rows[Modes.trackPage.row]
+        if cur and (cur.kind == "fx" or cur.kind == "fx_type") then selFxBtn = cur.button end
+    end
+
     for _, btn in ipairs(btnOrder) do
         local p = pos[btn]
+        if isTrackFx then
+            local track = Looper.tracks[Looper.activeTrack]
+            local fxId = Looper:getTrackFxId(Looper.activeTrack, btn)
+            local fxDef = Synth.FX_BY_ID[fxId]
+            local on = track.fx.on[fxId] == true
+            local amt = track.fx[fxId] or 0
+            local isSel = (selFxBtn == btn)
+            local name = fxDef and fxDef.label or fxId:upper()
+            local pct = on and (math_floor(amt * 100 + 0.5) .. "%") or "OFF"
+
+            if isSel then
+                self:setColor(col, 0.9)
+                self:drawDashedCircle(p.x, p.y, r + 5, 2, 3)
+            else
+                self:setColor(shade(col, on and 0.45 or 0.22))
+                love.graphics.circle("line", p.x, p.y, r + 3)
+            end
+            self:setColor(shade(col, on and 0.14 or 0.06))
+            love.graphics.circle("fill", p.x, p.y, r)
+
+            -- Clipped moon-phase polygon inside the button lens
+            if on and amt > 0.01 then
+                local mr = r - 1.5
+                local pts, steps = {}, 20
+                for i = 0, steps do
+                    local a = -math_pi * 0.5 - (i / steps) * math_pi
+                    pts[#pts + 1] = p.x + math_cos(a) * mr
+                    pts[#pts + 1] = p.y + math_sin(a) * mr
+                end
+                local rx = (amt * 2.0 - 1.0) * mr
+                for i = 0, steps do
+                    local a = math_pi * 0.5 - (i / steps) * math_pi
+                    pts[#pts + 1] = p.x + math_cos(a) * rx
+                    pts[#pts + 1] = p.y + math_sin(a) * mr
+                end
+                self:setColor(col, 0.34)
+                love.graphics.polygon("fill", pts)
+            end
+
+            self:setColor(on and col or shade(col, 0.4))
+            love.graphics.setLineWidth(isSel and 2.0 or (on and 1.6 or 1.1))
+            love.graphics.circle("line", p.x, p.y, r)
+            love.graphics.setLineWidth(1)
+
+            love.graphics.setFont(self.fontTiny)
+            self:setColor(on and C.TEXT or C.MUTED, on and 1.0 or 0.65)
+            love.graphics.print(name, math_floor(p.x - self.fontTiny:getWidth(name) * 0.5), p.y - 10)
+            self:setColor(on and col or C.DIM, on and 1.0 or 0.8)
+            love.graphics.print(pct, math_floor(p.x - self.fontTiny:getWidth(pct) * 0.5), p.y + 2)
+        else
         local fl = (flashMap and flashMap[btn]) or 0.0
         local isActive = (activeMap and activeMap[btn]) or (Input.down[btn] and not Input.down.R2)
         local btnCol = col
@@ -237,6 +298,7 @@ function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeM
                 local th = self:lineHeight(font)
                 love.graphics.print(text, math_floor(p.x - tw * 0.5), math_floor(p.y - th * 0.5))
             end
+        end
         end
     end
 end

@@ -75,6 +75,7 @@ SCENES = {
     "picker-harp-patch": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("RIGHT"); H.tap("RIGHT")',
     "picker-bass-odd": 'H.tap("SELECT"); H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); for _ = 1, 4 do H.tap("LEFT") end',
     "fx-rows": 'H.hold("SELECT"); H.play(0.3); H.tap("B"); H.tap("Y"); H.tap("RIGHT"); H.tap("RIGHT")',
+    "fx-swap": 'H.tap("SELECT"); H.tap("SELECT"); local L = require("src.looper"); L:toggleTrackFx(3, "X"); L:toggleTrackFx(3, "Y"); L:toggleTrackFx(3, "A"); L:setTrackFxSlot(3, "A", "chorus"); H.hold("SELECT"); H.play(0.3); H.tap("A"); H.tap("UP"); H.tap("RIGHT")',
     "harp-play": 'H.tap("SELECT"); H.play(0.2)',
     "harp-colour": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT")',
     "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT");'

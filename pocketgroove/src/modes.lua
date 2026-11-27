@@ -407,10 +407,10 @@ function handlers.TRACK(ctx, dt)
     -- Effects on the face buttons: on / off, and the cursor goes to its row
     for _, btn in ipairs({ "X", "Y", "A", "B" }) do
         if Input.pressed[btn] and not def.NO_FX then
-            local slot = Looper.FX_SLOTS[btn]
-            Looper:toggleTrackFx(Looper.activeTrack, slot)
+            page.fxBtn = btn
+            Looper:toggleTrackFx(Looper.activeTrack, btn)
             for i, row in ipairs(rows) do
-                if row.slot == slot then page.row = i end
+                if row.kind == "fx" and row.button == btn then page.row = i end
             end
             page.picker, page.previewIn = nil, nil
         end

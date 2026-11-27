@@ -500,11 +500,11 @@ return {
     { "the five library instruments keep their views and labels", function()
         local M, frame = bootCapturing()
         local expect = {
-            drums = { "ACCENT", "RATCHET", "1/4", "1/8", "REPEAT OFF", "D-PAD: EXPRESSION" },
-            harp  = { "bVI", "IVm", "OCT -", "OCT +", "D-PAD: HARMONY" },
-            bass  = { "L5", "LEGATO", "STAC", "OCT -1", "PITCH TRACE", "GLIDE MEDIUM", "D-PAD: SCALE DEGREE" },
-            pad   = { "BRIGHT +", "SWELL", "OCT -1", "MOVE", "D-PAD: TONE" },
-            lead  = { "NOTE", "UP-DN", "OCT -1", "PITCH TRACE", "D-PAD: SCALE DEGREE" },
+            drums = { "ACCENT", "RATCHET", "1/4", "1/8", "REPEAT OFF" },
+            harp  = { "bVI", "IVm", "OCT -", "OCT +" },
+            bass  = { "L5", "LEGATO", "STAC", "OCT -1", "PITCH TRACE", "GLIDE MEDIUM" },
+            pad   = { "BRIGHT +", "SWELL", "OCT -1", "MOVE" },
+            lead  = { "NOTE", "UP-DN", "OCT -1", "PITCH TRACE" },
         }
         for id, labels in pairs(expect) do
             playOn(M, 3, id)

@@ -134,7 +134,7 @@ return {
         H.tap("UP"); H.tap("UP"); H.tap("UP"); H.tap("UP"); H.tap("UP")
         H.eq(page().row, 1, "UP to the KIT row")
         H.tap("UP")
-        H.eq(page().row, 12, "UP past the first row wraps to the last effect row")
+        H.eq(page().row, 16, "UP past the first row wraps to the last effect row")
         H.tap("DOWN")
         H.eq(page().row, 1, "DOWN wraps back")
         H.release("SELECT"); H.play(0.1)
@@ -181,14 +181,14 @@ return {
         H.hold("SELECT"); H.play(0.3)
         H.tap("X")
         H.truthy(fx.on.tone, "X tap: tone on")
-        H.eq(page().row, 9, "cursor on the TONE row")
+        H.eq(page().row, 10, "cursor on the TONE row")
         H.tap("RIGHT")
         H.near(fx.tone, 0.6, "RIGHT: tone +10 %", 1e-9)
         H.tap("X")
         H.falsy(fx.on.tone, "X tap again: tone off")
         H.near(fx.tone, 0.6, "the amount is kept", 1e-9)
         H.tap("B")
-        H.eq(page().row, 12, "B: the SPACE row")
+        H.eq(page().row, 16, "B: the SPACE row")
         for _ = 1, 8 do H.tap("LEFT") end
         H.eq(fx.space, 0, "LEFT down to exactly 0")
         H.falsy(fx.on.space, "0 switches it off")
@@ -274,7 +274,7 @@ return {
         for slot = 1, 4 do
             local def, state, track = M.Instruments:getTrackInstrument(slot)
             local rows = M.Instruments:getSoundRows(def, state, track)
-            H.eq(rows[#rows].key, "FX_space", "the four effects come last")
+            H.eq(rows[#rows].key, "FX_B", "the four FX pairs come last")
             for _, row in ipairs(rows) do
                 local what = def.id .. " " .. row.key
                 if row.items then
