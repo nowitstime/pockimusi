@@ -164,7 +164,7 @@ function Chrome:drawTopBar()
         mc = { label = "COUNT-IN  " .. countBeats, icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }
     end
     local mockGear = false
-    if self.MOCK and (mode == "TRACK") then
+    if self.MOCK and (mode == "TRACK" or (self.MOCK == "D" and self.MOCK_PAGES[mode])) then
         mc = { label = mc.label, icon = "NONE", stroke = C.SILVER, fill = C.PANEL_HI, txt = C.SILVER, iconCol = C.SILVER }
         mockGear = true
     end
@@ -197,7 +197,7 @@ function Chrome:drawTopBar()
         love.graphics.line(icx - 3.5, icy + 3.5, icx + 3.5, icy - 3.5)
         love.graphics.setLineWidth(1)
     elseif mockGear then
-        self:mockGear(icx, icy, 6.5, C.SILVER, 1.0, true)
+        self:mockGlyph(mode, icx, icy, C.SILVER)
     elseif mc.icon == "GLINT" then
         self:drawStarGlint(icx, icy, 5.0, mc.iconCol, 1.0)
     end

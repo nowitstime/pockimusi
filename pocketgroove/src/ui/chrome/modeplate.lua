@@ -26,6 +26,8 @@ local math_pi    = math.pi
 return function(Chrome)
 
 Chrome.MOCK = nil
+-- Settings pages that take the mock style (style D) besides the Track page
+Chrome.MOCK_PAGES = { TRANSPORT = true, MIX = true, FX = true }
 
 -- Cool white "moonlight" used for every mode page's edge light
 local MOON = { 0.86, 0.92, 1.0, 1.0 }
@@ -139,7 +141,7 @@ function Chrome:mockSpacedTitle(cx, y, text, col, alpha, font)
 end
 
 -- The setting dial: a graduated ring with four stations (rows / values) and a needle
-function Chrome:mockDial(cx, cy, col, accent, labelCol, plain)
+function Chrome:mockDial(cx, cy, col, accent, labelCol, plain, labels)
     local C = Config.COLORS
     local R = 58
     local dir = Input:get8WayDirection()
@@ -182,8 +184,15 @@ function Chrome:mockDial(cx, cy, col, accent, labelCol, plain)
         elseif s.k == "LEFT" then lx, ly = cx - R - 2 - tw, cy - R * 0.5 - 6
         else lx, ly = cx + R + 2, cy - R * 0.5 - 6 end
         if not plain then
+            local text = s.text
+            if labels then text = labels[s.k] or "" end
+            tw = self.fontTiny:getWidth(text)
+            if s.k == "UP" then lx = cx - tw * 0.5
+            elseif s.k == "DOWN" then lx = cx - tw * 0.5
+            elseif s.k == "LEFT" then lx = math.max(14, cx - R - 2 - tw)
+            end
             self:setColor(on and accent or labelCol, on and 1 or 0.8)
-            love.graphics.print(s.text, math_floor(lx), math_floor(ly))
+            love.graphics.print(text, math_floor(lx), math_floor(ly))
         end
     end
     -- needle: points at the held direction, else rests up
@@ -191,7 +200,7 @@ function Chrome:mockDial(cx, cy, col, accent, labelCol, plain)
     local map = { UP = -0.5, DOWN = 0.5, LEFT = 1.0, RIGHT = 0.0, UP_LEFT = -0.75, UP_RIGHT = -0.25, DOWN_LEFT = 0.75, DOWN_RIGHT = 0.25 }
     if dir and map[dir] then na = map[dir] * math_pi end
     local held = dir and map[dir]
-    if plain and not held then
+    if (plain or labels) and not held then
         -- at rest: an empty face, just the hub
         self:setColor(col, 0.6)
         love.graphics.circle("line", cx, cy, 4)
@@ -208,6 +217,51 @@ function Chrome:mockDial(cx, cy, col, accent, labelCol, plain)
     self:setColor(col, 0.9)
     love.graphics.circle("line", cx, cy, 5)
     self:drawStarGlint(cx, cy, 3, accent, 1)
+end
+
+-- Style D's stage for any settings page: the instrument's scenery, dimmed,
+-- a solid plate under the centre column, a clean chamfered moonlit frame
+function Chrome:mockModeBackdrop(def, instCol)
+    local C = Config.COLORS
+    local X, Y, W, Hh, CH = 8, 50, 624, 306, 12
+    self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
+    self:setColor(C.BG, 0.3)
+    love.graphics.rectangle("fill", 9, 51, 622, 304)
+    local plate = chamferPts(184, 86, 272, 240, 10)
+    self:setColor(C.BG, 1.0)
+    love.graphics.polygon("fill", plate)
+    self:mockGlowPoly(plate, MOON, 0.75)
+    self:setColor(C.BG)
+    love.graphics.polygon("fill", X - 1, Y - 1, X + CH, Y - 1, X - 1, Y + CH)
+    love.graphics.polygon("fill", X + W + 1, Y - 1, X + W - CH, Y - 1, X + W + 1, Y + CH)
+    love.graphics.polygon("fill", X - 1, Y + Hh + 1, X + CH, Y + Hh + 1, X - 1, Y + Hh - CH)
+    love.graphics.polygon("fill", X + W + 1, Y + Hh + 1, X + W - CH, Y + Hh + 1, X + W + 1, Y + Hh - CH)
+    self:mockGlowPoly(chamferPts(X, Y, W, Hh, CH), MOON, 0.8)
+end
+
+-- A page glyph for the top-bar badge
+function Chrome:mockGlyph(mode, cx, cy, col)
+    self:setColor(col)
+    if mode == "TRACK" then
+        self:mockGear(cx, cy, 6.5, col, 1.0, true)
+    elseif mode == "TRANSPORT" then
+        -- hourglass
+        love.graphics.setLineWidth(1.4)
+        love.graphics.line(cx - 4.5, cy - 6, cx + 4.5, cy - 6)
+        love.graphics.line(cx - 4.5, cy + 6, cx + 4.5, cy + 6)
+        love.graphics.polygon("line", cx - 3.5, cy - 5, cx + 3.5, cy - 5, cx, cy, cx + 3.5, cy + 5, cx - 3.5, cy + 5, cx, cy)
+        love.graphics.polygon("fill", cx - 2.5, cy + 4.5, cx + 2.5, cy + 4.5, cx, cy + 1.5)
+        love.graphics.setLineWidth(1)
+    elseif mode == "MIX" then
+        for i, h in ipairs({ -2, 2, -1 }) do
+            local x = cx - 5 + (i - 1) * 5
+            love.graphics.line(x, cy - 6, x, cy + 6)
+            love.graphics.rectangle("fill", x - 2, cy + h * 2 - 1.5, 4, 3)
+        end
+    elseif mode == "FX" then
+        -- lightning bolt
+        love.graphics.polygon("fill", cx + 1.5, cy - 7, cx - 4, cy + 1, cx - 0.5, cy + 1, cx - 1.5, cy + 7, cx + 4, cy - 1, cx + 0.5, cy - 1)
+    end
 end
 
 -- Engraved two-word captions under the zones, in the spaced lettering
@@ -262,7 +316,7 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         self:setColor(C.BG, 0.3)
         love.graphics.rectangle("fill", 9, 51, 622, 304)
         -- a solid, darker plate under the rows so they read easily
-        local plate = chamferPts(184, 86, 272, 228, 10)
+        local plate = chamferPts(184, 86, 272, 240, 10)
         self:setColor(C.BG, 1.0)
         love.graphics.polygon("fill", plate)
         self:mockGlowPoly(plate, MOON, 0.75)

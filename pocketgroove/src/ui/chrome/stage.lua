@@ -50,8 +50,12 @@ function Chrome:drawCenterStage()
 
     -- Frame: the instrument's dark stage, sky and halo while playing; a
     -- solid mode-coloured border on a settings page or while recording
+    local mockD = (self.MOCK == "D") and self.MOCK_PAGES[mode] and not songPage
     local borderCol = (mode == "NORMAL") and Config.shade(instCol, 0.45) or (Config.MODE_COLORS[mode] or C.GRID)
     if Song.recording and playMode then borderCol = C.RED end
+    if mockD then
+        self:mockModeBackdrop(def, instCol)
+    else
     self:drawFrame(8, 50, 624, 306, borderCol, 1)
     self.haloDrawn = false
     if playMode and not songPage then
@@ -79,6 +83,7 @@ function Chrome:drawCenterStage()
             self:drawZoneMotifs("drums", accent, t)
         end
     end
+    end -- mockD
 
     -- Shoulder capsules
     local lOn, rOn = Input.down.L1, Input.down.R1
@@ -206,7 +211,11 @@ function Chrome:drawCenterStage()
         faceLabels = { B = "UNQUEUE", A = "", Y = "", X = "EMPTY Q" }
         activeMap = {}
     end
+    if mockD then
+        self:mockDial(102, 188, { 0.86, 0.92, 1.0, 1.0 }, instCol, C.TEXT, false, dpadLabels)
+    else
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
+    end
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
     -- Option 3 Astrolabe Engraving subtitles (omitted on Track page)
@@ -253,8 +262,13 @@ function Chrome:drawCenterStage()
             self:setColor(Config.shade(accent, 0.72))
             love.graphics.print(txt, math_floor(cx - tw * 0.5), y)
         end
+        if mockD then
+            self:mockSpacedTitle(102, 297, dpadSub or "", accent, 0.75)
+            self:mockSpacedTitle(538, 297, faceSub or "", accent, 0.75)
+        else
         drawEngraved(102, dpadSub)
         drawEngraved(538, faceSub)
+        end
     end
 
     -- Center Column Visualizer (x: 204..436, y: 90..314)
