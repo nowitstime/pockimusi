@@ -18,6 +18,8 @@
 --   CLEAR PATTERN empty a slot (asks first; not the one on screen)
 --   SONG MODE     on / off (PHASE_M)
 --   FONTS         the font set (src/ui/fonts.lua), changed live
+--   LOOK          the settings pages' style, to compare on the device
+--                 (src/ui/chrome/modeplate.lua), changed live
 --
 -- Opening waits until every button is let go, so the hold that opened it
 -- does nothing inside; closing waits too, so the button that closed it does
@@ -40,6 +42,7 @@ local Menu = {
         { id = "CLEAR", label = "CLEAR PATTERN", hint = "EMPTY A SLOT" },
         { id = "SONG",  label = "SONG MODE",     hint = "THE S PAGE: PERFORM A SONG FROM YOUR PATTERNS" },
         { id = "FONTS", label = "FONTS",        hint = "LEFT / RIGHT TO CHANGE" },
+        { id = "LOOK",  label = "LOOK",         hint = "SETTINGS PAGES STYLE (TEST) - LEFT / RIGHT" },
     },
 
     open = false,
@@ -114,6 +117,10 @@ function Menu:openSlots(page)
     self.slotRow = startRow(self, page)
 end
 
+function Menu:changeLook(dir)
+    self:say(require("src.ui.chrome"):cycleLook(dir))
+end
+
 function Menu:changeFonts(dir)
     local label = require("src.ui.chrome"):cycleFonts(dir)
     self:say(label)
@@ -131,6 +138,9 @@ local function updateRoot(menu)
     if item.id == "FONTS" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
         menu:changeFonts(Input.pressed.LEFT and -1 or 1)
     end
+    if item.id == "LOOK" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
+        menu:changeLook(Input.pressed.LEFT and -1 or 1)
+    end
     if item.id == "SONG" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
         Song:setOn(not Song:isOn())
         menu:say(Song:isOn() and "SONG MODE ON - SELECT TAPS REACH S" or "SONG MODE OFF")
@@ -142,6 +152,8 @@ local function updateRoot(menu)
         menu:openSlots(item.id)
     elseif item.id == "FONTS" then
         menu:changeFonts(1)
+    elseif item.id == "LOOK" then
+        menu:changeLook(1)
     elseif item.id == "SONG" then
         Song:setOn(not Song:isOn())
         if Song:isOn() then

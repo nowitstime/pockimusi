@@ -60,19 +60,22 @@ function Display:load()
     self.fullscreen = text:match("fullscreen=1") ~= nil
     local font = text:match("font=(%u+)")
     if font then Fonts:setByName(font) end
+    self.look = text:match("look=([%u%- ]+)\n")
 end
 
 function Display:save()
     local fs = love.filesystem
     if not (fs and fs.write) then return end
-    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\n",
-        self.style, self.fullscreen and 1 or 0, Fonts.set))
+    local look = self.chrome and self.chrome.look or self.look or "CLASSIC"
+    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\nlook=%s\n",
+        self.style, self.fullscreen and 1 or 0, Fonts.set, look))
 end
 
 -- Call once at boot, after Chrome:init()
 function Display:init(chrome)
     self.chrome = chrome
     self:load()
+    if chrome and chrome.setLook and self.look then chrome:setLook(self.look) end
     if self.fullscreen then self:applyFullscreen() end
 end
 

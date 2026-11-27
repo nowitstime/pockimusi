@@ -27,6 +27,55 @@ local clamp      = Config.clamp
 return function(Chrome)
 
 Chrome.MOCK = nil
+-- The looks the menu's LOOK row cycles through (saved in display.txt)
+Chrome.LOOKS = {
+    { name = "CLASSIC" },                                -- the pages as they were
+    { name = "ENGRAVED",  mock = "A" },
+    { name = "OVERLAY",   mock = "B" },
+    { name = "EDGE-LIT",  mock = "C" },
+    { name = "PLATE",     mock = "D", labels = "tab" },
+    { name = "PLATE ARC", mock = "D", labels = "arc" },
+}
+Chrome.look = "CLASSIC"
+local CLASSIC_COLORS = nil
+
+function Chrome:setLook(name)
+    local C = Config.COLORS
+    local look = self.LOOKS[1]
+    for _, l in ipairs(self.LOOKS) do
+        if l.name == name then look = l end
+    end
+    if not CLASSIC_COLORS then
+        CLASSIC_COLORS = {}
+        for k, v in pairs(Config.MODE_COLORS) do CLASSIC_COLORS[k] = v end
+    end
+    for k, v in pairs(CLASSIC_COLORS) do Config.MODE_COLORS[k] = v end
+    self.look = look.name
+    self.MOCK = look.mock
+    self.MOCK_LABELS = look.labels or "tab"
+    self.mockFlash, self.mockClockSig = nil, nil
+    if look.mock then
+        Config.MODE_COLORS.TRACK = C.SILVER
+        if look.mock == "D" then
+            Config.MODE_COLORS.TRANSPORT = C.SILVER
+            Config.MODE_COLORS.FX = C.SILVER
+        end
+    end
+    return self.look
+end
+
+-- The menu: the next (dir = 1) or previous (-1) look; returns a toast label
+function Chrome:cycleLook(dir)
+    local idx = 1
+    for i, l in ipairs(self.LOOKS) do
+        if l.name == self.look then idx = i end
+    end
+    local n = #self.LOOKS
+    self:setLook(self.LOOKS[((idx - 1 + dir) % n) + 1].name)
+    Display:save()
+    return "LOOK: " .. self.look
+end
+
 -- Settings pages that take the mock style (style D) besides the Track page
 Chrome.MOCK_PAGES = { TRANSPORT = true, MIX = true, FX = true }
 
@@ -639,10 +688,9 @@ function Chrome:drawMixerViewD(t)
         end
 
         -- name
-        love.graphics.setFont(self.fontSmall)
         local label = isMaster and "MST" or (trk.shortName or trk.name)
-        if self.fontSmall:getWidth(label) > 40 then love.graphics.setFont(self.fontTiny) end
-        local f = love.graphics.getFont()
+        local f = (self.fontSmall:getWidth(label) > 40) and self.fontTiny or self.fontSmall
+        love.graphics.setFont(f)
         self:setColor(muted and C.DIM or col)
         love.graphics.print(label, math_floor(cx - f:getWidth(label) * 0.5), 100)
 

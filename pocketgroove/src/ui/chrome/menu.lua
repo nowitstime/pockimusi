@@ -98,6 +98,8 @@ function Chrome:drawMenuRoot()
             local on = Song:isOn()
             self:menuTextRight(on and "<  ON  >" or "<  OFF  >", xr, y + rh * 0.5, self.fontMed,
                 on and Config.COLORS.SONG or (cur and col or C.TEXT))
+        elseif item.id == "LOOK" then
+            self:menuTextRight("<  " .. (self.look or "CLASSIC") .. "  >", xr, y + rh * 0.5, self.fontMed, cur and col or C.TEXT)
         elseif item.id == "FONTS" then
             local name = Fonts.set
             local f = self.fontMed

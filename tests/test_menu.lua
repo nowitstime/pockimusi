@@ -299,4 +299,38 @@ return {
         openMenu(); goTo(M, "CLEAR"); H.tap("B"); Chrome:draw()
         H.tap("B"); Chrome:draw()
     end },
+
+    { "the look changes from the menu, is remembered, and every look draws the settings pages", function()
+        local M = boot()
+        local Chrome = require("src.ui.chrome")
+        local Config = require("src.config")
+        H.eq(Chrome.look, "CLASSIC", "starts classic")
+        local pink = Config.MODE_COLORS.TRACK
+        openMenu()
+        goTo(M, "LOOK")
+        H.tap("LEFT")
+        H.eq(Chrome.look, "PLATE ARC", "LEFT wraps to the last look")
+        H.tap("RIGHT")
+        H.eq(Chrome.look, "CLASSIC", "RIGHT wraps back")
+        H.eq(Config.MODE_COLORS.TRACK, pink, "classic colours back")
+        for _ = 1, 4 do H.tap("RIGHT") end
+        H.eq(Chrome.look, "PLATE", "four steps on")
+        H.eq(Chrome.MOCK, "D", "plate is style D")
+        H.truthy(H.files["display.txt"]:find("look=PLATE\n", 1, true), "remembered")
+        H.tap("START"); H.play(0.2)
+        boot(true)
+        H.eq(require("src.ui.chrome").look, "PLATE", "restored after a restart")
+        -- every look draws Track, Clock, Mix and Live FX
+        local C2 = require("src.ui.chrome")
+        for _, l in ipairs(C2.LOOKS) do
+            C2:setLook(l.name)
+            H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT"); H.release("SELECT"); H.play(0.1)
+            H.hold("START"); H.play(0.3); H.tap("A"); H.release("START"); H.play(0.1)
+            H.hold("SELECT", "R2"); H.play(0.2); H.release("SELECT", "R2"); H.play(0.1)
+            H.hold("R2", "UP"); H.play(0.2); H.release("R2", "UP"); H.play(0.1)
+        end
+        C2:setLook("CLASSIC")
+        local Cf2 = require("src.config")
+        H.eq(Cf2.MODE_COLORS.TRACK, Cf2.COLORS.PINK, "classic again")
+    end },
 }
