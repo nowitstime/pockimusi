@@ -323,6 +323,7 @@ return {
     { "the strip slides the way of the step and settles", function()
         local M = bootSession()
         local Chrome = require("src.ui.chrome")
+        Chrome:setLook("CLASSIC")
         local track = M.Looper.tracks[1]
         H.hold("SELECT"); H.play(0.3)
         H.eq(Chrome:tabPosition(track), 1, "at rest on the first tab")
@@ -602,7 +603,8 @@ return {
         local L = M.Looper
         H.record(L, 1, "B", 0.0); H.record(L, 1, "Y", 0.25); H.record(L, 1, "B", 0.5)
         H.hold("L2", "R2"); H.play(0.1)
-        H.truthy(frame()["B / A / Y / X - Clear pad lane"], "the usual page")
+        local seen = frame()
+        H.truthy(seen["Clear pad lane"] or seen["B / A / Y / X - Clear pad lane"], "the usual page")
         H.tap("B")
         H.eq(L:countTrackAction(1, "B"), 0, "B's hits cleared")
         H.eq(L:countTrackAction(1, "Y"), 1, "Y's kept")

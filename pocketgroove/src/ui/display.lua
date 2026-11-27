@@ -71,10 +71,10 @@ function Display:save()
     local fs = love.filesystem
     if not (fs and fs.write) then return end
     local ch = self.chrome
-    local look = ch and ch.look or self.look or "CLASSIC"
+    local look = ch and ch.look or self.look or "PLATE"
     local opt = ch and ch.mockOpt or {}
     pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\nlook=%s\ndpad=%s\nlabels=%s\nemblem=%s\n",
-        self.style, self.fullscreen and 1 or 0, Fonts.set, look, opt.DPAD or "DIAL", opt.LABELS or "TABS", opt.EMBLEM or "OFF"))
+        self.style, self.fullscreen and 1 or 0, Fonts.set, look, opt.DPAD or "STAR", opt.LABELS or "REVEAL", opt.EMBLEM or "CLEAN"))
 end
 
 -- Call once at boot, after Chrome:init()

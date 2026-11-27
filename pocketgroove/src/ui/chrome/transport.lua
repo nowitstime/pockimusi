@@ -145,6 +145,73 @@ end
 
 function Chrome:drawEraseView(track, def)
     local C = Config.COLORS
+    if self.MOCK == "D" and not Song.page then
+        local edge = self:mockEdge("ERASE")
+        local trackCol = self:trackColor(track.slot)
+        local x0, x1 = 202, 438
+
+        -- Target track header bar (unmistakable track colour + event count)
+        local target = string.format("%s · %s", Looper:slotLabel(track.slot), track.name)
+        local count  = string.format("%d %s", #track.events, #track.events == 1 and "EVENT" or "EVENTS")
+        self:drawDiamond(x0 + 5, 114, 4, trackCol)
+        love.graphics.setFont(self.fontMed)
+        self:setColor(trackCol)
+        self:printBold(target, x0 + 15, 105)
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(#track.events > 0 and C.TEXT or C.MUTED)
+        love.graphics.print(count, x1 - self.fontTiny:getWidth(count), 109)
+
+        self:setColor(edge, 0.35)
+        love.graphics.line(x0, 130, x1, 130)
+
+        -- Structured keycap action rows
+        local padDesc = "Clear pad lane"
+        local padMapLine = nil
+        if def and def.ERASE then
+            local parts = {}
+            for _, btn in ipairs({ "B", "A", "Y", "X" }) do
+                local e = def.ERASE[btn]
+                if e then parts[#parts + 1] = btn .. " - " .. (e.label or table.concat(e.actions, " + ")) end
+            end
+            if #parts > 0 then padMapLine = table.concat(parts, "   ") end
+        end
+        local rows = {
+            { key = "X Y A B",   desc = padMapLine or padDesc, col = C.TEXT,  edge = edge, tiny = padMapLine ~= nil },
+            { key = "LEFT / L1", desc = "Undo overdub",        col = C.TEXT,  edge = C.SILVER },
+            { key = "START",     desc = "Clear full track",    col = C.TEXT,  edge = edge },
+            { key = "+ SELECT",  desc = "Fresh session",       col = C.MUTED, edge = C.MUTED },
+        }
+        local y = 148
+        for _, r in ipairs(rows) do
+            local kw = 72
+            self:setColor(r.edge, 0.14)
+            love.graphics.rectangle("fill", x0, y, kw, 20, 4, 4)
+            self:setColor(r.edge, 0.55)
+            love.graphics.rectangle("line", x0, y, kw, 20, 4, 4)
+            love.graphics.setFont(self.fontTiny)
+            self:setColor(r.col)
+            local tw = self.fontTiny:getWidth(r.key)
+            love.graphics.print(r.key, math_floor(x0 + (kw - tw) * 0.5), y + 4)
+
+            if r.tiny then
+                love.graphics.setFont(self.fontTiny)
+                self:setColor(r.col)
+                love.graphics.print(r.desc, x0 + kw + 8, y + 4)
+            else
+                love.graphics.setFont(self.fontSmall)
+                self:setColor(r.col)
+                love.graphics.print(r.desc, x0 + kw + 12, y + 3)
+            end
+            y = y + 32
+        end
+
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(C.MUTED, 0.85)
+        local note = "HOLD L2 + R2 · TAP TO CLEAR"
+        love.graphics.print(note, math_floor(320 - self.fontTiny:getWidth(note) * 0.5), 290)
+        return
+    end
+
     self:setColor(C.RED)
     love.graphics.setFont(self.fontLarge)
     if Song.page then
@@ -191,32 +258,36 @@ end
 -- Hold L2 + R2 + SELECT: a ring fills over NEW_HOLD seconds
 function Chrome:drawFreshSessionView()
     local C = Config.COLORS
-    local cx, cy, r = 320, 176, 34
+    local plate = (self.MOCK == "D")
+    local accent = plate and self:mockEdge("NEW") or C.RED
+    local cx, cy, r = 320, plate and 162 or 176, 34
     local frac = math_min(1.0, Modes.newHold / Modes.NEW_HOLD)
     local done = Modes.newFired
 
-    self:setColor(C.RED, 0.25)
+    self:setColor(accent, 0.25)
     love.graphics.setLineWidth(4)
     love.graphics.circle("line", cx, cy, r)
     if frac > 0 then
-        self:setColor(C.RED)
+        self:setColor(accent)
         love.graphics.arc("line", "open", cx, cy, r, -math_pi * 0.5, -math_pi * 0.5 + frac * math_pi * 2.0)
     end
     love.graphics.setLineWidth(1)
-    if done then self:drawStarGlint(cx, cy, 12, C.RED, 1.0) end
+    if done then self:drawStarGlint(cx, cy, 12, accent, 1.0) end
 
     local function centred(text, y, font, col)
         love.graphics.setFont(font)
         self:setColor(col)
         love.graphics.print(text, math_floor(320 - font:getWidth(text) * 0.5), y)
     end
+    local titleY = plate and 214 or 222
+    local bodyFont = plate and self.fontTiny or self.fontSmall
     if done then
-        centred("FRESH", 222, self.fontLarge, C.RED)
-        centred("LET GO - UNDO WITH L2 + R2 + LEFT", 246, self.fontSmall, C.TEXT)
+        centred("FRESH", titleY, self.fontLarge, accent)
+        centred(plate and "LET GO · UNDO WITH LEFT" or "LET GO - UNDO WITH L2 + R2 + LEFT", 246, self.fontSmall, C.TEXT)
     else
-        centred("KEEP HOLDING", 222, self.fontLarge, C.RED)
-        centred("CLEARS THE NOTES ON ALL 4 TRACKS", 246, self.fontSmall, C.TEXT)
-        centred("TEMPO, KEY, SOUNDS AND EFFECTS STAY", 264, self.fontSmall, C.MUTED)
+        centred("KEEP HOLDING", titleY, self.fontLarge, accent)
+        centred(plate and "CLEARS NOTES ON ALL 4 TRACKS" or "CLEARS THE NOTES ON ALL 4 TRACKS", 244, bodyFont, C.TEXT)
+        centred(plate and "TEMPO, KEY & SOUNDS STAY" or "TEMPO, KEY, SOUNDS AND EFFECTS STAY", 262, bodyFont, C.MUTED)
     end
 end
 

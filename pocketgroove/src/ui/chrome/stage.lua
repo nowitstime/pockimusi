@@ -219,8 +219,8 @@ function Chrome:drawCenterStage()
     end
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
-    -- Option 3 Astrolabe Engraving subtitles (omitted on Track page)
-    if mode ~= "TRACK" then
+    -- Option 3 Astrolabe Engraving subtitles (omitted on Track and Fresh pages)
+    if mode ~= "TRACK" and mode ~= "NEW" then
         local dpadMode = {
             MIX = "TRACK & LEVEL", TRANSPORT = "KEY & SCALE",
             ERASE = "UNDO", FX = "PUNCH-IN FX",

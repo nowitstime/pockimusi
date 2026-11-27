@@ -42,7 +42,7 @@ Chrome.MOCK_OPTS = {
     LABELS = { "TABS", "ARC", "CHART", "LEGEND", "REVEAL", "GLYPH" },
     EMBLEM = { "OFF", "CLEAN", "ON" },
 }
-Chrome.mockOpt = { DPAD = "DIAL", LABELS = "TABS", EMBLEM = "OFF" }
+Chrome.mockOpt = { DPAD = "STAR", LABELS = "REVEAL", EMBLEM = "CLEAN" }
 Chrome.MOCK_WING_QUIET = { 0.54, 0.58, 0.66, 1.0 }
 
 -- True when the current page draws a chamfered outer stage frame
@@ -94,6 +94,8 @@ function Chrome:setLook(name)
         if look.mock == "D" then
             Config.MODE_COLORS.TRANSPORT = C.SILVER
             Config.MODE_COLORS.FX = C.SILVER
+            Config.MODE_COLORS.ERASE = C.SILVER
+            Config.MODE_COLORS.NEW = C.SILVER
             Config.MODE_COLORS.MENU = C.SILVER
             Config.MODE_COLORS.MENU_HOLD = C.SILVER
         end
@@ -114,7 +116,7 @@ function Chrome:cycleLook(dir)
 end
 
 -- Settings pages that take the mock style (style D) besides the Track page
-Chrome.MOCK_PAGES = { TRANSPORT = true, MIX = true, FX = true }
+Chrome.MOCK_PAGES = { TRANSPORT = true, MIX = true, FX = true, ERASE = true, NEW = true }
 
 -- Cool white "moonlight" used for every mode page's edge light
 local MOON = { 0.86, 0.92, 1.0, 1.0 }
@@ -129,7 +131,7 @@ end
 
 Chrome.mockChamfer = chamferPts
 Chrome.MOCK_MOON = MOON
-Chrome.MOCK_BADGES = { TRANSPORT = true, MIX = true, FX = true, MENU = true, MENU_HOLD = true }
+Chrome.MOCK_BADGES = { TRANSPORT = true, MIX = true, FX = true, ERASE = true, NEW = true, MENU = true, MENU_HOLD = true }
 
 -- A soft glow: the same outline stroked several times, wide and faint to thin and bright
 function Chrome:mockGlowPoly(pts, col, strength)
@@ -364,6 +366,18 @@ function Chrome:mockGlyph(mode, cx, cy, col)
     elseif mode == "FX" then
         -- lightning bolt
         love.graphics.polygon("fill", cx + 1.5, cy - 7, cx - 4, cy + 1, cx - 0.5, cy + 1, cx - 1.5, cy + 7, cx + 4, cy - 1, cx + 0.5, cy - 1)
+    elseif mode == "ERASE" then
+        -- crisp X
+        love.graphics.setLineWidth(1.8)
+        love.graphics.line(cx - 5, cy - 5, cx + 5, cy + 5)
+        love.graphics.line(cx + 5, cy - 5, cx - 5, cy + 5)
+        love.graphics.setLineWidth(1)
+    elseif mode == "NEW" then
+        -- eclipse ring
+        love.graphics.setLineWidth(1.5)
+        love.graphics.circle("line", cx, cy, 5.5)
+        love.graphics.circle("fill", cx + 2, cy - 1, 3.8)
+        love.graphics.setLineWidth(1)
     end
 end
 
@@ -666,6 +680,7 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
 
     -- Captions
     if style == "D" then
+        self:mockSpacedTitle(102, 297, "NAVIGATE", C.SILVER, 0.75)
         self:mockSpacedTitle(538, 297, "EFFECTS", C.SILVER, 0.75)
     else
         self:mockZoneCaptions(style == "A" and C.SILVER or (style == "B" and MOON or instCol), 0.75)
@@ -940,6 +955,8 @@ local EDGE_TINT = {
     TRANSPORT = { 1.00, 0.90, 0.74, 1.0 },   -- sun: warm
     MIX       = { 0.80, 0.88, 1.00, 1.0 },   -- moon: cool
     FX        = { 0.92, 0.84, 1.00, 1.0 },   -- comet: violet-white
+    ERASE     = { 1.00, 0.44, 0.48, 1.0 },   -- eclipse: coral-red caution
+    NEW       = { 1.00, 0.44, 0.48, 1.0 },   -- eclipse: coral-red caution
 }
 function Chrome:mockEdge(mode)
     if self.mockOpt.EMBLEM ~= "OFF" and EDGE_TINT[mode] then return EDGE_TINT[mode] end
@@ -1183,7 +1200,21 @@ function Chrome:mockEmblem(mode, layer, col)
             end
             self:drawStarGlint(420, 112, 14, col, 0.18)
         end
+    elseif mode == "ERASE" or mode == "NEW" then
+        -- an eclipse: a dark disc overlapping a faint coral corona inside the plate
+        if layer == "plate" then
+            self:setColor(col, 0.065)
+            lg.setLineWidth(2.5)
+            lg.circle("line", cx, cy, 78)
+            lg.setLineWidth(1)
+            self:setColor(col, 0.04)
+            lg.circle("fill", cx, cy, 78)
+            self:setColor(Config.COLORS.BG, 0.92)
+            lg.circle("fill", cx + 10, cy - 6, 70)
+        end
     end
 end
+
+Chrome:setLook("PLATE")
 
 end
