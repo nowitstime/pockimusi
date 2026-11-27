@@ -140,7 +140,7 @@ function Chrome:drawTransportView(track, trackCol, col)
         }
     end
     table.insert(timing, 1, { Looper:slotLabel(track.slot) .. " - " .. track.name, trackCol, nil, trackCol })
-    self:drawCapsuleRow(cx, 296, 16, timing)
+    if not self.mockNoChips then self:drawCapsuleRow(cx, 296, 16, timing) end
 end
 
 function Chrome:drawEraseView(track, def)

@@ -193,6 +193,7 @@ function Chrome:drawCenterStage()
 
     -- Left: Star D-Pad & Right: Circle Face Buttons (drawn in the page accent)
     local dpadLabels, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, mode)
+    if mockD and mode == "TRANSPORT" then self:mockClockFaceLabels(faceLabels, track) end
     local activeDir = Input:get8WayDirection()
     local guideDir = playMode and def.getGuideDir and def:getGuideDir(state) or nil
     if songPage then
@@ -283,7 +284,10 @@ function Chrome:drawCenterStage()
     elseif mode == "TRACK" then
         self:drawTrackPageView(def, state, track, accent)
     elseif mode == "TRANSPORT" then
+        self.mockNoChips = mockD
         self:drawTransportView(track, instCol, accent)
+        self.mockNoChips = false
+        if mockD then self:mockClockFlash(track, accent) end
     elseif mode == "ERASE" then
         self:drawEraseView(track, def)
     elseif mode == "NEW" then

@@ -187,13 +187,8 @@ function Chrome:mockDial(cx, cy, col, accent, labelCol, plain, labels)
         if not plain then
             local text = s.text
             if labels then text = labels[s.k] or "" end
-            tw = self.fontTiny:getWidth(text)
-            if s.k == "UP" then lx = cx - tw * 0.5
-            elseif s.k == "DOWN" then lx = cx - tw * 0.5
-            elseif s.k == "LEFT" then lx = math.max(14, cx - R - 2 - tw)
-            end
-            self:setColor(on and accent or labelCol, on and 1 or 0.8)
-            love.graphics.print(text, math_floor(lx), math_floor(ly))
+            text = text:gsub("%s*[<>]%s*", ""):gsub("^%s+", ""):gsub("%s+$", "")
+            if text ~= "" then self:mockDialLabel(cx, cy, R, s.k, s.a, text, on, accent, col, labelCol) end
         end
     end
     -- needle: points at the held direction, else rests up
@@ -263,6 +258,122 @@ function Chrome:mockGlyph(mode, cx, cy, col)
         -- lightning bolt
         love.graphics.polygon("fill", cx + 1.5, cy - 7, cx - 4, cy + 1, cx - 0.5, cy + 1, cx - 1.5, cy + 7, cx + 4, cy - 1, cx + 0.5, cy - 1)
     end
+end
+
+-- A dial station's label, in the style Chrome.MOCK_LABELS names:
+-- "tab" (a small engraved plate on the ring) or "arc" (lettering along the ring)
+Chrome.MOCK_LABELS = "tab"
+function Chrome:mockDialLabel(cx, cy, R, k, a, text, on, accent, col, labelCol)
+    local C = Config.COLORS
+    local ft = self.fontTiny
+    if self.MOCK_LABELS == "arc" then
+        local rr = R + 18
+        local spacing = 1.0
+        local widths, total = {}, 0
+        for i = 1, #text do
+            local ch = text:sub(i, i)
+            widths[i] = ft:getWidth(ch) + spacing
+            total = total + widths[i]
+        end
+        -- bottom half reads left to right the other way round so it stays upright
+        local flip = (k == "DOWN")
+        local span = total / rr
+        local ang = flip and (a + span * 0.5) or (a - span * 0.5)
+        love.graphics.setFont(ft)
+        local fh = self:lineHeight(ft)
+        self:setColor(on and accent or labelCol, on and 1 or 0.85)
+        for i = 1, #text do
+            local ch = text:sub(i, i)
+            local da = widths[i] / rr
+            local mid = flip and (ang - da * 0.5) or (ang + da * 0.5)
+            local px, py = cx + math_cos(mid) * rr, cy + math_sin(mid) * rr
+            local rot = flip and (mid - math_pi * 0.5) or (mid + math_pi * 0.5)
+            love.graphics.print(ch, px, py, rot, 1, 1, (widths[i] - spacing) * 0.5, fh * 0.5)
+            ang = flip and (ang - da) or (ang + da)
+        end
+        return
+    end
+    -- tab: a chamfered plate sitting on the ring at the station
+    local tw = ft:getWidth(text)
+    local w, h = tw + 12, 14
+    local ox, oy = cx + math_cos(a) * (R + 8), cy + math_sin(a) * (R + 8)
+    local x, y = ox - w * 0.5, oy - h * 0.5
+    if k == "LEFT" then x = math.max(13, ox - w + 6) end
+    if k == "RIGHT" then x = math.min(ox - 6, 181 - w) end
+    x, y = math_floor(x) + 0.5, math_floor(y) + 0.5
+    local pts = chamferPts(x, y, w, h, 3)
+    self:setColor(on and accent or C.BG, on and 0.25 or 1.0)
+    love.graphics.polygon("fill", pts)
+    if on then
+        self:setColor(C.BG, 0.6)
+        love.graphics.polygon("fill", pts)
+        self:setColor(accent, 0.3)
+        love.graphics.polygon("fill", pts)
+        self:mockGlowPoly(pts, MOON, 0.9)
+    else
+        self:setColor(col, 0.45)
+        love.graphics.polygon("line", pts)
+    end
+    love.graphics.setFont(ft)
+    self:setColor(on and C.TEXT or labelCol, on and 1 or 0.9)
+    love.graphics.print(text, math_floor(x + 6), math_floor(y + (h - self:lineHeight(ft)) * 0.5))
+end
+
+-- Clock: the GRID and SWING buttons carry their values (the chips under the
+-- dial are gone)
+function Chrome:mockClockFaceLabels(face, track)
+    if track.isLane then return end
+    local grid = Looper:getTrackGrid(track.slot)
+    face.A = { l1 = "GRID", l2 = grid.label }
+    face.Y = { l1 = "SWING", l2 = string.format("%d%%", math_floor((track.swing or 0.5) * 100 + 0.5)) }
+end
+
+-- Clock: a change to grid, swing, bars or click shows on the dial face for a
+-- moment (and stays while Y is held to set swing)
+Chrome.MOCK_FLASH_TIME = 1.4
+function Chrome:mockClockFlash(track, accent)
+    local C = Config.COLORS
+    local now = love.timer.getTime()
+    local grid = not track.isLane and Looper:getTrackGrid(track.slot) or nil
+    local swingPct = math_floor((track.swing or 0.5) * 100 + 0.5)
+    local sig = {
+        grid = grid and ("GRID " .. grid.label) or nil,
+        swing = string.format("SWING %d%%", swingPct),
+        bars = string.format("LOOP %d BAR%s", Looper.bars, Looper.bars > 1 and "S" or ""),
+        click = "CLICK " .. tostring(Looper:getClickMode()),
+    }
+    local last = self.mockClockSig
+    if last and last.slot == track.slot then
+        for _, key in ipairs({ "grid", "swing", "bars", "click" }) do
+            if sig[key] ~= last[key] then
+                self.mockFlash = { text = sig[key], time = now }
+            end
+        end
+    end
+    sig.slot = track.slot
+    self.mockClockSig = sig
+    local f = self.mockFlash
+    local text, age
+    if Input.down.Y and not track.isLane then
+        text, age = sig.swing, 0
+    elseif f and now - f.time < self.MOCK_FLASH_TIME then
+        text, age = f.text, now - f.time
+    end
+    if not text then return end
+    local a = (age < self.MOCK_FLASH_TIME - 0.3) and 1 or ((self.MOCK_FLASH_TIME - age) / 0.3)
+    local name = (track.shortName or track.name)
+    love.graphics.setFont(self.fontMed)
+    local w = math.max(self.fontMed:getWidth(text), self.fontTiny:getWidth(name)) + 28
+    local x, y, h = math_floor(320 - w * 0.5), 192, 38
+    local pts = chamferPts(x, y, w, h, 6)
+    self:setColor(C.BG, 0.96 * a)
+    love.graphics.polygon("fill", pts)
+    self:mockGlowPoly(pts, MOON, a)
+    self:setColor(C.TEXT, a)
+    love.graphics.print(text, math_floor(320 - self.fontMed:getWidth(text) * 0.5), y + 5)
+    love.graphics.setFont(self.fontTiny)
+    self:setColor(self:trackColor(track.slot), a)
+    love.graphics.print(name, math_floor(320 - self.fontTiny:getWidth(name) * 0.5), y + 24)
 end
 
 -- Engraved two-word captions under the zones, in the spaced lettering
