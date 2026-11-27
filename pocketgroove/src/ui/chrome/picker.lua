@@ -32,22 +32,49 @@ return function(Chrome)
 -- ============================================================================
 Chrome.SHELF_CHIPS = 5          -- chips shown for a list without groups
 
+local function transportPickerRow(key)
+    if key == "SCALE" then
+        local root = Theory.rootIndex - 1
+        local items = {}
+        for i, sc in ipairs(Theory.SCALES) do
+            local notes = {}
+            for d = 1, 7 do
+                notes[d] = Theory.NOTE_NAMES[((root + sc.intervals[d]) % 12) + 1]
+            end
+            items[i] = { label = sc.fullName:upper(), full = sc.fullName:upper() .. "  ·  " .. table.concat(notes, "  ") }
+        end
+        return { key = "TRANSPORT_SCALE", label = "SCALE", items = items, index = Theory.scaleIndex }
+    elseif key == "KEY" then
+        local scale = Theory.SCALES[Theory.scaleIndex]
+        local items = {}
+        for i, name in ipairs(Theory.NOTE_NAMES) do
+            items[i] = { label = name, full = name .. " " .. scale.fullName:upper() }
+        end
+        return { key = "TRANSPORT_KEY", label = "KEY", items = items, index = Theory.rootIndex }
+    end
+end
+
 function Chrome:drawPickerShelf()
-    local picker = Modes.trackPage.picker
-    if Modes.current ~= "TRACK" or Song.page or not picker or Modes.trackPage.pending then
+    local picker, row, col
+    if Modes.current == "TRANSPORT" and Modes.transportPicker then
+        picker = Modes.transportPicker
+        row = transportPickerRow(picker.key)
+        col = Config.MODE_COLORS.TRANSPORT
+    elseif Modes.current == "TRACK" and not Song.page and not Modes.trackPage.pending and Modes.trackPage.picker then
+        picker = Modes.trackPage.picker
+        local track = Looper.tracks[Looper.activeTrack]
+        local def, state = Instruments:getTrackInstrument(Looper.activeTrack)
+        for _, r in ipairs(Instruments:getSoundRows(def, state, track)) do
+            if r.key == picker.key then row = r break end
+        end
+        col = Config.MODE_COLORS.TRACK
+    else
         self.shelfAnim = nil
         return
-    end
-    local track = Looper.tracks[Looper.activeTrack]
-    local def, state = Instruments:getTrackInstrument(Looper.activeTrack)
-    local row
-    for _, r in ipairs(Instruments:getSoundRows(def, state, track)) do
-        if r.key == picker.key then row = r break end
     end
     if not row or not row.items then return end
 
     local C = Config.COLORS
-    local col = Config.MODE_COLORS.TRACK
     local items, idx = row.items, clamp(row.index or 1, 1, #row.items)
     local cur = items[idx]
     local a = clamp(picker.timer / 0.25, 0.0, 1.0)             -- fades out at the end

@@ -14,7 +14,10 @@ import math
 import os
 import sys
 
-from lupa.luajit21 import LuaRuntime
+try:
+    from lupa.luajit21 import LuaRuntime
+except ImportError:
+    from lupa import LuaRuntime
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -77,6 +80,7 @@ SCENES = {
     "harp-maj7": 'H.tap("SELECT"); H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT");'
                  ' H.release("SELECT"); H.play(0.2)',
     "transport": 'H.hold("START"); H.play(0.3)',
+    "transport-scale": 'H.hold("START"); H.play(0.3); H.tap("UP"); H.play(0.1)',
     "follow": 'H.tap("SELECT"); H.tap("L2");'
               ' for _, d in ipairs({ false, "DOWN", "LEFT", "RIGHT" }) do if d then H.hold(d) end; H.tap("B"); H.play(0.15); H.tap("A");'
               ' if d then H.release(d) end; H.play(0.72) end;'

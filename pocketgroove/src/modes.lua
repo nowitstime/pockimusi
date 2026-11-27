@@ -510,12 +510,19 @@ function handlers.TRANSPORT(ctx, dt)
         end
     elseif Input.pressed.UP or Input.pressed.DOWN then
         Theory:cycleScale(Input.pressed.UP and 1 or -1)
+        Modes.transportPicker = { key = "SCALE", timer = Modes.PICKER_HOLD }
         Looper:showToast("SCALE: " .. Theory.SCALES[Theory.scaleIndex].fullName)
     end
 
     if Input.pressed.LEFT or Input.pressed.RIGHT then
         Theory:cycleRoot(Input.pressed.RIGHT and 1 or -1)
+        Modes.transportPicker = { key = "KEY", timer = Modes.PICKER_HOLD }
         Looper:showToast("KEY: " .. Theory:getKeyLabel())
+    end
+
+    if Modes.transportPicker then
+        Modes.transportPicker.timer = Modes.transportPicker.timer - (dt or 0)
+        if Modes.transportPicker.timer <= 0 then Modes.transportPicker = nil end
     end
 
     if Input.pressed.B then Looper:toggleBars() end
@@ -637,6 +644,9 @@ function Modes:update(dt)
 
     if self.current ~= "FX" then
         setLiveFx(Song:playbackFx())          -- the song's recorded FX, or none
+    end
+    if self.current ~= "TRANSPORT" then
+        self.transportPicker = nil
     end
 
     local def, state = Instruments:getTrackInstrument(Looper.activeTrack)

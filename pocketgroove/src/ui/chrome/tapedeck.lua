@@ -88,11 +88,21 @@ function Chrome:drawTapeDeck()
     self:setColor(C.GRID)
     love.graphics.line(136, 381, 136, 469)
 
+    -- Subtle alternating bar shading so 2- and 4-bar loops scan at a glance
+    local bars = math_max(1, math_floor(totalSixteenths / 16))
+    local barW = lw / bars
+    for b = 1, bars do
+        if b % 2 == 0 then
+            self:setColor(C.TEXT, 0.035)
+            love.graphics.rectangle("fill", lx + (b - 1) * barW, 381, barW, 88)
+        end
+    end
+
     -- Continuous bar & beat grid lines spanning the 4 threads
     for s = 0, totalSixteenths, 4 do
         local sx = lx + (s / totalSixteenths) * lw
         local isBar = (s % 16 == 0)
-        self:setColor(isBar and C.GRID or C.PANEL_HI)
+        self:setColor(isBar and C.DIM or C.GRID, isBar and 0.9 or 0.55)
         love.graphics.line(sx, 383, sx, 467)
         if isBar then
             self:drawDiamond(sx, 381, 2.0, C.MUTED)
@@ -194,7 +204,14 @@ function Chrome:drawTapeDeck()
             else
                 local vel = ev.vel or 0.85
                 local hy = cy + self:eventRow(trackDef, ev)
-                if vel >= 0.88 and not track.muted then
+                if ev.chance then
+                    -- Chance ghost: hollow ring matching the Drums stage shape cue
+                    local radius = 2.2 + vel * 1.4
+                    self:setColor(col, 0.9)
+                    love.graphics.setLineWidth(1.3)
+                    love.graphics.circle("line", x, hy, radius)
+                    love.graphics.setLineWidth(1)
+                elseif vel >= 0.88 and not track.muted then
                     self:drawStarGlint(x, hy, 5.5, col, 0.95)
                     self:setColor(C.TEXT)
                     love.graphics.circle("fill", x, hy, 1.8)
@@ -313,8 +330,8 @@ function Chrome:drawLaneStrip(lx, lw)
     local spans = def:spans(lane.state, lane)
     local nowPos = Looper:lanePos() / laneT
     if #spans == 0 then
-        local msg = "NO CHORDS YET - EVERYTHING PLAYS IN " .. Theory:getKeyLabel() .. " - SELECT TAP TO REACH TRACK C"
-        self:setColor(col, 0.75)
+        local msg = "EMPTY  -  PLAYS IN " .. Theory:getKeyLabel() .. "  (SELECT TO ADD)"
+        self:setColor(C.MUTED, 0.65)
         love.graphics.print(msg, math_floor(lx + (lw - self.fontTiny:getWidth(msg)) * 0.5), ty)
     else
         local carry = nowPos < spans[1].from          -- before the first chord the last carries over

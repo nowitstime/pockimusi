@@ -236,40 +236,40 @@ function Chrome:drawTrackPageView(def, state, track, col)
         local off = isFx and not row.on
         -- Marker: sounds are stars, settings hollow rings, effects small moons
         if isSel then
-            self:setColor(col, 0.6)
+            self:setColor(col, 0.7)
             self:drawDashedCircle(nx, y, 11, 2, 3)
-            self:drawCapsule(240, y - 10, 192, 20, "", col, col, col, self.fontSmall, 0.18)
+            self:drawCapsule(240, y - 11, 192, 22, "", col, col, col, self.fontSmall, 0.22)
         end
-        local markCol = isSel and col or C.MUTED
+        local markCol = isSel and col or C.DIM
         if isFx then
-            self:setColor(markCol, 0.9)
+            self:setColor(markCol, isSel and 1.0 or (row.on and 0.75 or 0.45))
             love.graphics.circle(row.on and "fill" or "line", nx, y, isSel and 4.5 or 3)
         elseif isSetting then
-            self:setColor(markCol, 0.9)
+            self:setColor(markCol, isSel and 1.0 or 0.5)
             love.graphics.setLineWidth(isSel and 1.5 or 1)
-            love.graphics.circle("line", nx, y, isSel and 5 or 3.5)
+            love.graphics.circle("line", nx, y, isSel and 5 or 3.2)
             love.graphics.setLineWidth(1)
         else
-            self:drawStarGlint(nx, y, isSel and 7 or ((i == 1) and 4.5 or 3.2), markCol, isSel and 1.0 or 0.9)
+            self:drawStarGlint(nx, y, isSel and 7 or ((i == 1) and 4.0 or 2.8), markCol, isSel and 1.0 or 0.5)
         end
 
         love.graphics.setFont(self.fontTiny)
-        self:setColor(isSel and col or C.MUTED)
+        self:setColor(isSel and col or C.MUTED, isSel and 1.0 or 0.55)
         love.graphics.print(row.label, 250, y - 6)
 
         local shownValue = row.note and (row.value .. " - " .. row.note) or row.value
         local value = isSel and ("<  " .. shownValue .. "  >") or shownValue
         love.graphics.setFont(self.fontSmall)
-        self:setColor((isSel and not off) and C.TEXT or C.MUTED)
+        self:setColor((isSel and not off) and C.TEXT or C.MUTED, isSel and 1.0 or 0.62)
         love.graphics.print(value, valueX, y - 7)
 
         if row.amount then
             -- Numbers get a bar: there is no list to pick from
             local bx, bw = 376, 46
-            self:setColor(C.DIM)
+            self:setColor(C.DIM, isSel and 1.0 or 0.55)
             love.graphics.rectangle("fill", bx, y - 2, bw, 4, 2, 2)
             if not off then
-                self:setColor(isSel and col or C.MUTED)
+                self:setColor(isSel and col or C.MUTED, isSel and 1.0 or 0.6)
                 love.graphics.rectangle("fill", bx, y - 2, math.max(2, bw * clamp(row.amount, 0, 1)), 4, 2, 2)
             end
         elseif isSel then
@@ -297,10 +297,10 @@ function Chrome:drawTrackPageView(def, state, track, col)
         end
         love.graphics.setFont(self.fontTiny)
         local name = Looper.FX_BUTTONS[slot] .. " " .. slot:upper()
-        self:setColor(on and C.TEXT or C.MUTED)
+        self:setColor(on and C.TEXT or C.MUTED, on and 1.0 or 0.65)
         love.graphics.print(name, math_floor(x - self.fontTiny:getWidth(name) * 0.5), 291)
         local pct = on and (math_floor(amt * 100 + 0.5) .. "%") or "OFF"
-        self:setColor(on and col or C.MUTED)
+        self:setColor(on and col or C.MUTED, on and 1.0 or 0.55)
         love.graphics.print(pct, math_floor(x - self.fontTiny:getWidth(pct) * 0.5), 302)
     end
 end

@@ -11,7 +11,10 @@ import sys
 try:
     from lupa.luajit21 import LuaRuntime
 except ImportError:
-    sys.exit("lupa with LuaJIT is required: pip install lupa")
+    try:
+        from lupa import LuaRuntime
+    except ImportError:
+        sys.exit("lupa with LuaJIT is required: pip install lupa")
 
 
 def main():
