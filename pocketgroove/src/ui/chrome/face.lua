@@ -123,6 +123,9 @@ Chrome.FACE_ICON_WORDS = { ["ARP UP"] = "UP", ["ARP DOWN"] = "DOWN", ["UP DOWN"]
 function Chrome:drawCircleFaceButtons(cx, cy, faceLabels, col, flashMap, activeMap)
     local C = Config.COLORS
     local shade = Config.shade
+    if self.MOCK == "D" and self.mockOpt and self.mockOpt.EMBLEM == "CLEAN" and col == C.SILVER then
+        col = self.MOCK_WING_QUIET
+    end
     local R_ORB = 54
     local r = 24
     local pos = {

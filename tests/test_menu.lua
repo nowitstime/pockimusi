@@ -329,9 +329,10 @@ return {
         local C2 = require("src.ui.chrome")
         local combos = {}
         for _, l in ipairs(C2.LOOKS) do combos[#combos + 1] = { l.name } end
+        local embs = C2.MOCK_OPTS.EMBLEM
         for _, d in ipairs(C2.MOCK_OPTS.DPAD) do
             for _, lb in ipairs(C2.MOCK_OPTS.LABELS) do
-                combos[#combos + 1] = { "PLATE", d, lb, (#combos % 2 == 0) and "ON" or "OFF" }
+                combos[#combos + 1] = { "PLATE", d, lb, embs[(#combos % #embs) + 1] }
             end
         end
         for _, c in ipairs(combos) do

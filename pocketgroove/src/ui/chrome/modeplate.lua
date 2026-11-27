@@ -40,9 +40,17 @@ Chrome.LOOKS = {
 Chrome.MOCK_OPTS = {
     DPAD   = { "DIAL", "STAR" },
     LABELS = { "TABS", "ARC", "CHART", "LEGEND", "REVEAL", "GLYPH" },
-    EMBLEM = { "OFF", "ON" },
+    EMBLEM = { "OFF", "CLEAN", "ON" },
 }
 Chrome.mockOpt = { DPAD = "DIAL", LABELS = "TABS", EMBLEM = "OFF" }
+Chrome.MOCK_WING_QUIET = { 0.54, 0.58, 0.66, 1.0 }
+
+-- True when the current page draws a chamfered outer stage frame
+function Chrome:hasChamferFrame(mode)
+    if not self.MOCK then return false end
+    if mode == "TRACK" then return true end
+    return self.MOCK == "D" and self.MOCK_PAGES[mode] == true
+end
 
 function Chrome:setMockOpt(key, value)
     local list = self.MOCK_OPTS[key]
@@ -303,21 +311,30 @@ function Chrome:mockModeBackdrop(def, instCol, mode)
     local C = Config.COLORS
     local X, Y, W, Hh, CH = 8, 50, 624, 306, 12
     local edge = self:mockEdge(mode)
+    local clean = (self.mockOpt.EMBLEM == "CLEAN")
     self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
-    self:setColor(C.BG, 0.3)
+    self:setColor(C.BG, clean and 0.36 or 0.3)
     love.graphics.rectangle("fill", 9, 51, 622, 304)
     self:mockEmblem(mode, "back", edge)
     local plate = chamferPts(184, 86, 272, 230, 10)
+    if clean then
+        self:setColor(C.BG, 0.72)
+        love.graphics.polygon("fill", chamferPts(180, 82, 280, 238, 12))
+    end
     self:setColor(C.BG, 1.0)
     love.graphics.polygon("fill", plate)
     self:mockEmblem(mode, "plate", edge)
-    self:mockGlowPoly(plate, edge, 0.75)
+    self:mockGlowPoly(plate, edge, clean and 0.92 or 0.75)
     self:setColor(C.BG)
     love.graphics.polygon("fill", X - 1, Y - 1, X + CH, Y - 1, X - 1, Y + CH)
     love.graphics.polygon("fill", X + W + 1, Y - 1, X + W - CH, Y - 1, X + W + 1, Y + CH)
     love.graphics.polygon("fill", X - 1, Y + Hh + 1, X + CH, Y + Hh + 1, X - 1, Y + Hh - CH)
     love.graphics.polygon("fill", X + W + 1, Y + Hh + 1, X + W - CH, Y + Hh + 1, X + W + 1, Y + Hh - CH)
-    self:mockGlowPoly(chamferPts(X, Y, W, Hh, CH), edge, 0.8)
+    if clean then
+        self:setColor(Config.shade(instCol, 0.65), 0.45)
+        love.graphics.polygon("line", chamferPts(X + 3, Y + 3, W - 6, Hh - 6, CH - 2))
+    end
+    self:mockGlowPoly(chamferPts(X, Y, W, Hh, CH), edge, clean and 0.45 or 0.8)
 end
 
 -- A page glyph for the top-bar badge
@@ -568,16 +585,21 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         self:mockGlowPoly(plate, MOON, 0.9)
         self:mockCornerBrackets(184, 84, 272, 230, 10, MOON, 0.55)
     elseif style == "D" then
+        local clean = (self.mockOpt.EMBLEM == "CLEAN")
         self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
-        self:setColor(C.BG, 0.3)
+        self:setColor(C.BG, clean and 0.36 or 0.3)
         love.graphics.rectangle("fill", 9, 51, 622, 304)
         self:mockEmblem("TRACK", "back", self:mockEdge("TRACK"))
         -- a solid, darker plate under the rows so they read easily
         local plate = chamferPts(184, 86, 272, 230, 10)
+        if clean then
+            self:setColor(C.BG, 0.72)
+            love.graphics.polygon("fill", chamferPts(180, 82, 280, 238, 12))
+        end
         self:setColor(C.BG, 1.0)
         love.graphics.polygon("fill", plate)
         self:mockEmblem("TRACK", "plate", self:mockEdge("TRACK"))
-        self:mockGlowPoly(plate, self:mockEdge("TRACK"), 0.75)
+        self:mockGlowPoly(plate, self:mockEdge("TRACK"), clean and 0.92 or 0.75)
     else -- C
         self:setColor(shade(instCol, self.STAGE_SHADE))
         love.graphics.polygon("fill", inner)
@@ -603,7 +625,12 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         love.graphics.line(198, 92, 198, 300)
         love.graphics.line(442, 92, 442, 300)
     elseif style == "D" then
-        self:mockGlowPoly(frame, self:mockEdge("TRACK"), 0.8)
+        local clean = (self.mockOpt.EMBLEM == "CLEAN")
+        if clean then
+            self:setColor(shade(instCol, 0.65), 0.45)
+            love.graphics.polygon("line", chamferPts(X + 3, Y + 3, W - 6, Hh - 6, CH - 2))
+        end
+        self:mockGlowPoly(frame, self:mockEdge("TRACK"), clean and 0.45 or 0.8)
     elseif style == "B" then
         self:mockGlowPoly(frame, MOON, 0.6)
         self:setColor(shade(instCol, 0.6), 0.6)
@@ -915,7 +942,7 @@ local EDGE_TINT = {
     FX        = { 0.92, 0.84, 1.00, 1.0 },   -- comet: violet-white
 }
 function Chrome:mockEdge(mode)
-    if self.mockOpt.EMBLEM == "ON" and EDGE_TINT[mode] then return EDGE_TINT[mode] end
+    if self.mockOpt.EMBLEM ~= "OFF" and EDGE_TINT[mode] then return EDGE_TINT[mode] end
     return MOON
 end
 
@@ -947,10 +974,11 @@ function Chrome:mockDpad(cx, cy, labels, accent, bare)
     local C = Config.COLORS
     local dir = Input:get8WayDirection()
     if dir == "NEUTRAL" then dir = nil end
+    local clean = (self.mockOpt.EMBLEM == "CLEAN")
     if self.mockOpt.DPAD == "STAR" then
-        self:drawStarDpad(cx, cy, {}, C.SILVER, dir, nil)
+        self:drawStarDpad(cx, cy, {}, clean and self.MOCK_WING_QUIET or C.SILVER, dir, nil)
     else
-        self:mockDial(cx, cy, MOON, accent, C.TEXT, true)
+        self:mockDial(cx, cy, clean and self.MOCK_WING_QUIET or MOON, accent, clean and C.MUTED or C.TEXT, true)
     end
     if not bare and labels then self:mockDpadLabels(cx, cy, labels, accent, dir) end
 end
@@ -1061,7 +1089,9 @@ end
 -- Page emblems. "back": large and faint behind the plate, showing round its
 -- edges and up behind the title; "plate": a watermark on the plate itself.
 function Chrome:mockEmblem(mode, layer, col)
-    if self.mockOpt.EMBLEM ~= "ON" then return end
+    local emb = self.mockOpt.EMBLEM
+    if emb == "OFF" then return end
+    if emb == "CLEAN" and layer == "back" then return end
     local cx, cy = 320, 200
     local lg = love.graphics
     if mode == "TRACK" then
@@ -1096,12 +1126,16 @@ function Chrome:mockEmblem(mode, layer, col)
             end
             lg.setLineWidth(1)
         else
+            local clean = (emb == "CLEAN")
+            local r1 = clean and 102 or 104
+            local alpha = clean and 0.045 or 0.11
             for i = 0, 47 do
                 local a = i / 48 * 2 * math_pi
-                local r2 = (i % 2 == 0) and 116 or 110
-                self:setColor(col, 0.11)
-                lg.polygon("fill", cx + math_cos(a - 0.025) * 104, cy - 10 + math_sin(a - 0.025) * 104,
-                    cx + math_cos(a + 0.025) * 104, cy - 10 + math_sin(a + 0.025) * 104,
+                local r2 = clean and ((i % 2 == 0) and 112 or 107) or ((i % 2 == 0) and 116 or 110)
+                local w = clean and 0.022 or 0.025
+                self:setColor(col, alpha)
+                lg.polygon("fill", cx + math_cos(a - w) * r1, cy - 10 + math_sin(a - w) * r1,
+                    cx + math_cos(a + w) * r1, cy - 10 + math_sin(a + w) * r1,
                     cx + math_cos(a) * r2, cy - 10 + math_sin(a) * r2)
             end
         end

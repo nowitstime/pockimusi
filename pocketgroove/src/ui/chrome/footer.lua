@@ -271,9 +271,16 @@ function Chrome:drawFooterStrip(def)
     local instCol = self:trackColor(Looper.activeTrack)
 
     self:setColor(C.BG)
-    love.graphics.rectangle("fill", 9, FOOT_Y + 1, 622, FOOT_H - 1, 4, 4)
-    self:setColor(C.GRID)
-    love.graphics.line(9, FOOT_Y, 631, FOOT_Y)
+    if self.hasChamferFrame and self:hasChamferFrame(mode) then
+        -- Keep the bottom-left and bottom-right chamfered stage corners intact
+        love.graphics.polygon("fill", 12, FOOT_Y + 1, 628, FOOT_Y + 1, 628, 343, 619, 352, 21, 352, 12, 343)
+        self:setColor(C.GRID)
+        love.graphics.line(12, FOOT_Y, 628, FOOT_Y)
+    else
+        love.graphics.rectangle("fill", 9, FOOT_Y + 1, 622, FOOT_H - 1, 4, 4)
+        self:setColor(C.GRID)
+        love.graphics.line(9, FOOT_Y, 631, FOOT_Y)
+    end
 
     local key = mode
     local Song = package.loaded["src.song"]
