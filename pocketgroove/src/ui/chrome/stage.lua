@@ -287,7 +287,10 @@ function Chrome:drawCenterStage()
         self.mockNoChips = mockD
         self:drawTransportView(track, instCol, accent)
         self.mockNoChips = false
-        if mockD then self:mockClockFlash(track, accent) end
+        if mockD then
+            self:mockClockFlash(track, accent)
+            self:mockClockReadout(track, accent)
+        end
     elseif mode == "ERASE" then
         self:drawEraseView(track, def)
     elseif mode == "NEW" then

@@ -321,8 +321,9 @@ end
 
 -- Clock: the GRID and SWING buttons carry their values (the chips under the
 -- dial are gone)
+Chrome.MOCK_FACE_VALUES = false
 function Chrome:mockClockFaceLabels(face, track)
-    if track.isLane then return end
+    if track.isLane or not self.MOCK_FACE_VALUES then return end
     local grid = Looper:getTrackGrid(track.slot)
     face.A = { l1 = "GRID", l2 = grid.label }
     face.Y = { l1 = "SWING", l2 = string.format("%d%%", math_floor((track.swing or 0.5) * 100 + 0.5)) }
@@ -346,7 +347,7 @@ function Chrome:mockClockFlash(track, accent)
     if last and last.slot == track.slot then
         for _, key in ipairs({ "grid", "swing", "bars", "click" }) do
             if sig[key] ~= last[key] then
-                self.mockFlash = { text = sig[key], time = now }
+                self.mockFlash = { text = sig[key], time = now, key = key }
             end
         end
     end
@@ -374,6 +375,59 @@ function Chrome:mockClockFlash(track, accent)
     love.graphics.setFont(self.fontTiny)
     self:setColor(self:trackColor(track.slot), a)
     love.graphics.print(name, math_floor(320 - self.fontTiny:getWidth(name) * 0.5), y + 24)
+end
+
+-- Clock: the track's timing as an engraved readout under the dial, three
+-- cells (track, grid, swing); a cell that just changed glows for a moment
+function Chrome:mockClockReadout(track, accent)
+    local C = Config.COLORS
+    local now = love.timer.getTime()
+    local grid = not track.isLane and Looper:getTrackGrid(track.slot) or nil
+    local cells
+    if track.isLane then
+        local _, unit = Instruments:getDefinition("lane"):unit(track.state)
+        cells = { { "TRACK", track.shortName or track.name, self:trackColor(track.slot) }, { "BOX", unit } }
+    else
+        cells = {
+            { "TRACK", track.shortName or track.name, self:trackColor(track.slot) },
+            { "GRID", grid.label, nil, "grid" },
+            { "SWING", string.format("%d%%", math_floor((track.swing or 0.5) * 100 + 0.5)), nil, "swing" },
+        }
+    end
+    local cw, h = 76, 30
+    local w = cw * #cells
+    local x0, y = math_floor(320 - w * 0.5) + 0.5, 290.5
+    local pts = chamferPts(x0, y, w, h, 6)
+    self:setColor(C.BG)
+    love.graphics.polygon("fill", pts)
+    self:setColor(C.SILVER, 0.35)
+    love.graphics.polygon("line", pts)
+    local f = self.mockFlash
+    local fresh = f and (now - f.time < self.MOCK_FLASH_TIME) and f.key or nil
+    if Input.down.Y then fresh = "swing" end
+    for i, c in ipairs(cells) do
+        local cx = x0 + (i - 0.5) * cw
+        if i > 1 then
+            self:setColor(C.SILVER, 0.2)
+            love.graphics.line(x0 + (i - 1) * cw, y + 6, x0 + (i - 1) * cw, y + h - 6)
+        end
+        local lit = (c[4] and c[4] == fresh)
+        if lit then
+            local cp = chamferPts(x0 + (i - 1) * cw + 3, y + 3, cw - 6, h - 6, 4)
+            self:setColor(self:trackColor(track.slot), 0.18)
+            love.graphics.polygon("fill", cp)
+            self:mockGlowPoly(cp, MOON, 0.9)
+        end
+        love.graphics.setFont(self.fontTiny)
+        self:setColor(C.MUTED, 0.9)
+        local lw = self.fontTiny:getWidth(c[1])
+        love.graphics.print(c[1], math_floor(cx - lw * 0.5), y + 3)
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(c[3] or (lit and C.TEXT or C.TEXT))
+        local vw = self.fontSmall:getWidth(c[2])
+        if lit then self:printBold(c[2], math_floor(cx - vw * 0.5), y + 14)
+        else love.graphics.print(c[2], math_floor(cx - vw * 0.5), y + 14) end
+    end
 end
 
 -- Engraved two-word captions under the zones, in the spaced lettering
