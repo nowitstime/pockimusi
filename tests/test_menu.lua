@@ -309,21 +309,34 @@ return {
         openMenu()
         goTo(M, "LOOK")
         H.tap("LEFT")
-        H.eq(Chrome.look, "PLATE ARC", "LEFT wraps to the last look")
+        H.eq(Chrome.look, "PLATE", "LEFT wraps to the last look")
         H.tap("RIGHT")
         H.eq(Chrome.look, "CLASSIC", "RIGHT wraps back")
         H.eq(Config.MODE_COLORS.TRACK, pink, "classic colours back")
         for _ = 1, 4 do H.tap("RIGHT") end
         H.eq(Chrome.look, "PLATE", "four steps on")
+        goTo(M, "OPT")
+        H.tap("RIGHT")
+        H.eq(Chrome.mockOpt.DPAD, "STAR", "D-pad option")
+        H.truthy(H.files["display.txt"]:find("dpad=STAR", 1, true), "option remembered")
         H.eq(Chrome.MOCK, "D", "plate is style D")
         H.truthy(H.files["display.txt"]:find("look=PLATE\n", 1, true), "remembered")
         H.tap("START"); H.play(0.2)
         boot(true)
         H.eq(require("src.ui.chrome").look, "PLATE", "restored after a restart")
+        H.eq(require("src.ui.chrome").mockOpt.DPAD, "STAR", "option restored")
         -- every look draws Track, Clock, Mix and Live FX
         local C2 = require("src.ui.chrome")
-        for _, l in ipairs(C2.LOOKS) do
-            C2:setLook(l.name)
+        local combos = {}
+        for _, l in ipairs(C2.LOOKS) do combos[#combos + 1] = { l.name } end
+        for _, d in ipairs(C2.MOCK_OPTS.DPAD) do
+            for _, lb in ipairs(C2.MOCK_OPTS.LABELS) do
+                combos[#combos + 1] = { "PLATE", d, lb, (#combos % 2 == 0) and "ON" or "OFF" }
+            end
+        end
+        for _, c in ipairs(combos) do
+            C2:setLook(c[1])
+            if c[2] then C2:setMockOpt("DPAD", c[2]); C2:setMockOpt("LABELS", c[3]); C2:setMockOpt("EMBLEM", c[4]) end
             H.hold("SELECT"); H.play(0.3); H.tap("DOWN"); H.tap("RIGHT"); H.release("SELECT"); H.play(0.1)
             H.hold("START"); H.play(0.3); H.tap("A"); H.release("START"); H.play(0.1)
             H.hold("SELECT", "R2"); H.play(0.2); H.release("SELECT", "R2"); H.play(0.1)

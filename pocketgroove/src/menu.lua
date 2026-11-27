@@ -20,6 +20,7 @@
 --   FONTS         the font set (src/ui/fonts.lua), changed live
 --   LOOK          the settings pages' style, to compare on the device
 --                 (src/ui/chrome/modeplate.lua), changed live
+--   PLATE: ...    test settings for the PLATE look: D-pad, labels, emblem
 --
 -- Opening waits until every button is let go, so the hold that opened it
 -- does nothing inside; closing waits too, so the button that closed it does
@@ -43,6 +44,9 @@ local Menu = {
         { id = "SONG",  label = "SONG MODE",     hint = "THE S PAGE: PERFORM A SONG FROM YOUR PATTERNS" },
         { id = "FONTS", label = "FONTS",        hint = "LEFT / RIGHT TO CHANGE" },
         { id = "LOOK",  label = "LOOK",         hint = "SETTINGS PAGES STYLE (TEST) - LEFT / RIGHT" },
+        { id = "OPT", key = "DPAD",   label = "PLATE: D-PAD",  hint = "DIAL OR STAR ON THE PLATE PAGES (TEST)" },
+        { id = "OPT", key = "LABELS", label = "PLATE: LABELS", hint = "HOW THE D-PAD DIRECTIONS ARE NAMED (TEST)" },
+        { id = "OPT", key = "EMBLEM", label = "PLATE: EMBLEM", hint = "A DECAL FOR EACH SETTINGS PAGE (TEST)" },
     },
 
     open = false,
@@ -138,6 +142,9 @@ local function updateRoot(menu)
     if item.id == "FONTS" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
         menu:changeFonts(Input.pressed.LEFT and -1 or 1)
     end
+    if item.id == "OPT" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
+        menu:say(require("src.ui.chrome"):cycleMockOpt(item.key, Input.pressed.LEFT and -1 or 1))
+    end
     if item.id == "LOOK" and (Input.pressed.LEFT or Input.pressed.RIGHT) then
         menu:changeLook(Input.pressed.LEFT and -1 or 1)
     end
@@ -154,6 +161,8 @@ local function updateRoot(menu)
         menu:changeFonts(1)
     elseif item.id == "LOOK" then
         menu:changeLook(1)
+    elseif item.id == "OPT" then
+        menu:say(require("src.ui.chrome"):cycleMockOpt(item.key, 1))
     elseif item.id == "SONG" then
         Song:setOn(not Song:isOn())
         if Song:isOn() then

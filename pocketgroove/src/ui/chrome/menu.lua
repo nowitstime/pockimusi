@@ -74,9 +74,13 @@ end
 function Chrome:drawMenuRoot()
     local C, col = Config.COLORS, accent()
     frame(self, "MENU", currentLabel())
-    local rh, top = (#Menu.ITEMS > 5) and 50 or 62, Y + 58
+    local n = #Menu.ITEMS
+    local compact = n > 6                    -- one line per row; the hint goes to the footer
+    local gap = compact and 4 or 6
+    local rh = compact and 32 or ((n > 5) and 50 or 62)
+    local top = Y + 58
     for i, item in ipairs(Menu.ITEMS) do
-        local y = top + (i - 1) * (rh + 6)
+        local y = top + (i - 1) * (rh + gap)
         local cur = (i == Menu.row)
         local soon = false
         if cur then
@@ -90,14 +94,20 @@ function Chrome:drawMenuRoot()
             love.graphics.rectangle("line", X + 16, y, W - 32, rh, 8, 8)
         end
         local textCol = soon and C.MUTED or (cur and C.TEXT or C.MUTED)
-        self:menuText(item.label, X + 52, y + rh * 0.5 - 8, self.fontMed, textCol)
-        self:menuText(item.hint, X + 52, y + rh * 0.5 + 12, self.fontTiny, soon and C.DIM or C.MUTED)
+        if compact then
+            self:menuText(item.label, X + 52, y + rh * 0.5, self.fontMed, textCol)
+        else
+            self:menuText(item.label, X + 52, y + rh * 0.5 - 8, self.fontMed, textCol)
+            self:menuText(item.hint, X + 52, y + rh * 0.5 + 12, self.fontTiny, soon and C.DIM or C.MUTED)
+        end
 
         local xr = X + W - 34
         if item.id == "SONG" then
             local on = Song:isOn()
             self:menuTextRight(on and "<  ON  >" or "<  OFF  >", xr, y + rh * 0.5, self.fontMed,
                 on and Config.COLORS.SONG or (cur and col or C.TEXT))
+        elseif item.id == "OPT" then
+            self:menuTextRight("<  " .. (self.mockOpt[item.key] or "?") .. "  >", xr, y + rh * 0.5, self.fontMed, cur and col or C.TEXT)
         elseif item.id == "LOOK" then
             self:menuTextRight("<  " .. (self.look or "CLASSIC") .. "  >", xr, y + rh * 0.5, self.fontMed, cur and col or C.TEXT)
         elseif item.id == "FONTS" then
@@ -114,7 +124,12 @@ function Chrome:drawMenuRoot()
             self:menuTextRight("B  >", xr, y + rh * 0.5, self.fontSmall, col)
         end
     end
-    footer(self, "UP / DOWN  MOVE     B  CHOOSE     A  BACK     START  CLOSE")
+    if compact then
+        local item = Menu.ITEMS[Menu.row]
+        footer(self, (item and item.hint or "") .. "     -     UP / DOWN  MOVE   B  CHOOSE   A  BACK")
+    else
+        footer(self, "UP / DOWN  MOVE     B  CHOOSE     A  BACK     START  CLOSE")
+    end
 end
 
 local function savedLabel(t)

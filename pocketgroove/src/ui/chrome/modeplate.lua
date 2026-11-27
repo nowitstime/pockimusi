@@ -33,9 +33,36 @@ Chrome.LOOKS = {
     { name = "ENGRAVED",  mock = "A" },
     { name = "OVERLAY",   mock = "B" },
     { name = "EDGE-LIT",  mock = "C" },
-    { name = "PLATE",     mock = "D", labels = "tab" },
-    { name = "PLATE ARC", mock = "D", labels = "arc" },
+    { name = "PLATE",     mock = "D" },
 }
+
+-- Further test settings for the PLATE look (menu rows, saved in display.txt)
+Chrome.MOCK_OPTS = {
+    DPAD   = { "DIAL", "STAR" },
+    LABELS = { "TABS", "ARC", "CHART", "LEGEND", "REVEAL", "GLYPH" },
+    EMBLEM = { "OFF", "ON" },
+}
+Chrome.mockOpt = { DPAD = "DIAL", LABELS = "TABS", EMBLEM = "OFF" }
+
+function Chrome:setMockOpt(key, value)
+    local list = self.MOCK_OPTS[key]
+    if not list then return end
+    for _, v in ipairs(list) do
+        if v == value then self.mockOpt[key] = v end
+    end
+    self.MOCK_LABELS = (self.mockOpt.LABELS == "ARC") and "arc" or "tab"
+end
+
+function Chrome:cycleMockOpt(key, dir)
+    local list = self.MOCK_OPTS[key]
+    local idx = 1
+    for i, v in ipairs(list) do
+        if v == self.mockOpt[key] then idx = i end
+    end
+    self:setMockOpt(key, list[((idx - 1 + dir) % #list) + 1])
+    Display:save()
+    return key .. ": " .. self.mockOpt[key]
+end
 Chrome.look = "CLASSIC"
 local CLASSIC_COLORS = nil
 
@@ -52,7 +79,7 @@ function Chrome:setLook(name)
     for k, v in pairs(CLASSIC_COLORS) do Config.MODE_COLORS[k] = v end
     self.look = look.name
     self.MOCK = look.mock
-    self.MOCK_LABELS = look.labels or "tab"
+    self.MOCK_LABELS = (self.mockOpt.LABELS == "ARC") and "arc" or "tab"
     self.mockFlash, self.mockClockSig = nil, nil
     if look.mock then
         Config.MODE_COLORS.TRACK = C.SILVER
@@ -266,22 +293,25 @@ end
 
 -- Style D's stage for any settings page: the instrument's scenery, dimmed,
 -- a solid plate under the centre column, a clean chamfered moonlit frame
-function Chrome:mockModeBackdrop(def, instCol)
+function Chrome:mockModeBackdrop(def, instCol, mode)
     local C = Config.COLORS
     local X, Y, W, Hh, CH = 8, 50, 624, 306, 12
+    local edge = self:mockEdge(mode)
     self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
     self:setColor(C.BG, 0.3)
     love.graphics.rectangle("fill", 9, 51, 622, 304)
-    local plate = chamferPts(184, 86, 272, 240, 10)
+    self:mockEmblem(mode, "back", edge)
+    local plate = chamferPts(184, 86, 272, 230, 10)
     self:setColor(C.BG, 1.0)
     love.graphics.polygon("fill", plate)
-    self:mockGlowPoly(plate, MOON, 0.75)
+    self:mockEmblem(mode, "plate", edge)
+    self:mockGlowPoly(plate, edge, 0.75)
     self:setColor(C.BG)
     love.graphics.polygon("fill", X - 1, Y - 1, X + CH, Y - 1, X - 1, Y + CH)
     love.graphics.polygon("fill", X + W + 1, Y - 1, X + W - CH, Y - 1, X + W + 1, Y + CH)
     love.graphics.polygon("fill", X - 1, Y + Hh + 1, X + CH, Y + Hh + 1, X - 1, Y + Hh - CH)
     love.graphics.polygon("fill", X + W + 1, Y + Hh + 1, X + W - CH, Y + Hh + 1, X + W + 1, Y + Hh - CH)
-    self:mockGlowPoly(chamferPts(X, Y, W, Hh, CH), MOON, 0.8)
+    self:mockGlowPoly(chamferPts(X, Y, W, Hh, CH), edge, 0.8)
 end
 
 -- A page glyph for the top-bar badge
@@ -443,9 +473,9 @@ function Chrome:mockClockReadout(track, accent)
             { "SWING", string.format("%d%%", math_floor((track.swing or 0.5) * 100 + 0.5)), nil, "swing" },
         }
     end
-    local cw, h = 76, 30
+    local cw, h = 76, 28
     local w = cw * #cells
-    local x0, y = math_floor(320 - w * 0.5) + 0.5, 290.5
+    local x0, y = math_floor(320 - w * 0.5) + 0.5, 283.5
     local pts = chamferPts(x0, y, w, h, 6)
     self:setColor(C.BG)
     love.graphics.polygon("fill", pts)
@@ -474,7 +504,7 @@ function Chrome:mockClockReadout(track, accent)
         love.graphics.setFont(self.fontSmall)
         self:setColor(c[3] or (lit and C.TEXT or C.TEXT))
         local vw = self.fontSmall:getWidth(c[2])
-        if lit then self:printBold(c[2], math_floor(cx - vw * 0.5), y + 14)
+        if lit then self:printBold(c[2], math_floor(cx - vw * 0.5), y + 13)
         else love.graphics.print(c[2], math_floor(cx - vw * 0.5), y + 14) end
     end
 end
@@ -530,11 +560,13 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
         self:setColor(C.BG, 0.3)
         love.graphics.rectangle("fill", 9, 51, 622, 304)
+        self:mockEmblem("TRACK", "back", self:mockEdge("TRACK"))
         -- a solid, darker plate under the rows so they read easily
-        local plate = chamferPts(184, 86, 272, 240, 10)
+        local plate = chamferPts(184, 86, 272, 230, 10)
         self:setColor(C.BG, 1.0)
         love.graphics.polygon("fill", plate)
-        self:mockGlowPoly(plate, MOON, 0.75)
+        self:mockEmblem("TRACK", "plate", self:mockEdge("TRACK"))
+        self:mockGlowPoly(plate, self:mockEdge("TRACK"), 0.75)
     else -- C
         self:setColor(shade(instCol, self.STAGE_SHADE))
         love.graphics.polygon("fill", inner)
@@ -560,7 +592,7 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         love.graphics.line(198, 92, 198, 300)
         love.graphics.line(442, 92, 442, 300)
     elseif style == "D" then
-        self:mockGlowPoly(frame, MOON, 0.8)
+        self:mockGlowPoly(frame, self:mockEdge("TRACK"), 0.8)
     elseif style == "B" then
         self:mockGlowPoly(frame, MOON, 0.6)
         self:setColor(shade(instCol, 0.6), 0.6)
@@ -582,7 +614,7 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
     if style == "A" then
         self:mockDial(102, 188, C.SILVER, instCol, C.MUTED)
     elseif style == "D" then
-        self:mockDial(102, 188, MOON, instCol, C.TEXT, true)
+        self:mockDpad(102, 188, nil, instCol, true)
     elseif style == "B" then
         self:mockDial(102, 188, MOON, instCol, C.TEXT)
     else
@@ -855,6 +887,248 @@ function Chrome:drawLiveFxViewD(def, state, track, instCol, t)
     local note = "ALL TRACKS  -  HOLD TO PUNCH IN"
     self:setColor(C.MUTED)
     love.graphics.print(note, math_floor(320 - self.fontTiny:getWidth(note) * 0.5), 300)
+end
+
+
+-- ----------------------------------------------------------------------------
+-- PLATE test settings: the D-pad (dial or star), its label style, and the
+-- page emblems
+-- ----------------------------------------------------------------------------
+
+-- The edge light: moonlight, or with EMBLEM on a little warmer or cooler per page
+local EDGE_TINT = {
+    TRACK     = { 0.90, 0.92, 0.98, 1.0 },
+    TRANSPORT = { 1.00, 0.90, 0.74, 1.0 },   -- sun: warm
+    MIX       = { 0.80, 0.88, 1.00, 1.0 },   -- moon: cool
+    FX        = { 0.92, 0.84, 1.00, 1.0 },   -- comet: violet-white
+}
+function Chrome:mockEdge(mode)
+    if self.mockOpt.EMBLEM == "ON" and EDGE_TINT[mode] then return EDGE_TINT[mode] end
+    return MOON
+end
+
+local function cleanLabel(text)
+    text = tostring(text or "")
+    text = text:gsub("%s*[<>]%s*", ""):gsub("^%s+", ""):gsub("%s+$", "")
+    return text
+end
+
+local STATIONS = {
+    { k = "UP",    a = -math_pi * 0.5 },
+    { k = "DOWN",  a =  math_pi * 0.5 },
+    { k = "LEFT",  a =  math_pi },
+    { k = "RIGHT", a =  0 },
+}
+
+-- A small solid triangle pointing UP / DOWN / LEFT / RIGHT
+function Chrome:mockChevron(x, y, k, r, col, alpha)
+    self:setColor(col, alpha or 1)
+    if k == "UP" then love.graphics.polygon("fill", x - r, y + r * 0.6, x + r, y + r * 0.6, x, y - r * 0.7)
+    elseif k == "DOWN" then love.graphics.polygon("fill", x - r, y - r * 0.6, x + r, y - r * 0.6, x, y + r * 0.7)
+    elseif k == "LEFT" then love.graphics.polygon("fill", x + r * 0.6, y - r, x + r * 0.6, y + r, x - r * 0.7, y)
+    else love.graphics.polygon("fill", x - r * 0.6, y - r, x - r * 0.6, y + r, x + r * 0.7, y) end
+end
+
+-- The D-pad on a PLATE page: the dial or the star, then its labels (none on
+-- the Track page, where the D-pad just moves round the list)
+function Chrome:mockDpad(cx, cy, labels, accent, bare)
+    local C = Config.COLORS
+    local dir = Input:get8WayDirection()
+    if dir == "NEUTRAL" then dir = nil end
+    if self.mockOpt.DPAD == "STAR" then
+        self:drawStarDpad(cx, cy, {}, C.SILVER, dir, nil)
+    else
+        self:mockDial(cx, cy, MOON, accent, C.TEXT, true)
+    end
+    if not bare and labels then self:mockDpadLabels(cx, cy, labels, accent, dir) end
+end
+
+function Chrome:mockDpadLabels(cx, cy, labels, accent, dir)
+    local C = Config.COLORS
+    local style = self.mockOpt.LABELS
+    local ft = self.fontTiny
+    local R, rs = 58, 66                    -- dial radius; where the stations sit
+    love.graphics.setFont(ft)
+
+    if style == "TABS" or style == "ARC" then
+        for _, st in ipairs(STATIONS) do
+            local text = cleanLabel(labels[st.k])
+            if text ~= "" then self:mockDialLabel(cx, cy, R, st.k, st.a, text, dir == st.k, accent, MOON, C.TEXT) end
+        end
+
+    elseif style == "CHART" then
+        -- star-chart callouts: a dot at the point, a hairline out, the name at its end
+        for _, st in ipairs(STATIONS) do
+            local text = cleanLabel(labels[st.k])
+            if text ~= "" then
+                local on = (dir == st.k)
+                local sx, sy = cx + math_cos(st.a) * rs, cy + math_sin(st.a) * rs
+                local tw = ft:getWidth(text)
+                local ex, ey, tx, ty
+                if st.k == "UP" then ex, ey = sx + 10, sy - 12; tx, ty = ex + 3, ey - 6
+                elseif st.k == "DOWN" then ex, ey = sx + 10, sy + 12; tx, ty = ex + 3, ey - 6
+                elseif st.k == "LEFT" then ex, ey = sx - 6, sy - 22; tx, ty = math.max(13, ex - tw * 0.5), ey - 12
+                else ex, ey = sx + 6, sy - 22; tx, ty = math.min(182 - tw, ex - tw * 0.5), ey - 12 end
+                self:setColor(on and accent or MOON, on and 1 or 0.45)
+                love.graphics.line(sx, sy, ex, ey)
+                if st.k == "UP" or st.k == "DOWN" then love.graphics.line(ex, ey, ex + 2, ey) end
+                self:setColor(on and accent or MOON, on and 1 or 0.9)
+                love.graphics.circle("fill", sx, sy, on and 2.5 or 1.8)
+                self:setColor(on and C.TEXT or C.TEXT, on and 1 or 0.85)
+                if on then self:printBold(text, math_floor(tx), math_floor(ty))
+                else love.graphics.print(text, math_floor(tx), math_floor(ty)) end
+            end
+        end
+
+    elseif style == "LEGEND" then
+        -- no words on the dial: a small key under it
+        local order = { "UP", "DOWN", "LEFT", "RIGHT" }
+        for i, k in ipairs(order) do
+            local text = cleanLabel(labels[k])
+            if text ~= "" then
+                local on = (dir == k)
+                local col = (i - 1) % 2
+                local row = math_floor((i - 1) / 2)
+                local x = 26 + col * 82
+                local y = 262 + row * 14
+                if on then
+                    self:setColor(accent, 0.22)
+                    love.graphics.rectangle("fill", x - 8, y - 1, 78, 13, 3, 3)
+                end
+                self:mockChevron(x, y + 5.5, k, 3.5, on and accent or MOON, on and 1 or 0.8)
+                self:setColor(C.TEXT, on and 1 or 0.85)
+                love.graphics.print(text, x + 8, y)
+            end
+        end
+        -- small ticks at the stations so the key has something to point at
+        for _, st in ipairs(STATIONS) do
+            local sx, sy = cx + math_cos(st.a) * rs, cy + math_sin(st.a) * rs
+            if dir ~= st.k then self:mockChevron(sx + math_cos(st.a) * 3, sy + math_sin(st.a) * 3, st.k, 2.5, MOON, 0.5) end
+        end
+
+    elseif style == "REVEAL" then
+        -- nothing at rest; the held direction's name appears under the dial
+        local text = dir and cleanLabel(labels[dir]) or ""
+        if text ~= "" then
+            local tw = self.fontSmall:getWidth(text)
+            local w, h = tw + 24, 18
+            local x, y = math_floor(cx - w * 0.5) + 0.5, 259.5
+            local pts = chamferPts(x, y, w, h, 4)
+            self:setColor(C.BG)
+            love.graphics.polygon("fill", pts)
+            self:setColor(accent, 0.25)
+            love.graphics.polygon("fill", pts)
+            self:mockGlowPoly(pts, MOON, 0.9)
+            love.graphics.setFont(self.fontSmall)
+            self:setColor(C.TEXT)
+            self:printBold(text, math_floor(cx - tw * 0.5), math_floor(y + (h - self:lineHeight(self.fontSmall)) * 0.5))
+        end
+
+    else -- GLYPH: letter-spaced words with a direction mark
+        for _, st in ipairs(STATIONS) do
+            local text = cleanLabel(labels[st.k])
+            if text ~= "" then
+                local on = (dir == st.k)
+                local spaced = text:gsub(".", "%0 "):sub(1, -2)
+                local tw = ft:getWidth(spaced)
+                local col = on and accent or MOON
+                local tx, ty, chx, chy
+                if st.k == "UP" then tx, ty = cx - tw * 0.5 + 5, cy - rs - 16; chx, chy = tx - 7, ty + 6
+                elseif st.k == "DOWN" then tx, ty = cx - tw * 0.5 + 5, cy + rs + 5; chx, chy = tx - 7, ty + 6
+                elseif st.k == "LEFT" then tx, ty = math.max(21, cx - rs - 4 - tw), cy - 22; chx, chy = tx - 7, ty + 6
+                else tx, ty = math.min(182 - tw, cx + rs + 4), cy - 22; chx, chy = tx + tw + 6, ty + 6 end
+                self:mockChevron(chx, chy, st.k, 3, col, on and 1 or 0.7)
+                self:setColor(on and C.TEXT or C.TEXT, on and 1 or 0.85)
+                if on then self:printBold(spaced, math_floor(tx), math_floor(ty))
+                else love.graphics.print(spaced, math_floor(tx), math_floor(ty)) end
+            end
+        end
+    end
+end
+
+-- Page emblems. "back": large and faint behind the plate, showing round its
+-- edges and up behind the title; "plate": a watermark on the plate itself.
+function Chrome:mockEmblem(mode, layer, col)
+    if self.mockOpt.EMBLEM ~= "ON" then return end
+    local cx, cy = 320, 200
+    local lg = love.graphics
+    if mode == "TRACK" then
+        -- astrolabe: limb rings with graduation, and the rete's crossing arcs
+        if layer == "back" then
+            self:setColor(col, 0.16)
+            lg.circle("line", cx, cy, 168)
+            lg.circle("line", cx, cy, 150)
+            for i = 0, 119 do
+                local a = i / 120 * 2 * math_pi
+                local r1 = (i % 10 == 0) and 140 or 146
+                self:setColor(col, (i % 10 == 0) and 0.22 or 0.12)
+                lg.line(cx + math_cos(a) * r1, cy + math_sin(a) * r1, cx + math_cos(a) * 150, cy + math_sin(a) * 150)
+            end
+            self:setColor(col, 0.1)
+            lg.arc("line", "open", cx, cy - 60, 190, math_pi * 0.15, math_pi * 0.85)
+            lg.arc("line", "open", cx, cy + 70, 200, math_pi * 1.15, math_pi * 1.85)
+        else
+            self:mockGear(cx, cy + 4, 88, col, 0.055)
+            self:setColor(col, 0.05)
+            lg.circle("line", cx, cy + 4, 104)
+        end
+    elseif mode == "TRANSPORT" then
+        -- the sun: long rays from behind the plate, a corona round the clock
+        if layer == "back" then
+            for i = 0, 31 do
+                local a = i / 32 * 2 * math_pi
+                local long = (i % 2 == 0)
+                self:setColor(col, long and 0.16 or 0.09)
+                lg.setLineWidth(long and 2 or 1)
+                lg.line(cx + math_cos(a) * 120, cy + math_sin(a) * 120, cx + math_cos(a) * (long and 250 or 190), cy + math_sin(a) * (long and 250 or 190))
+            end
+            lg.setLineWidth(1)
+        else
+            for i = 0, 47 do
+                local a = i / 48 * 2 * math_pi
+                local r2 = (i % 2 == 0) and 116 or 110
+                self:setColor(col, 0.11)
+                lg.polygon("fill", cx + math_cos(a - 0.025) * 104, cy - 10 + math_sin(a - 0.025) * 104,
+                    cx + math_cos(a + 0.025) * 104, cy - 10 + math_sin(a + 0.025) * 104,
+                    cx + math_cos(a) * r2, cy - 10 + math_sin(a) * r2)
+            end
+        end
+    elseif mode == "MIX" then
+        -- the moon: its phases either side of the title, a crescent on the plate
+        if layer == "back" then
+            local phases = { 0.12, 0.3, 0.5, 0.75 }
+            for i, f in ipairs(phases) do
+                self:drawMoonPhase(150 + i * 26, 66, 6, f, col, Config.COLORS.BG)
+                self:drawMoonPhase(490 - i * 26, 66, 6, f, col, Config.COLORS.BG)
+            end
+            self:setColor(col, 0.12)
+            lg.arc("line", "open", cx, cy, 160, math_pi * 0.6, math_pi * 1.4)
+            lg.arc("line", "open", cx, cy, 160, -math_pi * 0.4, math_pi * 0.4)
+        else
+            self:setColor(col, 0.05)
+            lg.circle("fill", cx, cy, 92)
+            self:setColor(Config.COLORS.BG)
+            lg.circle("fill", cx + 34, cy - 14, 84)
+        end
+    elseif mode == "FX" then
+        -- a comet: its tail streaking down-left behind the plate
+        if layer == "back" then
+            for i = 0, 6 do
+                local off = (i - 3) * 9
+                self:setColor(col, 0.14 - math.abs(i - 3) * 0.03)
+                lg.setLineWidth(i == 3 and 2 or 1)
+                lg.line(560 + off, 40 - off * 0.3, 120 + off, 340 - off * 0.3)
+            end
+            lg.setLineWidth(1)
+        else
+            for k = 0, 24 do
+                local f = k / 24
+                self:setColor(col, 0.06 * (1 - f))
+                lg.circle("fill", 420 - f * 200, 112 + f * 160, 22 * (1 - f * 0.8))
+            end
+            self:drawStarGlint(420, 112, 14, col, 0.18)
+        end
+    end
 end
 
 end

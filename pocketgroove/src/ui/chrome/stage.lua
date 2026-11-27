@@ -54,7 +54,7 @@ function Chrome:drawCenterStage()
     local borderCol = (mode == "NORMAL") and Config.shade(instCol, 0.45) or (Config.MODE_COLORS[mode] or C.GRID)
     if Song.recording and playMode then borderCol = C.RED end
     if mockD then
-        self:mockModeBackdrop(def, instCol)
+        self:mockModeBackdrop(def, instCol, mode)
     else
     self:drawFrame(8, 50, 624, 306, borderCol, 1)
     self.haloDrawn = false
@@ -213,7 +213,7 @@ function Chrome:drawCenterStage()
         activeMap = {}
     end
     if mockD then
-        self:mockDial(102, 188, { 0.86, 0.92, 1.0, 1.0 }, instCol, C.TEXT, false, dpadLabels)
+        self:mockDpad(102, 188, dpadLabels, instCol, false)
     else
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     end
