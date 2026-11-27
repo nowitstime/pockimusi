@@ -86,6 +86,8 @@ function Chrome:setLook(name)
         if look.mock == "D" then
             Config.MODE_COLORS.TRANSPORT = C.SILVER
             Config.MODE_COLORS.FX = C.SILVER
+            Config.MODE_COLORS.MENU = C.SILVER
+            Config.MODE_COLORS.MENU_HOLD = C.SILVER
         end
     end
     return self.look
@@ -116,6 +118,10 @@ local function chamferPts(x, y, w, h, c)
         x + w - c, y + h,  x + c, y + h,  x, y + h - c,  x, y + c,
     }
 end
+
+Chrome.mockChamfer = chamferPts
+Chrome.MOCK_MOON = MOON
+Chrome.MOCK_BADGES = { TRANSPORT = true, MIX = true, FX = true, MENU = true, MENU_HOLD = true }
 
 -- A soft glow: the same outline stroked several times, wide and faint to thin and bright
 function Chrome:mockGlowPoly(pts, col, strength)
@@ -333,6 +339,11 @@ function Chrome:mockGlyph(mode, cx, cy, col)
             love.graphics.line(x, cy - 6, x, cy + 6)
             love.graphics.rectangle("fill", x - 2, cy + h * 2 - 1.5, 4, 3)
         end
+    elseif mode == "MENU" or mode == "MENU_HOLD" then
+        -- compass rose
+        self:fillStar(cx, cy, 7, 8, 0.32, 0, col)
+        self:setColor(Config.COLORS.PANEL_HI)
+        love.graphics.circle("fill", cx, cy, 1.6)
     elseif mode == "FX" then
         -- lightning bolt
         love.graphics.polygon("fill", cx + 1.5, cy - 7, cx - 4, cy + 1, cx - 0.5, cy + 1, cx - 1.5, cy + 7, cx + 4, cy - 1, cx + 0.5, cy - 1)
@@ -897,6 +908,7 @@ end
 
 -- The edge light: moonlight, or with EMBLEM on a little warmer or cooler per page
 local EDGE_TINT = {
+    MENU      = { 0.86, 0.92, 1.00, 1.0 },
     TRACK     = { 0.90, 0.92, 0.98, 1.0 },
     TRANSPORT = { 1.00, 0.90, 0.74, 1.0 },   -- sun: warm
     MIX       = { 0.80, 0.88, 1.00, 1.0 },   -- moon: cool
@@ -1109,6 +1121,15 @@ function Chrome:mockEmblem(mode, layer, col)
             lg.circle("fill", cx, cy, 92)
             self:setColor(Config.COLORS.BG)
             lg.circle("fill", cx + 34, cy - 14, 84)
+        end
+    elseif mode == "MENU" then
+        -- a compass rose, large and faint at the right of the list
+        if layer == "plate" then
+            self:fillStar(512, 270, 150, 8, 0.22, 0, { col[1], col[2], col[3], 0.05 })
+            self:fillStar(512, 270, 110, 8, 0.22, 22.5, { col[1], col[2], col[3], 0.035 })
+            self:setColor(col, 0.07)
+            love.graphics.circle("line", 512, 270, 120)
+            love.graphics.circle("line", 512, 270, 160)
         end
     elseif mode == "FX" then
         -- a comet: its tail streaking down-left behind the plate

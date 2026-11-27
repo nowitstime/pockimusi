@@ -164,7 +164,7 @@ function Chrome:drawTopBar()
         mc = { label = "COUNT-IN  " .. countBeats, icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }
     end
     local mockGear = false
-    if self.MOCK and (mode == "TRACK" or (self.MOCK == "D" and self.MOCK_PAGES[mode])) then
+    if self.MOCK and (mode == "TRACK" or (self.MOCK == "D" and self.MOCK_BADGES[mode])) then
         mc = { label = mc.label, icon = "NONE", stroke = C.SILVER, fill = C.PANEL_HI, txt = C.SILVER, iconCol = C.SILVER }
         mockGear = true
     end
