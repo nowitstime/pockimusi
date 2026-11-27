@@ -481,16 +481,28 @@ Turn it on in the menu (`SONG MODE`, saved with the session). The instrument pag
 
 Principles: show mode in the same place always; hints for the held modifier only; colour-code tracks consistently and add shape cues so colour is never the only signal.
 
-**One colour per page** ✅. While playing, the instrument's colour owns the stage. On a settings page the mode colour replaces it on the frame (with a soft glow), badge, footer, D-pad, face rings, shoulders and selection; the only track colour left is a small identity capsule. Mode colours avoid the track colours:
+**Colour belongs to instruments** ✅. Two kinds of screen, told apart by shape and material rather than by hue:
 
-| Page | Colour | Motif |
-| :-- | :-- | :-- |
-| Play | instrument colour | the instrument's own decorations |
-| Recording | crimson `#FB7185` (frame, badge, footer, playhead only) | — |
-| Track page (sound) | sakura pink `#F9A8D4` | constellation of rows, moon-phase effect gauges |
-| Clock (timing) | solar gold `#FCD34D` | astrolabe: circle-of-fifths key ring with scale arc, grid ticks that show swing, loop hand |
-| Mix / Live FX | moon silver `#DCE3F5` | — |
-| Erase | crimson with a tinted frame | — |
+- **Play pages** wear the instrument: its colour owns the stage, with its sky and ornaments (halos) and a rounded frame.
+- **Settings pages** (Track, Clock, Mix, Live FX, Erase, Fresh and the menu) are the **PLATE** look: the current track's sky and ornaments stay visible, dimmed, so you always know which track you are on; a solid dark **plate** with cut corners sits over the centre column for the page's content; a clean cut-corner frame is edge-lit in cool white ("moonlight"); controls, shoulders and badge are silver. The instrument's colour appears only as an accent: the header pill, the selection marker, the held direction, active values.
+- **Which settings page** is shown by its title and a **glyph** in the top-bar badge (shape, not colour), plus a faint emblem on the plate and a slight warm/cool shift in the edge light:
+
+| Page | Glyph | Emblem | Edge light |
+| :-- | :-- | :-- | :-- |
+| Track | gear | astrolabe | neutral moonlight |
+| Clock | hourglass | the sun: a corona round the clock face | warm |
+| Mix | faders | the moon: phases by the title, a crescent | cool |
+| Live FX | lightning | a comet's tail | violet-white |
+| Erase / Fresh | X / eclipse | an eclipse | coral: this one deletes |
+| Menu | compass rose | a compass rose | moonlight |
+
+- **CLEAN** (the default emblem setting) keeps the hierarchy plain: the plate is the brightest thing, the D-pad star and face ring step back to a quiet grey-silver, a dark halo sits round the plate, and the emblem appears on the plate only.
+- **D-pad on a settings page:** the play pages' star in silver. Its directions are named only while held (**REVEAL**): the held direction's name lights under it; the footer hint strip names them all. On the Track page, where the D-pad just moves round the list, the caption is `NAVIGATE`.
+- A page shows only controls that do something there: an empty shoulder or face ring is left out.
+- Recording keeps crimson `#FB7185` on the frame, badge, footer and playhead.
+- Text on screen is in capitals throughout. Spaced lettering (`M E N U`) is for short titles (8 letters or fewer).
+
+Test settings in the menu (to compare looks on the device; to go behind `Config.DEV_TOOLS` before release): `LOOK` (CLASSIC, the earlier one-colour-per-page look; ENGRAVED, OVERLAY, EDGE-LIT, other Track-page studies; PLATE), and for PLATE: `D-PAD` (DIAL / STAR), `LABELS` (TABS, ARC, CHART, LEGEND, REVEAL, GLYPH), `EMBLEM` (OFF / CLEAN / ON). Saved in `display.txt`. Code: `src/ui/chrome/modeplate.lua`.
 
 **Names** ✅. Every page and instrument has one plain name, used the same in the top bar, footer, heading, tabs, mixer and tape deck. Flavour lives in the halos and colours, not the words. Short names are whole words (no abbreviations) and at most about 5 capitals, so they fit the mixer column and the tape deck header.
 

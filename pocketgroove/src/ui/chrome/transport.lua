@@ -165,23 +165,38 @@ function Chrome:drawEraseView(track, def)
         love.graphics.line(x0, 130, x1, 130)
 
         -- Structured keycap action rows
-        local padDesc = "Clear pad lane"
         local padMapLine = nil
+        local parts = {}
         if def and def.ERASE then
-            local parts = {}
             for _, btn in ipairs({ "B", "A", "Y", "X" }) do
                 local e = def.ERASE[btn]
                 if e then parts[#parts + 1] = btn .. " - " .. (e.label or table.concat(e.actions, " + ")) end
             end
             if #parts > 0 then padMapLine = table.concat(parts, "   ") end
         end
-        local rows = {
-            { key = "X Y A B",   desc = padMapLine or padDesc, col = C.TEXT,  edge = edge, tiny = padMapLine ~= nil },
-            { key = "LEFT / L1", desc = "Undo overdub",        col = C.TEXT,  edge = C.SILVER },
-            { key = "START",     desc = "Clear full track",    col = C.TEXT,  edge = edge },
-            { key = "+ SELECT",  desc = "Fresh session",       col = C.MUTED, edge = C.MUTED },
-        }
-        local y = 148
+        -- the face ring already says CLR X / Y / A / B; a row for the pads
+        -- only when the instrument's own map says more (KICK, STROKES ...)
+        local rows = {}
+        if padMapLine then
+            -- the map, wrapped to the plate's width
+            local lines, cur = {}, ""
+            local room = x1 - (x0 + 72 + 8)
+            for _, part in ipairs(parts) do
+                local try = (cur == "") and part:upper() or (cur .. "   " .. part:upper())
+                if cur ~= "" and self.fontTiny:getWidth(try) > room then
+                    lines[#lines + 1] = cur
+                    cur = part:upper()
+                else
+                    cur = try
+                end
+            end
+            if cur ~= "" then lines[#lines + 1] = cur end
+            rows[#rows + 1] = { key = "X Y A B", lines = lines, col = C.TEXT, edge = edge, tiny = true }
+        end
+        rows[#rows + 1] = { key = "LEFT / L1", desc = "UNDO OVERDUB",     col = C.TEXT,  edge = C.SILVER }
+        rows[#rows + 1] = { key = "START",     desc = "CLEAR FULL TRACK", col = C.TEXT,  edge = edge }
+        rows[#rows + 1] = { key = "+ SELECT",  desc = "FRESH SESSION",    col = C.MUTED, edge = C.MUTED }
+        local y = (#rows < 4) and 160 or 148
         for _, r in ipairs(rows) do
             local kw = 72
             self:setColor(r.edge, 0.14)
@@ -193,7 +208,14 @@ function Chrome:drawEraseView(track, def)
             local tw = self.fontTiny:getWidth(r.key)
             love.graphics.print(r.key, math_floor(x0 + (kw - tw) * 0.5), y + 4)
 
-            if r.tiny then
+            if r.lines then
+                love.graphics.setFont(self.fontTiny)
+                self:setColor(r.col)
+                for li, line in ipairs(r.lines) do
+                    love.graphics.print(line, x0 + kw + 8, y + 4 + (li - 1) * 12)
+                end
+                y = y + (#r.lines - 1) * 12
+            elseif r.tiny then
                 love.graphics.setFont(self.fontTiny)
                 self:setColor(r.col)
                 love.graphics.print(r.desc, x0 + kw + 8, y + 4)

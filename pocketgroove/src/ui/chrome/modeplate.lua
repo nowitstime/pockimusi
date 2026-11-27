@@ -450,9 +450,11 @@ function Chrome:mockClockFaceLabels(face, track)
     face.Y = { l1 = "SWING", l2 = string.format("%d%%", math_floor((track.swing or 0.5) * 100 + 0.5)) }
 end
 
--- Clock: a change to grid, swing, bars or click shows on the dial face for a
--- moment (and stays while Y is held to set swing)
+-- Clock: notes a change to grid, swing, bars or click so the readout cell
+-- under the dial can glow for a moment (the cell is the only signal; the
+-- big readout on the dial face is off unless MOCK_FLASH_BIG is set)
 Chrome.MOCK_FLASH_TIME = 1.4
+Chrome.MOCK_FLASH_BIG = false
 function Chrome:mockClockFlash(track, accent)
     local C = Config.COLORS
     local now = love.timer.getTime()
@@ -474,6 +476,7 @@ function Chrome:mockClockFlash(track, accent)
     end
     sig.slot = track.slot
     self.mockClockSig = sig
+    if not self.MOCK_FLASH_BIG then return end
     local f = self.mockFlash
     local text, age
     if Input.down.Y and not track.isLane then

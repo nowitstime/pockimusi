@@ -130,6 +130,8 @@ function Chrome:drawCenterStage()
     local function shoulder(x, label, on, right)
         local key, text = label:match("^(%S+):%s*(.*)$")
         if not key then key, text = "", label end
+        -- a PLATE page leaves out a shoulder that does nothing here
+        if mockD and (text == "-" or text == "") then return end
         local w, h, y = 112, 22, 58
         if on then
             self:setColor(accent)
@@ -217,7 +219,14 @@ function Chrome:drawCenterStage()
     else
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     end
-    self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
+    -- a PLATE page leaves out a face ring with nothing on it (Fresh)
+    local faceEmpty = true
+    for _, b in ipairs({ "B", "A", "Y", "X" }) do
+        if faceLabels[b] and faceLabels[b] ~= "" then faceEmpty = false end
+    end
+    if not (mockD and faceEmpty) then
+        self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
+    end
 
     -- Option 3 Astrolabe Engraving subtitles (omitted on Track and Fresh pages)
     if mode ~= "TRACK" and mode ~= "NEW" then

@@ -68,7 +68,8 @@ local function plateFrame(self, title, right)
     self:mockGlowPoly(self.mockChamfer(X, Y, W, H, CH), edge, 0.8)
     -- title
     self:mockGlyph("MENU", X + 26, Y + 25, C.SILVER)
-    local spaced = title:gsub(".", "%0 "):sub(1, -2)
+    -- spaced lettering reads well on a short title only
+    local spaced = (#title <= 8) and title:gsub(".", "%0 "):sub(1, -2) or title
     self:menuText(spaced, X + 42, Y + 25, self.fontLarge, C.TEXT)
     if right then self:menuTextRight(right, X + W - 20, Y + 25, self.fontSmall, C.MUTED) end
 end
