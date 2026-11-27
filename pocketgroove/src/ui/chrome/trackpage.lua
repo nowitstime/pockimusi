@@ -251,14 +251,15 @@ function Chrome:drawTrackPageView(def, state, track, col)
         end
 
         love.graphics.setFont(self.fontTiny)
-        local la = self.mockRowGlow and 0.85 or 0.58
+        local la = self.mockBright and 1.0 or (self.mockRowGlow and 0.85 or 0.58)
         self:setColor(isSel and col or C.MUTED, isSel and 1.0 or (off and 0.42 or la))
         love.graphics.print(row.label, 202, y - 5)
 
         local shownValue = row.note and (row.value .. " - " .. row.note) or row.value
         local value = isSel and ("< " .. shownValue .. " >") or shownValue
         love.graphics.setFont(self.fontSmall)
-        self:setColor((isSel and not off) and C.TEXT or C.MUTED, isSel and 1.0 or (off and 0.42 or 0.68))
+        local va = self.mockBright and 0.95 or 0.68
+        self:setColor((isSel and not off) and C.TEXT or (self.mockBright and not off and C.TEXT or C.MUTED), isSel and 1.0 or (off and (self.mockBright and 0.55 or 0.42) or va))
         love.graphics.print(value, valueX, y - 7)
 
         if row.amount then

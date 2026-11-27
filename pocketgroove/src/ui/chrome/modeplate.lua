@@ -139,10 +139,11 @@ function Chrome:mockSpacedTitle(cx, y, text, col, alpha, font)
 end
 
 -- The setting dial: a graduated ring with four stations (rows / values) and a needle
-function Chrome:mockDial(cx, cy, col, accent, labelCol)
+function Chrome:mockDial(cx, cy, col, accent, labelCol, plain)
     local C = Config.COLORS
     local R = 58
     local dir = Input:get8WayDirection()
+    if dir == "NEUTRAL" then dir = nil end
     -- faint face
     self:setColor(col, 0.04)
     love.graphics.circle("fill", cx, cy, R)
@@ -171,21 +172,31 @@ function Chrome:mockDial(cx, cy, col, accent, labelCol)
     for _, s in ipairs(st) do
         local on = (dir == s.k)
         local ox, oy = cx + math_cos(s.a) * (R + 8), cy + math_sin(s.a) * (R + 8)
-        self:drawDiamond(ox, oy, on and 4 or 3, on and accent or C.PANEL, on and accent or col)
+        if on or not plain then
+            self:drawDiamond(ox, oy, on and 4 or 3, on and accent or C.PANEL, on and accent or col)
+        end
         local tw = self.fontTiny:getWidth(s.text)
         local lx, ly
         if s.k == "UP" then lx, ly = cx - tw * 0.5, cy - R - 26
         elseif s.k == "DOWN" then lx, ly = cx - tw * 0.5, cy + R + 16
         elseif s.k == "LEFT" then lx, ly = cx - R - 2 - tw, cy - R * 0.5 - 6
         else lx, ly = cx + R + 2, cy - R * 0.5 - 6 end
-        self:setColor(on and accent or labelCol, on and 1 or 0.8)
-        love.graphics.print(s.text, math_floor(lx), math_floor(ly))
+        if not plain then
+            self:setColor(on and accent or labelCol, on and 1 or 0.8)
+            love.graphics.print(s.text, math_floor(lx), math_floor(ly))
+        end
     end
     -- needle: points at the held direction, else rests up
     local na = -math_pi * 0.5
     local map = { UP = -0.5, DOWN = 0.5, LEFT = 1.0, RIGHT = 0.0, UP_LEFT = -0.75, UP_RIGHT = -0.25, DOWN_LEFT = 0.75, DOWN_RIGHT = 0.25 }
     if dir and map[dir] then na = map[dir] * math_pi end
     local held = dir and map[dir]
+    if plain and not held then
+        -- at rest: an empty face, just the hub
+        self:setColor(col, 0.6)
+        love.graphics.circle("line", cx, cy, 4)
+        return
+    end
     local tipx, tipy = cx + math_cos(na) * (R - 14), cy + math_sin(na) * (R - 14)
     local px, py = math_cos(na + math_pi * 0.5) * 4, math_sin(na + math_pi * 0.5) * 4
     self:setColor(held and accent or col, held and 1 or 0.7)
@@ -246,6 +257,15 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         self:mockGear(320, 204, 84, C.SILVER, 0.04)
         self:mockGlowPoly(plate, MOON, 0.9)
         self:mockCornerBrackets(184, 84, 272, 230, 10, MOON, 0.55)
+    elseif style == "D" then
+        self.haloDrawn = self:drawStageMood(def, instCol, 102, 188, 538, 188)
+        self:setColor(C.BG, 0.3)
+        love.graphics.rectangle("fill", 9, 51, 622, 304)
+        -- a solid, darker plate under the rows so they read easily
+        local plate = chamferPts(184, 86, 272, 228, 10)
+        self:setColor(C.BG, 1.0)
+        love.graphics.polygon("fill", plate)
+        self:mockGlowPoly(plate, MOON, 0.75)
     else -- C
         self:setColor(shade(instCol, self.STAGE_SHADE))
         love.graphics.polygon("fill", inner)
@@ -270,6 +290,8 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
         self:setColor(C.SILVER, 0.18)
         love.graphics.line(198, 92, 198, 300)
         love.graphics.line(442, 92, 442, 300)
+    elseif style == "D" then
+        self:mockGlowPoly(frame, MOON, 0.8)
     elseif style == "B" then
         self:mockGlowPoly(frame, MOON, 0.6)
         self:setColor(shade(instCol, 0.6), 0.6)
@@ -290,6 +312,8 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
     -- Left: the setting dial
     if style == "A" then
         self:mockDial(102, 188, C.SILVER, instCol, C.MUTED)
+    elseif style == "D" then
+        self:mockDial(102, 188, MOON, instCol, C.TEXT, true)
     elseif style == "B" then
         self:mockDial(102, 188, MOON, instCol, C.TEXT)
     else
@@ -298,14 +322,19 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
 
     -- Right: the FX ring (silver on A, the instrument's colour on B / C)
     local _, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, "TRACK")
-    local faceCol = (style == "A") and C.SILVER or instCol
+    local faceCol = (style == "A" or style == "D") and C.SILVER or instCol
     self:drawCircleFaceButtons(538, 188, faceLabels, faceCol, flashMap, activeMap)
 
     -- Captions
-    self:mockZoneCaptions(style == "A" and C.SILVER or (style == "B" and MOON or instCol), 0.75)
+    if style == "D" then
+        self:mockSpacedTitle(538, 297, "EFFECTS", C.SILVER, 0.75)
+    else
+        self:mockZoneCaptions(style == "A" and C.SILVER or (style == "B" and MOON or instCol), 0.75)
+    end
 
     -- Rows (or the swap card)
     self.mockRowGlow = true
+    self.mockBright = (style == "D")
     self:drawTrackPageView(def, state, track, instCol)
     self.mockRowGlow = false
 
