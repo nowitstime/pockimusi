@@ -51,16 +51,16 @@ Running on the RG35XX Plus and it feels fine. Built so far:
 | **F** | **Lead / Arp** | Same class as Bass; arp needs the clock-locked scheduling from A |
 | **G** | **Mix & FX finish** — master low-pass, meters, count-in, takes per pass | Most effects already exist |
 | **H** | **Drums pass 2** — Variation, chance, per-pad tune/level | Pass 1 is done and plays fine; randomness and per-pad tune/level land once the mix tools (meters) exist |
-| **K** | **Chord lane** — track C outside the four slots, longer than the loop, written live or with the clock stopped | The Chord Track showed the chord job doesn't need a slot; plan in [PHASE_K.md](PHASE_K.md) |
+| **K** | **Chord lane** — track C outside the four slots, longer than the loop, written live or with the clock stopped | The Chord Track showed the chord job doesn't need a slot; plan in [PHASE_K.md](phases/PHASE_K.md) |
 | **I** | **Tape deck v2 & visual polish** | Ribbons/bends/chord lane need v2 data; final look across all stages |
-| **L** | **Electronic** — no more lab split, grouped instrument picker, tempo to 240, Pump, electronic sounds and acoustic break kits, **Roller**, **Breaks**, **Wobble** | Jungle, drum and bass and EDM; plan in [PHASE_L.md](PHASE_L.md) |
+| **L** | **Electronic** — no more lab split, grouped instrument picker, tempo to 240, Pump, electronic sounds and acoustic break kits, **Roller**, **Breaks**, **Wobble** | Jungle, drum and bass and EDM; plan in [PHASE_L.md](phases/PHASE_L.md) |
 | **J** | **Patterns / song, `.wav` export, sample loading** | Later, once the jam loop is great |
 
 Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of **every** phase, not as a separate one.
 
 ---
 
-## Phase A · Foundation ✅ (device checks pending) — details in [PHASE_A.md](PHASE_A.md)
+## Phase A · Foundation ✅ (device checks pending) — details in [PHASE_A.md](phases/PHASE_A.md)
 
 - [x] A1 Quick fixes + build script packs every file (device check pending)
 - [x] A2 Real tests (characterise today's looper first) — `python3 tests/run.py`
@@ -70,7 +70,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] A6 Event format v2 + note-on/note-off playback (Grain = held notes)
 - [x] A7 Sustained voice engine (device listen pending)
 
-## Phase B · Bass pass ✅ (device look of the new view pending) — details in [PHASE_B.md](PHASE_B.md)
+## Phase B · Bass pass ✅ (device look of the new view pending) — details in [PHASE_B.md](phases/PHASE_B.md)
 
 - [x] B1 Held-note handles: end early, record bends incl. the release tail (shared by Bass, Pad, Lead)
 - [x] B2 Bass sounds: `SAW`, `SUB`, `PLUCK` patches + `PATCH` and `GLIDE` rows
@@ -79,14 +79,14 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] B5 Bends: D-pad and shoulders while holding (and in the release tail) glide, record, replay
 - [x] B6 Stage view (pitch trace, live scope, real face labels) + bend marks on the tape deck (device look pending)
 
-## Phase C · Autosave ✅ (device check pending) — details in [PHASE_C.md](PHASE_C.md)
+## Phase C · Autosave ✅ (device check pending) — details in [PHASE_C.md](phases/PHASE_C.md)
 
 - [x] C1 Save text: write a table, read it back with a parser that never runs code (`src/save.lua`)
 - [x] C2 Session snapshot and restore (per-instrument settings, events, effects; every value checked)
 - [x] C3 Autosave: two alternating slots, every 10 s if changed, on quit and focus loss; restore on boot (device check pending)
 - [x] C4 Fresh session: hold `L2 + R2 + SELECT` (~1 s), clears notes only, undoable; saves in the port folder; log.txt fix (device check pending)
 
-## Phase D · Chord Harp + chord-follow ✅ (device check pending) — details in [PHASE_D.md](PHASE_D.md)
+## Phase D · Chord Harp + chord-follow ✅ (device check pending) — details in [PHASE_D.md](phases/PHASE_D.md)
 
 - [x] D1 Chord map (`↑` = ♭VI, neutral = I) and key-relative chord data on harp events
 - [x] ~~D2 Strums~~ dropped: the harp keeps one note per button; strumming becomes its own instrument (see Phase F)
@@ -94,7 +94,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] D4 Bass `FOLLOW` (default on): live and playback notes and bends follow the chord
 - [x] D5 Chord in the top bar and along the harp lane, bass follow capsule
 
-## Phase E · Pad (replaces Grain) ✅ (device listen pending) — details in [PHASE_E.md](PHASE_E.md)
+## Phase E · Pad (replaces Grain) ✅ (device listen pending) — details in [PHASE_E.md](phases/PHASE_E.md)
 
 - [x] E1 Voice engine: bright layer, per-note attack and release, movement; patches `WARM`, `BELL`, `CHOIR`, `DRONE`
 - [x] E2 Pad instrument: `B` full, `A` open, `Y` high, `X` swell; rows `PATCH`, `FOLLOW`, `ATTACK`, `RELEASE`; `grain.lua` removed, slot 4 = Pad, old Grain saves load as a Pad
@@ -103,7 +103,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] E5 Stage view in the template
 - [ ] Device check: the four patches and their levels, sweep speed, chord changes while holding, frame rate
 
-## Phase F · Lead / Arp ✅ (device listen pending) — details in [PHASE_F.md](PHASE_F.md)
+## Phase F · Lead / Arp ✅ (device listen pending) — details in [PHASE_F.md](phases/PHASE_F.md)
 
 - [x] F1 Lead on top of Bass: D-pad degree, `B` held note with glides; patches `SQUARE`, `SAW`, `PLUCK`; rows `PATCH`, `FOLLOW`, `ARP RATE`, `ARP PATTERN`
 - [x] F2 Arp: `A` up, `Y` down, `X` up-down; locked to the clock and swing; rate 1/8, 1/16, 1/8T; `L1 + R1` = rate ×2; each step recorded as a note; follows the chords
@@ -114,7 +114,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] ❓ Strum instrument: stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)). The harp stays one note per button
 - [ ] Device check: arp feel against the drums at each rate, the three patches and their levels
 
-## Phase G · Mix & FX finish ✅ (device check pending) — details in [PHASE_G.md](PHASE_G.md)
+## Phase G · Mix & FX finish ✅ (device check pending) — details in [PHASE_G.md](phases/PHASE_G.md)
 
 - [x] G1 Real low-pass sweep for master `R2 + ←` (the tone filter; volume duck without EFX)
 - [x] G2 Level meters from the sounding voices, in the Mix page (with peak marks and a red master) and the tape deck
@@ -123,7 +123,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] ❓ Replace vs overdub, auto-stop after one pass (not built: no free control)
 - [ ] Device check: is EFX there (filter sweep), do the meters match what is heard, count-in feel
 
-## Phase H · Drums pass 2 ✅ (device check pending) — details in [PHASE_H.md](PHASE_H.md)
+## Phase H · Drums pass 2 ✅ (device check pending) — details in [PHASE_H.md](phases/PHASE_H.md)
 
 - [x] H1 Flam, ratchet and choke covered by tests (repeat already was)
 - [x] H2 `VARIATION` row: `OFF` / `LIGHT` (level jitter) / `WILD` (more jitter, late off-beat hits, fills in each bar's last beat); playback only
@@ -141,7 +141,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] `ODD` group: `SHEPARD`, `JUST`, `THROAT`, `WAVE`, `GONG`, `REVERSE`, `TALK`, `SWARM`
 - [ ] Device listen: every new patch (written without hearing it), levels against the old ones, the hitch when a patch is first selected
 
-## Phase K · Chord lane ✅ (device check pending) — details in [PHASE_K.md](PHASE_K.md)
+## Phase K · Chord lane ✅ (device check pending) — details in [PHASE_K.md](phases/PHASE_K.md)
 
 - [x] K1 The lane in the looper (bars, passes, save, Harmony reads it)
 - [x] K2 Track C on the `SELECT` cycle, its play surface and rows
@@ -161,7 +161,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [ ] Shape cues besides colour; 12 px+ text (check the 9 px font on device); legibility pass
 - [ ] Final pass on all five stage views
 
-## Phase L · Electronic ✅ (device checks pending) — details in [PHASE_L.md](PHASE_L.md)
+## Phase L · Electronic ✅ (device checks pending) — details in [PHASE_L.md](phases/PHASE_L.md)
 
 - [x] L0 The lab split goes: one catalogue ordered by group; `Config.LAB` → `Config.DEV_TOOLS` (test screens only)
 - [x] L1 Groups (RHYTHM · BASS · CHORDS · TEXTURE · LEAD) with a name and colour on the swap card and tabs
@@ -175,7 +175,7 @@ Device checks (frame rate, boot time, EFX cost, legibility) happen at the end of
 - [x] L9 **Wobble**: face buttons hold chord notes, the D-pad sets the wobble rate
 - [ ] Device check: tempo 240 timing, Pump depth and clicks, the new patches and drum levels (all written without a listen), boot time, Breaks and Wobble feel, group colours
 
-## Phase M · Song mode ✅ (device checks pending) — details in [PHASE_M.md](PHASE_M.md)
+## Phase M · Song mode ✅ (device checks pending) — details in [PHASE_M.md](phases/PHASE_M.md)
 
 - [x] M0 Living slots: the loop on screen is always a slot and autosaves into it; menu GO TO / COPY TO / CLEAR
 - [x] M1 Seamless switching: queue (several) or cut, tempo / key / bars per pattern, patches prepared up front
@@ -220,4 +220,4 @@ The whole app is in testing, so **every** instrument gets a pass, one at a time:
 
 ## Immediate plan
 
-Phase A is built (see [PHASE_A.md](PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](PHASE_F.md)), also unheard. Phase G (Mix & FX finish) is built ([PHASE_G.md](PHASE_G.md)). Phase H (Drums pass 2) is built ([PHASE_H.md](PHASE_H.md)). The sound pool is built (SPEC §6), unheard on the device. Lab wave 1 is built; next are the instrument passes above, starting from the decisions in MUSICAL_PARTS §7.4.
+Phase A is built (see [PHASE_A.md](phases/PHASE_A.md); device checks still to do). Phase B (bass) is built ([PHASE_B.md](phases/PHASE_B.md)). Phase C (autosave) is built ([PHASE_C.md](phases/PHASE_C.md)); device checks pending. Phase D (chord-follow) is built ([PHASE_D.md](phases/PHASE_D.md)). Phase E (Pad) is built ([PHASE_E.md](phases/PHASE_E.md)); it has not been heard on the device yet. Phase F (Lead / Arp) is built ([PHASE_F.md](phases/PHASE_F.md)), also unheard. Phase G (Mix & FX finish) is built ([PHASE_G.md](phases/PHASE_G.md)). Phase H (Drums pass 2) is built ([PHASE_H.md](phases/PHASE_H.md)). The sound pool is built (SPEC §6), unheard on the device. Lab wave 1 is built; next are the instrument passes above, starting from the decisions in MUSICAL_PARTS §7.4.

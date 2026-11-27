@@ -1,0 +1,75 @@
+name: Web Preview (GitHub Pages)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build PocketGroove.love
+        run: python3 build.py
+
+      - name: Build love.js compatibility web bundle
+        run: |
+          npx --yes love.js -c -t "Pockimusi (PocketGroove)" pocketgroove/PocketGroove.love dist-web
+
+      - name: Inject browser-audio note banner into index.html
+        run: |
+          python3 -c '
+          import pathlib
+          p = pathlib.Path("dist-web/index.html")
+          html = p.read_text(encoding="utf-8")
+          banner = """
+          <div style="max-width:720px;margin:12px auto;padding:10px 14px;border-radius:8px;
+                      background:#15151d;border:1px solid #353547;color:#dce3f5;
+                      font-family:system-ui,-apple-system,sans-serif;font-size:13px;line-height:1.45;text-align:center;">
+            <strong style="color:#fcd34d;">Browser Preview:</strong>
+            Per-track audio FX (Tone, HPF, Radio, Chorus, Flange, Ring, Echo, Space, Punch) require native OpenAL EFX
+            and are disabled in WebAudio.
+            <a href="https://github.com/nowitstime/pockimusi/releases" style="color:#5eead4;text-decoration:underline;">
+              Download a native release
+            </a> for full audio.
+          </div>
+          """
+          if "<body" in html:
+              idx = html.find(">", html.find("<body")) + 1
+              html = html[:idx] + banner + html[idx:]
+          else:
+              html = banner + html
+          p.write_text(html, encoding="utf-8")
+          '
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-web
+
+  deploy-web:
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

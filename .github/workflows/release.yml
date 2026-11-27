@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      LOVE_VERSION: "11.5"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LuaJIT and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y luajit zip unzip curl
+
+      - name: Run Lua test suite
+        run: luajit tests/run.lua
+
+      - name: Build PocketGroove.love
+        run: python3 build.py
+
+      - name: Package PortMaster zip & universal .love
+        run: |
+          mkdir -p dist/portmaster/pocketgroove
+          cp pocketgroove/PocketGroove.love dist/PocketGroove.love
+          cp PocketGroove.sh dist/portmaster/
+          cp pocketgroove/PocketGroove.love pocketgroove/controls.gptk dist/portmaster/pocketgroove/
+          (cd dist/portmaster && zip -r ../PocketGroove-portmaster.zip .)
+
+      - name: Package Windows x64 (.exe + DLLs)
+        run: |
+          curl -fSL "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-win64.zip" -o /tmp/love-win64.zip
+          unzip -q /tmp/love-win64.zip -d /tmp/win64
+          mkdir -p dist/win64
+          cp /tmp/win64/love-${LOVE_VERSION}-win64/*.dll dist/win64/
+          cp /tmp/win64/love-${LOVE_VERSION}-win64/license.txt dist/win64/LOVE-LICENSE.txt
+          cat /tmp/win64/love-${LOVE_VERSION}-win64/love.exe pocketgroove/PocketGroove.love > dist/win64/PocketGroove.exe
+          cp LICENSE README.md dist/win64/
+          (cd dist/win64 && zip -r ../PocketGroove-win64.zip .)
+
+      - name: Package Linux x86_64 AppImage (Desktop & Steam Deck)
+        run: |
+          curl -fSL "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-x86_64.AppImage" -o /tmp/love.AppImage
+          cat /tmp/love.AppImage pocketgroove/PocketGroove.love > dist/PocketGroove-linux-x86_64.AppImage
+          chmod +x dist/PocketGroove-linux-x86_64.AppImage
+
+      - name: Package macOS (.app zip)
+        run: |
+          curl -fSL "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-macos.zip" -o /tmp/love-macos.zip
+          mkdir -p /tmp/macos
+          unzip -q /tmp/love-macos.zip -d /tmp/macos
+          mv /tmp/macos/love.app /tmp/macos/PocketGroove.app
+          cp pocketgroove/PocketGroove.love /tmp/macos/PocketGroove.app/Contents/Resources/PocketGroove.love
+          python3 -c '
+          import plistlib, pathlib
+          p = pathlib.Path("/tmp/macos/PocketGroove.app/Contents/Info.plist")
+          data = plistlib.loads(p.read_bytes())
+          data["CFBundleName"] = "PocketGroove"
+          data["CFBundleIdentifier"] = "org.pockimusi.pocketgroove"
+          data.pop("UTExportedTypeDeclarations", None)
+          p.write_bytes(plistlib.dumps(data))
+          '
+          (cd /tmp/macos && zip -ry "$GITHUB_WORKSPACE/dist/PocketGroove-macos.zip" PocketGroove.app)
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-builds
+          path: |
+            dist/PocketGroove.love
+            dist/PocketGroove-portmaster.zip
+            dist/PocketGroove-win64.zip
+            dist/PocketGroove-linux-x86_64.AppImage
+            dist/PocketGroove-macos.zip
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/PocketGroove.love
+            dist/PocketGroove-portmaster.zip
+            dist/PocketGroove-win64.zip
+            dist/PocketGroove-linux-x86_64.AppImage
+            dist/PocketGroove-macos.zip
