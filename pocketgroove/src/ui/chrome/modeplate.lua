@@ -22,6 +22,7 @@ local math_floor = math.floor
 local math_sin   = math.sin
 local math_cos   = math.cos
 local math_pi    = math.pi
+local clamp      = Config.clamp
 
 return function(Chrome)
 
@@ -439,6 +440,208 @@ function Chrome:mockInstrumentPill(track, col)
             love.graphics.circle("fill", dx0 + (i - 1) * 6, py + ph + 5, 0.9)
         end
     end
+end
+
+
+-- ----------------------------------------------------------------------------
+-- Style D centre views: Mix and Live FX
+-- ----------------------------------------------------------------------------
+
+-- Mix: five engraved fader slots on the plate. The level is a line in the
+-- track's colour with a knob; the live meter runs beside it; the selected
+-- channel wears the moonlight edge.
+function Chrome:drawMixerViewD(t)
+    local C = Config.COLORS
+    local Synth = require("src.synth")
+    local SongM = package.loaded["src.song"]
+    local top, bot = 122, 258                -- fader travel
+    local travel = bot - top
+    for i = 1, 5 do
+        local cx = 222 + (i - 1) * 49
+        if i == 5 then cx = cx + 4 end
+        local isMaster = (i == 5)
+        local trk = not isMaster and Looper.tracks[i] or nil
+        local lvl = isMaster and Synth.masterVolume or trk.volume
+        local sel = (Modes.mixTrack == i)
+        local muted = not isMaster and trk.muted or false
+        if not isMaster and SongM and SongM.pendingMutes[i] ~= nil then muted = SongM.pendingMutes[i] end
+        local col = isMaster and C.SILVER or self:trackColor(i)
+
+        if sel then
+            self:setColor(col, 0.08)
+            love.graphics.rectangle("fill", cx - 22, 94, 44, 220, 5, 5)
+            self:mockGlowRect(cx - 22, 94, 44, 220, 5, MOON, 0.8)
+        end
+
+        -- name
+        love.graphics.setFont(self.fontSmall)
+        local label = isMaster and "MST" or (trk.shortName or trk.name)
+        if self.fontSmall:getWidth(label) > 40 then love.graphics.setFont(self.fontTiny) end
+        local f = love.graphics.getFont()
+        self:setColor(muted and C.DIM or col)
+        love.graphics.print(label, math_floor(cx - f:getWidth(label) * 0.5), 100)
+
+        -- engraved scale either side of the slot
+        for k = 0, 10 do
+            local y = bot - k * travel / 10
+            local major = (k % 5 == 0)
+            self:setColor(C.SILVER, major and 0.45 or 0.18)
+            love.graphics.line(cx - 12 - (major and 4 or 2), y, cx - 12, y)
+        end
+        -- the slot
+        self:setColor(C.GRID)
+        love.graphics.rectangle("fill", cx - 5, top - 4, 4, travel + 8, 2, 2)
+        -- level line in the track's colour
+        local ly = bot - travel * clamp(lvl, 0, 1)
+        if not muted then
+            self:setColor(col, 0.18)
+            love.graphics.rectangle("fill", cx - 7, ly, 8, bot - ly + 2, 3, 3)
+            self:setColor(col)
+            love.graphics.rectangle("fill", cx - 5, ly, 4, bot - ly + 2, 2, 2)
+        end
+        -- knob
+        local kc = muted and C.DIM or (sel and C.TEXT or col)
+        self:setColor(C.BG)
+        love.graphics.rectangle("fill", cx - 12, ly - 4, 18, 8, 2, 2)
+        self:setColor(kc)
+        love.graphics.rectangle("line", cx - 12, ly - 4, 18, 8, 2, 2)
+        love.graphics.line(cx - 8, ly, cx + 2, ly)
+
+        -- live meter: thin bar with a peak tick (red when the master is hot)
+        local m = isMaster and Synth.meters.master or Synth.meters[i]
+        local hot = isMaster and m.peak > Synth.METER_HOT
+        self:setColor(C.PANEL_HI)
+        love.graphics.rectangle("fill", cx + 9, top - 4, 3, travel + 8, 1, 1)
+        local mh = math_floor((travel + 8) * math.min(1, m.level))
+        if mh > 0 then
+            self:setColor(hot and C.RED or C.TEXT, 0.85)
+            love.graphics.rectangle("fill", cx + 9, bot + 4 - mh, 3, mh, 1, 1)
+        end
+        local ph = math_floor((travel + 8) * math.min(1, m.peak))
+        if ph > 1 then
+            self:setColor(hot and C.RED or col)
+            love.graphics.rectangle("fill", cx + 8, bot + 4 - ph - 1, 5, 2)
+        end
+
+        -- value
+        love.graphics.setFont(self.fontTiny)
+        local v = tostring(math_floor(lvl * 100 + 0.5))
+        self:setColor(sel and C.TEXT or C.MUTED)
+        love.graphics.print(v, math_floor(cx - self.fontTiny:getWidth(v) * 0.5), 268)
+
+        -- mute state
+        if not isMaster then
+            if muted then
+                self:drawCapsule(cx - 14, 286, 28, 16, "M", C.RED, C.RED, C.BG, self.fontTiny)
+            else
+                self:drawCapsule(cx - 14, 286, 28, 16, "ON", C.GRID, C.PANEL_HI, C.MUTED, self.fontTiny)
+            end
+        else
+            self:drawCapsule(cx - 14, 286, 28, 16, "OUT", C.GRID, C.PANEL_HI, C.SILVER, self.fontTiny)
+        end
+    end
+    -- master divider
+    self:setColor(C.SILVER, 0.18)
+    love.graphics.line(398, 104, 398, 300)
+end
+
+-- Live FX: the four punch-ins as tiles placed like the D-pad. Held ones
+-- light up in moonlight with a small moving picture of what they do.
+local FX_TILES = {
+    { k = "UP",    name = "STUTTER", flag = "fxBeatRepeat", x = 320, y = 128 },
+    { k = "LEFT",  name = "FILTER",  flag = "fxLowPass",    x = 250, y = 194 },
+    { k = "RIGHT", name = "CRUSH",   flag = "fxBitcrush",   x = 390, y = 194 },
+    { k = "DOWN",  name = "SLOW",    flag = "fxHalfSpeed",  x = 320, y = 260 },
+}
+
+function Chrome:mockFxGlyph(name, x, y, w, h, col, alpha, on, t)
+    self:setColor(col, alpha)
+    love.graphics.setLineWidth(1.4)
+    if name == "STUTTER" then
+        local step = on and (math_floor(t * 16) % 4) or -1
+        for i = 0, 3 do
+            local bx = x + i * (w / 4) + 2
+            self:setColor(col, (i == step) and 1.0 or alpha)
+            love.graphics.rectangle(i == step and "fill" or "line", bx, y + 2, w / 4 - 5, h - 4, 1, 1)
+        end
+    elseif name == "SLOW" then
+        local pts = {}
+        local ph = on and t * 3 or 0
+        for i = 0, 24 do
+            local f = i / 24
+            pts[#pts + 1] = x + f * w
+            pts[#pts + 1] = y + h * 0.5 + math_sin(f * 9 * (1 - f * 0.6) + ph) * h * 0.4 * (1 - f * 0.5)
+        end
+        love.graphics.line(pts)
+    elseif name == "FILTER" then
+        local cut = on and (0.45 + 0.15 * math_sin(t * 4)) or 0.6
+        local pts = {}
+        for i = 0, 24 do
+            local f = i / 24
+            local v = (f < cut) and 0 or ((f - cut) / (1 - cut)) ^ 1.6
+            pts[#pts + 1] = x + f * w
+            pts[#pts + 1] = y + 2 + v * (h - 4)
+        end
+        love.graphics.line(pts)
+    else -- CRUSH
+        local pts = {}
+        local ph = on and t * 6 or 0
+        local steps = 10
+        for i = 0, steps - 1 do
+            local f1, f2 = i / steps, (i + 1) / steps
+            local v = math_sin(f1 * 2 * math_pi + ph)
+            local yy = y + h * 0.5 - math_floor(v * 2 + 0.5) / 2 * h * 0.4
+            pts[#pts + 1] = x + f1 * w; pts[#pts + 1] = yy
+            pts[#pts + 1] = x + f2 * w; pts[#pts + 1] = yy
+        end
+        love.graphics.line(pts)
+    end
+    love.graphics.setLineWidth(1)
+end
+
+function Chrome:drawLiveFxViewD(def, state, track, instCol, t)
+    local C = Config.COLORS
+    local Synth = require("src.synth")
+    local w, h = 104, 46
+    -- spokes from the hub to each tile
+    for _, tile in ipairs(FX_TILES) do
+        self:setColor(C.SILVER, 0.14)
+        love.graphics.line(320, 194, tile.x, tile.y)
+    end
+    for _, tile in ipairs(FX_TILES) do
+        local on = Synth[tile.flag] and true or false
+        local x, y = tile.x - w * 0.5, tile.y - h * 0.5
+        local pts = chamferPts(x, y, w, h, 7)
+        self:setColor(on and instCol or C.PANEL, on and 0.16 or 1.0)
+        love.graphics.polygon("fill", pts)
+        if on then
+            self:mockGlowPoly(pts, MOON, 1.0)
+        else
+            self:setColor(C.SILVER, 0.3)
+            love.graphics.polygon("line", pts)
+        end
+        love.graphics.setFont(self.fontSmall)
+        self:setColor(on and C.TEXT or C.MUTED)
+        if on then self:printBold(tile.name, math_floor(tile.x - self.fontSmall:getWidth(tile.name) * 0.5), y + 6)
+        else love.graphics.print(tile.name, math_floor(tile.x - self.fontSmall:getWidth(tile.name) * 0.5), y + 6) end
+        self:mockFxGlyph(tile.name, tile.x - 30, y + 24, 60, 16, on and instCol or C.SILVER, on and 0.9 or 0.35, on, t)
+    end
+    -- hub: the beat, as a glint that pulses on each beat
+    local beatFrac = 0
+    if Looper.playing then
+        local ppq = Looper.PPQN or 480
+        beatFrac = (Looper.tick % ppq) / ppq
+    end
+    self:setColor(C.BG)
+    love.graphics.circle("fill", 320, 194, 14)
+    self:setColor(C.SILVER, 0.5)
+    love.graphics.circle("line", 320, 194, 14)
+    self:drawStarGlint(320, 194, 6 + (1 - beatFrac) * 4, instCol, Looper.playing and (1 - beatFrac * 0.7) or 0.5)
+    -- what it acts on
+    love.graphics.setFont(self.fontTiny)
+    local note = "ALL TRACKS  -  HOLD TO PUNCH IN"
+    self:setColor(C.MUTED)
+    love.graphics.print(note, math_floor(320 - self.fontTiny:getWidth(note) * 0.5), 300)
 end
 
 end

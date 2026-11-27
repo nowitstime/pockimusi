@@ -272,7 +272,11 @@ function Chrome:drawCenterStage()
     end
 
     -- Center Column Visualizer (x: 204..436, y: 90..314)
-    if mode == "MIX" then
+    if mode == "MIX" and mockD then
+        self:drawMixerViewD(t)
+    elseif mode == "FX" and mockD then
+        self:drawLiveFxViewD(def, state, track, instCol, t)
+    elseif mode == "MIX" then
         self:drawMixerView(t)
     elseif songRows then
         self:drawSongRows(accent)
