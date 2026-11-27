@@ -163,6 +163,11 @@ function Chrome:drawTopBar()
     if countBeats and mode == "NORMAL" then
         mc = { label = "COUNT-IN  " .. countBeats, icon = "DOT", stroke = C.RED, fill = C.PANEL_HI, txt = C.RED, iconCol = C.RED }
     end
+    local mockGear = false
+    if self.MOCK and (mode == "TRACK" or (self.MOCK == "D" and self.MOCK_BADGES[mode])) then
+        mc = { label = mc.label, icon = "NONE", stroke = C.SILVER, fill = C.PANEL_HI, txt = C.SILVER, iconCol = C.SILVER }
+        mockGear = true
+    end
     local bx, by, bw, bh = 488, 11, 138, 28
     self:setColor(mc.fill, (mode == "NORMAL") and 1.0 or 0.92)
     love.graphics.rectangle("fill", bx, by, bw, bh, 4, 4)
@@ -191,6 +196,8 @@ function Chrome:drawTopBar()
         love.graphics.line(icx - 3.5, icy - 3.5, icx + 3.5, icy + 3.5)
         love.graphics.line(icx - 3.5, icy + 3.5, icx + 3.5, icy - 3.5)
         love.graphics.setLineWidth(1)
+    elseif mockGear then
+        self:mockGlyph(mode, icx, icy, C.SILVER)
     elseif mc.icon == "GLINT" then
         self:drawStarGlint(icx, icy, 5.0, mc.iconCol, 1.0)
     end
@@ -198,6 +205,7 @@ function Chrome:drawTopBar()
     love.graphics.setFont(self.fontSmall)
     self:setColor(mc.txt)
     love.graphics.print(mc.label, bx + 32, by + 6)
+    if mockGear then self:mockGlowRect(bx, by, bw, bh, 4, { 0.86, 0.92, 1.0, 1.0 }, 0.7) end
 end
 
 end

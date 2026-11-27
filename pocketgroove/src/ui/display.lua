@@ -60,19 +60,31 @@ function Display:load()
     self.fullscreen = text:match("fullscreen=1") ~= nil
     local font = text:match("font=(%u+)")
     if font then Fonts:setByName(font) end
+    self.look = text:match("look=([%u%- ]+)\n")
+    self.mockOpts = {}
+    for key in pairs({ DPAD = 1, LABELS = 1, EMBLEM = 1 }) do
+        self.mockOpts[key] = text:match(key:lower() .. "=(%u+)")
+    end
 end
 
 function Display:save()
     local fs = love.filesystem
     if not (fs and fs.write) then return end
-    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\n",
-        self.style, self.fullscreen and 1 or 0, Fonts.set))
+    local ch = self.chrome
+    local look = ch and ch.look or self.look or "CLASSIC"
+    local opt = ch and ch.mockOpt or {}
+    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\nlook=%s\ndpad=%s\nlabels=%s\nemblem=%s\n",
+        self.style, self.fullscreen and 1 or 0, Fonts.set, look, opt.DPAD or "DIAL", opt.LABELS or "TABS", opt.EMBLEM or "OFF"))
 end
 
 -- Call once at boot, after Chrome:init()
 function Display:init(chrome)
     self.chrome = chrome
     self:load()
+    if chrome and chrome.setMockOpt and self.mockOpts then
+        for key, v in pairs(self.mockOpts) do chrome:setMockOpt(key, v) end
+    end
+    if chrome and chrome.setLook and self.look then chrome:setLook(self.look) end
     if self.fullscreen then self:applyFullscreen() end
 end
 

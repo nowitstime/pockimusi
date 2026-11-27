@@ -109,6 +109,7 @@ for _, part in ipairs({
     "mixer",
     "drums",
     "trackpage",
+    "modeplate",
     "picker",
     "transport",
     "footer",

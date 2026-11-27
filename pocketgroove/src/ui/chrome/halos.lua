@@ -405,4 +405,9 @@ function Chrome:drawStageMood(def, col, lx, ly, rx, ry)
     return true
 end
 
+-- MOCK-UP (chrome/modeplate.lua): one zone's halo alone, in a given colour
+function Chrome.mockHalo(self, halo, cx, cy, col)
+    H[halo](self, cx, cy, col, Config.shade)
+end
+
 end

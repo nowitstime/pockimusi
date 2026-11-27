@@ -237,7 +237,13 @@ function Chrome:drawTrackPageView(def, state, track, col)
         local isFx = (row.kind == "fx")
         local off = isFx and not row.on
 
-        if isSel then
+        if isSel and self.mockRowGlow then
+            self:setColor(col, 0.16)
+            love.graphics.rectangle("fill", 192, y - 9, 256, 19, 5, 5)
+            self:mockGlowRect(192, y - 9, 256, 19, 5, { 0.86, 0.92, 1.0, 1.0 }, 0.8)
+            self:setColor(col)
+            love.graphics.rectangle("fill", 192, y - 6, 3, 13, 1, 1)
+        elseif isSel then
             self:setColor(col, 0.18)
             love.graphics.rectangle("fill", 192, y - 9, 256, 19, 5, 5)
             self:setColor(col)
@@ -245,13 +251,15 @@ function Chrome:drawTrackPageView(def, state, track, col)
         end
 
         love.graphics.setFont(self.fontTiny)
-        self:setColor(isSel and col or C.MUTED, isSel and 1.0 or (off and 0.42 or 0.58))
+        local la = self.mockBright and 1.0 or (self.mockRowGlow and 0.85 or 0.58)
+        self:setColor(isSel and col or C.MUTED, isSel and 1.0 or (off and 0.42 or la))
         love.graphics.print(row.label, 202, y - 5)
 
         local shownValue = row.note and (row.value .. " - " .. row.note) or row.value
         local value = isSel and ("< " .. shownValue .. " >") or shownValue
         love.graphics.setFont(self.fontSmall)
-        self:setColor((isSel and not off) and C.TEXT or C.MUTED, isSel and 1.0 or (off and 0.42 or 0.68))
+        local va = self.mockBright and 0.95 or 0.68
+        self:setColor((isSel and not off) and C.TEXT or (self.mockBright and not off and C.TEXT or C.MUTED), isSel and 1.0 or (off and (self.mockBright and 0.55 or 0.42) or va))
         love.graphics.print(value, valueX, y - 7)
 
         if row.amount then

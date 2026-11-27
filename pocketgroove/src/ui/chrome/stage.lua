@@ -40,6 +40,9 @@ function Chrome:drawCenterStage()
     local songPage = Song.page and playMode
     local songRows = Song.page and mode == "TRACK"
     if songPage then instCol = Config.COLORS.SONG end
+    if self.MOCK and mode == "TRACK" and not songRows and not track.isLane then
+        return self:drawMockTrackStage(def, state, track, instCol, love.timer.getTime())
+    end
     local accent = self:getAccent(mode, instCol)
     local t = love.timer.getTime()
     local kind = self:viewKind(def)
@@ -47,8 +50,12 @@ function Chrome:drawCenterStage()
 
     -- Frame: the instrument's dark stage, sky and halo while playing; a
     -- solid mode-coloured border on a settings page or while recording
+    local mockD = (self.MOCK == "D") and self.MOCK_PAGES[mode] and not songPage
     local borderCol = (mode == "NORMAL") and Config.shade(instCol, 0.45) or (Config.MODE_COLORS[mode] or C.GRID)
     if Song.recording and playMode then borderCol = C.RED end
+    if mockD then
+        self:mockModeBackdrop(def, instCol, mode)
+    else
     self:drawFrame(8, 50, 624, 306, borderCol, 1)
     self.haloDrawn = false
     if playMode and not songPage then
@@ -76,6 +83,7 @@ function Chrome:drawCenterStage()
             self:drawZoneMotifs("drums", accent, t)
         end
     end
+    end -- mockD
 
     -- Shoulder capsules
     local lOn, rOn = Input.down.L1, Input.down.R1
@@ -185,6 +193,7 @@ function Chrome:drawCenterStage()
 
     -- Left: Star D-Pad & Right: Circle Face Buttons (drawn in the page accent)
     local dpadLabels, faceLabels, flashMap, activeMap = self:getControlLabels(def, state, mode)
+    if mockD and mode == "TRANSPORT" then self:mockClockFaceLabels(faceLabels, track) end
     local activeDir = Input:get8WayDirection()
     local guideDir = playMode and def.getGuideDir and def:getGuideDir(state) or nil
     if songPage then
@@ -203,7 +212,11 @@ function Chrome:drawCenterStage()
         faceLabels = { B = "UNQUEUE", A = "", Y = "", X = "EMPTY Q" }
         activeMap = {}
     end
+    if mockD then
+        self:mockDpad(102, 188, dpadLabels, instCol, false)
+    else
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
+    end
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
     -- Option 3 Astrolabe Engraving subtitles (omitted on Track page)
@@ -250,19 +263,34 @@ function Chrome:drawCenterStage()
             self:setColor(Config.shade(accent, 0.72))
             love.graphics.print(txt, math_floor(cx - tw * 0.5), y)
         end
+        if mockD then
+            self:mockSpacedTitle(102, 297, dpadSub or "", accent, 0.75)
+            self:mockSpacedTitle(538, 297, faceSub or "", accent, 0.75)
+        else
         drawEngraved(102, dpadSub)
         drawEngraved(538, faceSub)
+        end
     end
 
     -- Center Column Visualizer (x: 204..436, y: 90..314)
-    if mode == "MIX" then
+    if mode == "MIX" and mockD then
+        self:drawMixerViewD(t)
+    elseif mode == "FX" and mockD then
+        self:drawLiveFxViewD(def, state, track, instCol, t)
+    elseif mode == "MIX" then
         self:drawMixerView(t)
     elseif songRows then
         self:drawSongRows(accent)
     elseif mode == "TRACK" then
         self:drawTrackPageView(def, state, track, accent)
     elseif mode == "TRANSPORT" then
+        self.mockNoChips = mockD
         self:drawTransportView(track, instCol, accent)
+        self.mockNoChips = false
+        if mockD then
+            self:mockClockFlash(track, accent)
+            self:mockClockReadout(track, accent)
+        end
     elseif mode == "ERASE" then
         self:drawEraseView(track, def)
     elseif mode == "NEW" then
