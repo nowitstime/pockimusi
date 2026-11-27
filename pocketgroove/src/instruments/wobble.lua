@@ -86,7 +86,7 @@ function Wobble:newState()
 end
 
 function Wobble:getDpadSubtitle()
-    return "D-PAD: WOBBLE RATE"
+    return "WOBBLE RATE"
 end
 
 function Wobble:getMiddleBadge(state)

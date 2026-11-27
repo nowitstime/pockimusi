@@ -135,7 +135,7 @@ function Harp:cycleSetting(state, key, delta)
 end
 
 function Harp:getDpadSubtitle(state)
-    if state.follow then return "D-PAD: - (FOLLOWING)" end
+    if state.follow then return "FOLLOWING" end
     return nil
 end
 

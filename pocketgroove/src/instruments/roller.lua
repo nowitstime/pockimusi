@@ -83,7 +83,7 @@ function Roller:getActiveButtons(state)
 end
 
 function Roller:getDpadSubtitle()
-    return "D-PAD: NOTE OF THE NEXT REPEAT"
+    return "PITCH"
 end
 
 -- ---------------------------------------------------------------------------

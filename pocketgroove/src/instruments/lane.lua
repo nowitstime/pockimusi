@@ -801,9 +801,9 @@ function Lane:spans(state, track)
 end
 
 function Lane:getDpadSubtitle(state)
-    if state.wheelOpen then return "D-PAD: PROGRESSION" end
-    if Input.down.A then return "D-PAD: COLOUR" end
-    return Looper.playing and "D-PAD: CHORD" or "D-PAD: CHORD B WRITES"
+    if state.wheelOpen then return "PROGRESSION" end
+    if Input.down.A then return "COLOUR" end
+    return Looper.playing and "CHORD" or "CHORD (B WRITES)"
 end
 
 -- ---------------------------------------------------------------------------

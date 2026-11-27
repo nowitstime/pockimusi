@@ -206,6 +206,54 @@ function Chrome:drawCenterStage()
     self:drawStarDpad(102, 188, dpadLabels, accent, activeDir, guideDir)
     self:drawCircleFaceButtons(538, 188, faceLabels, accent, flashMap, activeMap)
 
+    -- Option 3 Astrolabe Engraving subtitles (omitted on Track page)
+    if mode ~= "TRACK" then
+        local dpadMode = {
+            MIX = "TRACK & LEVEL", TRANSPORT = "KEY & SCALE",
+            ERASE = "UNDO", FX = "PUNCH-IN FX",
+        }
+        local faceMode = {
+            MIX = "MUTES", TRANSPORT = "TIMING",
+            ERASE = "CLEAR", FX = "MUTES",
+        }
+        local instDpad = {
+            drums = "EXPRESSION", hands = "ARTICULATION", breaks = "SLICE JUMP",
+            bass = "SCALE DEGREE", roller = "PITCH", wobble = "WOBBLE RATE",
+            harp = "CHORD", strum = "CHORD", pad = "TONE & MOVE",
+            lead = "SCALE DEGREE", dial = "DIAL NOTE", slide = "PITCH SLIDE",
+            valves = "REGISTER", lane = "CHORD", fingers = "TEST",
+        }
+        local instFace = {
+            drums = "PADS", hands = "STRIKES", breaks = "MOVES",
+            bass = "ARTICULATION", roller = "ROLL RATE", wobble = "CHORD NOTES",
+            harp = "STRINGS", strum = "STRINGS", pad = "VOICINGS",
+            lead = "NOTE & ARP", dial = "STRIKE", slide = "HOLD & DIVE",
+            valves = "VALVES", lane = "ACTIONS", fingers = "CHORD",
+        }
+        local dpadSub = dpadMode[mode] or (def.getDpadSubtitle and def:getDpadSubtitle(state))
+            or instDpad[def.id] or instDpad[kind]
+        local faceSub = faceMode[mode] or instFace[def.id] or instFace[kind]
+        if songPage then
+            dpadSub = "PATTERNS"
+            faceSub = Song.pointing and ("ACT ON " .. Song.pointing) or "TRACKS"
+        end
+        local function drawEngraved(cx, txt)
+            if not txt or txt == "" then return end
+            love.graphics.setFont(self.fontTiny)
+            local tw = self.fontTiny:getWidth(txt)
+            local y = 297
+            self:setColor(accent, 0.28)
+            love.graphics.line(cx - tw * 0.5 - 16, y + 5, cx - tw * 0.5 - 6, y + 5)
+            love.graphics.line(cx + tw * 0.5 + 6, y + 5, cx + tw * 0.5 + 16, y + 5)
+            self:drawDiamond(cx - tw * 0.5 - 18, y + 5, 1.8, Config.shade(accent, 0.55))
+            self:drawDiamond(cx + tw * 0.5 + 18, y + 5, 1.8, Config.shade(accent, 0.55))
+            self:setColor(Config.shade(accent, 0.72))
+            love.graphics.print(txt, math_floor(cx - tw * 0.5), y)
+        end
+        drawEngraved(102, dpadSub)
+        drawEngraved(538, faceSub)
+    end
+
     -- Center Column Visualizer (x: 204..436, y: 90..314)
     if mode == "MIX" then
         self:drawMixerView(t)

@@ -73,7 +73,7 @@ function Breaks:newState()
 end
 
 function Breaks:getDpadSubtitle()
-    return "D-PAD: JUMP TO A SLICE"
+    return "SLICE JUMP"
 end
 
 -- ---------------------------------------------------------------------------
