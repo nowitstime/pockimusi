@@ -258,31 +258,101 @@ function Chrome:drawMotionOverlay()
 end
 
 -- ----------------------------------------------------------------------------
--- Boot screen: the sky fades in, four stars in the tracks' colours join a
--- constellation, the name appears, then it fades into the app
+-- Boot screen: a dense spiral galaxy; the camera rolls and zooms thousands of
+-- times towards one spot on an arm, the stars streaming past; as they spread
+-- apart the ones left on screen turn out to be the stars of the name, and
+-- lines join them, letter by letter, into a constellation that spells it
 -- ----------------------------------------------------------------------------
-Chrome.BOOT_TIME = 2.6
+Chrome.BOOT_TIME = 4.4
+Chrome.BOOT_ZOOM_END = 1.9          -- the zoom arrives
+Chrome.BOOT_LINES = { 2.0, 3.2 }    -- the lines draw in over this window
 
-local SKY = nil
-local function skyStars()
-    if SKY then return SKY end
-    SKY = {}
-    local seed = 7
+-- The name as a constellation: each letter a list of strokes, each stroke a
+-- list of stars in a unit box (x to the right, y down, height 1)
+local GLYPHS = {
+    P = { { { 0, 1 }, { 0, 0 }, { 0.5, 0 }, { 0.66, 0.13 }, { 0.66, 0.37 }, { 0.5, 0.5 }, { 0, 0.5 } } },
+    O = { { { 0.17, 0 }, { 0.5, 0 }, { 0.68, 0.22 }, { 0.68, 0.78 }, { 0.5, 1 }, { 0.17, 1 }, { 0, 0.78 }, { 0, 0.22 }, { 0.17, 0 } } },
+    C = { { { 0.66, 0.16 }, { 0.5, 0 }, { 0.17, 0 }, { 0, 0.22 }, { 0, 0.78 }, { 0.17, 1 }, { 0.5, 1 }, { 0.66, 0.84 } } },
+    K = { { { 0, 0 }, { 0, 0.52 }, { 0, 1 } }, { { 0.64, 0 }, { 0, 0.52 } }, { { 0.24, 0.36 }, { 0.66, 1 } } },
+    I = { { { 0, 0 }, { 0, 0.5 }, { 0, 1 } } },
+    M = { { { 0, 1 }, { 0, 0 }, { 0.36, 0.56 }, { 0.72, 0 }, { 0.72, 1 } } },
+    U = { { { 0, 0 }, { 0, 0.78 }, { 0.17, 1 }, { 0.5, 1 }, { 0.66, 0.78 }, { 0.66, 0 } } },
+    S = { { { 0.66, 0.14 }, { 0.5, 0 }, { 0.17, 0 }, { 0, 0.16 }, { 0, 0.36 }, { 0.16, 0.5 }, { 0.5, 0.5 },
+            { 0.66, 0.64 }, { 0.66, 0.86 }, { 0.5, 1 }, { 0.17, 1 }, { 0, 0.86 } } },
+}
+local GLYPH_W = { P = 0.66, O = 0.68, C = 0.66, K = 0.66, I = 0, M = 0.72, U = 0.66, S = 0.66 }
+local TITLE = "POCKIMUSI"
+local LETTER_H, LETTER_GAP = 58, 22           -- on screen, at the end of the zoom
+local TITLE_Y = 196
+
+-- Laid out once: the title's segments (screen space at the end of the zoom),
+-- its unique stars, and the galaxy (world space)
+local BOOT = nil
+local function bootData()
+    if BOOT then return BOOT end
+    local B = { segs = {}, stars = {}, field = {} }
+    -- the title, centred
+    local total = 0
+    for i = 1, #TITLE do
+        total = total + GLYPH_W[TITLE:sub(i, i)] * LETTER_H + (i > 1 and LETTER_GAP or 0)
+    end
+    local x = 320 - total * 0.5
+    local seen = {}
+    local length = 0
+    for i = 1, #TITLE do
+        local ch = TITLE:sub(i, i)
+        for _, stroke in ipairs(GLYPHS[ch]) do
+            for k = 1, #stroke do
+                local px, py = x + stroke[k][1] * LETTER_H, TITLE_Y + stroke[k][2] * LETTER_H
+                local key = math_floor(px + 0.5) .. ":" .. math_floor(py + 0.5)
+                if not seen[key] then
+                    seen[key] = true
+                    B.stars[#B.stars + 1] = { x = px, y = py, letter = i }
+                end
+                if k > 1 then
+                    local qx, qy = x + stroke[k - 1][1] * LETTER_H, TITLE_Y + stroke[k - 1][2] * LETTER_H
+                    local len = math.sqrt((px - qx) ^ 2 + (py - qy) ^ 2)
+                    B.segs[#B.segs + 1] = { qx, qy, px, py, at = length, len = len }
+                    length = length + len
+                end
+            end
+        end
+        x = x + GLYPH_W[ch] * LETTER_H + LETTER_GAP
+    end
+    B.length = length
+    -- the galaxy: a bright core and two arms, seen tilted
+    local seed = 11
     local function rnd()
         seed = (seed * 16807) % 2147483647
         return seed / 2147483647
     end
-    for i = 1, 90 do
-        SKY[i] = { x = rnd() * 640, y = rnd() * 480, r = 0.6 + rnd() * 1.2, ph = rnd() * 6.28, sp = 0.6 + rnd() * 1.4 }
+    local function gauss() return (rnd() + rnd() + rnd() - 1.5) * 0.8 end
+    for _ = 1, 700 do
+        local r = math.abs(gauss()) * 0.16
+        local a = rnd() * 6.283
+        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * 0.62, b = 0.6 + rnd() * 0.4 }
     end
-    return SKY
+    for arm = 0, 1 do
+        for _ = 1, 1100 do
+            local r = 0.08 + rnd() ^ 0.8 * 0.95
+            local a = arm * math_pi + math.log(r) / 0.32 + gauss() * 0.35
+            local sc = 0.03 + r * 0.07
+            B.field[#B.field + 1] = { x = math_cos(a) * r + gauss() * sc, y = (math_sin(a) * r + gauss() * sc) * 0.62,
+                                      b = 0.35 + rnd() * 0.65 }
+        end
+    end
+    -- where the camera is heading: a spot on an arm
+    B.tx, B.ty = 0.42, -0.2
+    -- a local field round that spot at every scale, so stars keep streaming past
+    for _ = 1, 150 do
+        local d = 10 ^ (-2.1 + rnd() * 2.1)          -- 0.008 .. 1 world units away
+        local a = rnd() * 6.283
+        B.field[#B.field + 1] = { x = B.tx + math_cos(a) * d, y = B.ty + math_sin(a) * d * 0.8, b = 0.6 + rnd() * 0.4, near = true }
+    end
+    for i, f in ipairs(B.field) do f.ph = (i * 0.618) % 6.283 end
+    BOOT = B
+    return B
 end
-
--- The constellation: an arch of stars over the name, the four track colours
--- among them
-local CONST = {
-    { 214, 214 }, { 246, 172 }, { 288, 146 }, { 320, 136 }, { 352, 146 }, { 394, 172 }, { 426, 214 },
-}
 
 function Chrome:startBoot()
     self.bootStart = love.timer.getTime()
@@ -298,7 +368,6 @@ function Chrome:drawBoot()
     local now = love.timer.getTime()
     if not self.bootStart then self.bootStart = now end
     local e = now - self.bootStart
-    -- any press after the first moment skips it
     if e > 0.3 then
         for _, b in ipairs(Input.BUTTON_LIST or {}) do
             if Input.pressed[b] then e = self.BOOT_TIME end
@@ -310,66 +379,125 @@ function Chrome:drawBoot()
     end
     local C = Config.COLORS
     local lg = love.graphics
-    local out = (e > self.BOOT_TIME - 0.45) and ((self.BOOT_TIME - e) / 0.45) or 1
-    local function ease(a, b) return clamp((e - a) / (b - a), 0, 1) end
+    local B = bootData()
+    local out = (e > self.BOOT_TIME - 0.5) and ((self.BOOT_TIME - e) / 0.5) or 1
+    local fadeIn = clamp(e / 0.35, 0, 1)
 
-    -- the night
+    -- the camera: log-zoom with a slow start and a slow arrival, drifting from
+    -- the galaxy's centre to the target, rolling a little and settling level
+    local zEnd = 14000
+    local z0 = 300
+    local u = clamp(e / self.BOOT_ZOOM_END, 0, 1)
+    local s = u * u * (3 - 2 * u)                                -- smoothstep
+    local s2 = s * s * (3 - 2 * s)                               -- softer still
+    local z = z0 * (zEnd / z0) ^ s2
+    -- the target's offset from the centre shrinks smoothly on screen
+    local camX = B.tx - (1 - s) * B.tx * z0 / z
+    local camY = B.ty - (1 - s) * B.ty * z0 / z
+    local roll = (1 - s) * 0.5
+    local cr, sr = math_cos(roll), math_sin(roll)
+    -- the speed of the zoom, for the streaks
+    local du = 0.012
+    local u2 = clamp((e - du) / self.BOOT_ZOOM_END, 0, 1)
+    local sp = u2 * u2 * (3 - 2 * u2); sp = sp * sp * (3 - 2 * sp)
+    local zPrev = z0 * (zEnd / z0) ^ sp
+    local streak = (z / zPrev - 1)                               -- 0 when still
+
     self:setColor(C.BG, out)
     lg.rectangle("fill", 0, 0, 640, 480)
-    for r = 300, 60, -30 do
-        lg.setColor(0.14, 0.12, 0.30, 0.035 * out)
-        lg.circle("fill", 320, 230, r)
-    end
-    local skyIn = ease(0, 0.6)
-    for _, s in ipairs(skyStars()) do
-        local tw = 0.55 + 0.45 * math_sin(now * s.sp + s.ph)
-        lg.setColor(0.85, 0.9, 1.0, skyIn * tw * 0.7 * out)
-        lg.circle("fill", s.x, s.y, s.r)
+    -- a faint glow of the galaxy's core while far away
+    local glowA = (1 - s) * 0.14 * fadeIn * out
+    if glowA > 0.002 then
+        local gx, gy = 320 + (0 - camX) * z, 240 + (0 - camY) * z
+        for r = 16, 1, -1 do
+            lg.setColor(0.55, 0.5, 0.85, glowA * 0.35)
+            lg.circle("fill", gx, gy, r * 0.016 * z)
+        end
     end
 
-    -- the constellation draws in, star to star
-    local trackCols = { C.ORANGE, C.CYAN, C.VIOLET, C.MINT }
-    local lineIn = ease(0.35, 1.25)
-    local segs = #CONST - 1
+    -- the stars: a point each, a streak when moving fast
+    local pts, big = {}, {}
     lg.setLineWidth(1)
-    for i = 1, segs do
-        local a = clamp(lineIn * segs - (i - 1), 0, 1)
-        if a > 0 then
-            local p, q = CONST[i], CONST[i + 1]
-            self:setColor(C.SILVER, 0.55 * out)
-            lg.line(p[1], p[2], p[1] + (q[1] - p[1]) * a, p[2] + (q[2] - p[2]) * a)
+    for _, f in ipairs(B.field) do
+        local wx, wy = f.x - camX, f.y - camY
+        local x = 320 + (wx * cr - wy * sr) * z
+        local y = 240 + (wx * sr + wy * cr) * z
+        if x > -20 and x < 660 and y > -20 and y < 500 then
+            local tw = 0.75 + 0.25 * math_sin(now * 2.3 + f.ph)
+            local a = f.b * tw * fadeIn * out
+            if f.b > 0.75 then big[#big + 1] = { x, y, 0.9, 0.93, 1.0, a }
+            else pts[#pts + 1] = { x, y, 0.86, 0.9, 1.0, a } end
+            if streak > 0.02 then
+                local k = math_min(0.16, streak * 0.5)
+                self:setColor(C.SILVER, a * 0.35)
+                lg.line(x, y, 320 + (x - 320) * (1 - k), 240 + (y - 240) * (1 - k))
+            end
         end
     end
-    for i, p in ipairs(CONST) do
-        local a = clamp(lineIn * segs - (i - 1) + 1, 0, 1)
-        if a > 0 then
-            -- the 2nd, 3rd, 5th and 6th stars wear the four tracks' colours
-            local ci = ({ [2] = 1, [3] = 2, [5] = 3, [6] = 4 })[i]
-            local col = ci and trackCols[ci] or C.TEXT
-            self:drawStarGlint(p[1], p[2], (i == 4) and 9 or 5, col, a * out)
-        end
+    lg.setColor(1, 1, 1, 1)          -- per-point colours are multiplied by this
+    lg.setPointSize(1.6)
+    if #pts > 0 then lg.points(pts) end
+    lg.setPointSize(2.4)
+    if #big > 0 then lg.points(big) end
+    lg.setPointSize(1)
+
+    -- the title's stars arrive with the zoom: as points far from their places
+    -- while the camera is still moving, then settled
+    local arrive = clamp((e - self.BOOT_ZOOM_END * 0.55) / (self.BOOT_ZOOM_END * 0.45), 0, 1)
+    local trackCols = { [1] = C.ORANGE, [4] = C.CYAN, [6] = C.VIOLET, [8] = C.MINT }
+    local lineT = clamp((e - self.BOOT_LINES[1]) / (self.BOOT_LINES[2] - self.BOOT_LINES[1]), 0, 1)
+    local drawn = lineT * B.length
+    -- where each title star is now: its final place seen through the camera
+    -- (they sit in world space at the target, scaled to the final zoom)
+    local function place(px, py)
+        local wx = (px - 320) / zEnd + B.tx - camX
+        local wy = (py - 240) / zEnd + B.ty - camY
+        return 320 + (wx * cr - wy * sr) * z, 240 + (wx * sr + wy * cr) * z
     end
-    -- the crown star bursts as the name appears
-    local burst = ease(1.15, 1.6)
-    if burst > 0 and burst < 1 then
-        self:setColor(C.TEXT, (1 - burst) * 0.6 * out)
-        lg.circle("line", 320, 136, 9 + burst * 26)
+    do
+        -- the lines, letter by letter
+        lg.setLineWidth(1.2)
+        for _, sg in ipairs(B.segs) do
+            local k = clamp((drawn - sg.at) / sg.len, 0, 1)
+            if k > 0 then
+                local ax, ay = place(sg[1], sg[2])
+                local bx, by = place(sg[3], sg[4])
+                self:setColor(C.SILVER, 0.7 * out)
+                lg.line(ax, ay, ax + (bx - ax) * k, ay + (by - ay) * k)
+            end
+        end
+        lg.setLineWidth(1)
+        -- the stars, brightening as the lines reach them
+        for i, st in ipairs(B.stars) do
+            local x, y = place(st.x, st.y)
+            local lit = lineT > 0 and 1 or 0.55
+            local col = trackCols[st.letter] or C.TEXT
+            if arrive > 0.02 then
+                self:drawStarGlint(x, y, 1.5 + arrive * 3.5 + lit * 1.2, col, arrive * (0.55 + 0.45 * lit) * out)
+            else
+                local half = clamp((math.log(z / z0) / math.log(zEnd / z0) - 0.5) * 4, 0, 1)
+                if half > 0 then
+                    lg.setColor(0.9, 0.93, 1.0, 0.8 * half * out)
+                    lg.setPointSize(2)
+                    lg.points(x, y)
+                    lg.setPointSize(1)
+                end
+            end
+        end
     end
 
-    -- the name, and what it means
-    local nameIn = ease(1.15, 1.75)
-    local name = "P O C K I M U S I"
-    lg.setFont(self.fontHuge)
-    self:setColor(C.TEXT, nameIn * out)
-    lg.print(name, math_floor(320 - self.fontHuge:getWidth(name) * 0.5), 228 + (1 - nameIn) * 6)
-    local subIn = ease(1.5, 2.0)
-    local sub = "POCKET  -  MUSIC"
-    lg.setFont(self.fontSmall)
-    self:setColor(C.MUTED, subIn * out)
-    lg.print(sub, math_floor(320 - self.fontSmall:getWidth(sub) * 0.5), 274)
-    self:setColor(C.SILVER, subIn * 0.4 * out)
-    lg.line(230, 300, 410, 300)
-    self:drawDiamond(320, 300, 2.5, { C.SILVER[1], C.SILVER[2], C.SILVER[3], subIn * 0.8 * out })
+    -- underneath, once the name is drawn
+    local subIn = clamp((e - self.BOOT_LINES[2] + 0.1) / 0.45, 0, 1)
+    if subIn > 0 then
+        local sub = "POCKET  -  MUSIC"
+        lg.setFont(self.fontSmall)
+        self:setColor(C.MUTED, subIn * out)
+        lg.print(sub, math_floor(320 - self.fontSmall:getWidth(sub) * 0.5), TITLE_Y + LETTER_H + 34)
+        self:setColor(C.SILVER, subIn * 0.4 * out)
+        lg.line(250, TITLE_Y + LETTER_H + 60, 390, TITLE_Y + LETTER_H + 60)
+        self:drawDiamond(320, TITLE_Y + LETTER_H + 60, 2.5, { C.SILVER[1], C.SILVER[2], C.SILVER[3], subIn * 0.8 * out })
+    end
 end
+
 
 end

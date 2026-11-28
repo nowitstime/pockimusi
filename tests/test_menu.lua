@@ -356,7 +356,7 @@ return {
         C2:setMockOpt("BOOT", "ON"); C2.bootPreview = true; C2:startBoot()
         H.play(1.2)
         H.falsy(C2.bootDone, "the boot screen is still up")
-        H.play(1.6)
+        H.play(3.4)
         H.truthy(C2.bootDone, "and then gone")
         C2:setMockOpt("MOTION", "OFF"); C2:setMockOpt("ORNAMENT", "OFF"); C2:setMockOpt("TICKS", "OFF"); C2:setMockOpt("BOOT", "OFF")
         C2:setLook("CLASSIC")
