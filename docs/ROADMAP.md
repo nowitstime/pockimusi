@@ -218,7 +218,7 @@ The whole app is in testing, so **every** instrument gets a pass, one at a time:
 
 ## Immediate plan
 
-1. **Cleanup** (in progress): docs brought up to date with what is built and played; finish the rename to Pockimusi (window title, launcher, `.love`, save folder with a one-time copy of old saves).
+1. **Cleanup** ✅: docs brought up to date with what is built and played; the rename to Pockimusi finished (window title, launcher, `.love`, folders, save folder with a one-time copy of old saves).
 2. **Visual work** (the user's): settings-page styles (PLATE and its options), typography, ornament and animation. The test looks stay in the menu until then.
 3. **Instrument passes**, one at a time (above), starting with the revamps: Pad, Chord Harp.
 4. **Song mode pass** (the user's own): Phase M works but is rough.

@@ -198,7 +198,7 @@ Form factor: something Steam Deck-shaped has full-size controls, a bigger screen
 - Transport setting rows, which would give replace / overdub and auto-stop a home (both blocked today by "no free button", SPEC §4).
 - Named session slots, before or alongside scenes.
 - More devices: resolution scaling.
-- Housekeeping: ✅ README and licence, ✅ CI, ✅ release builds (`PocketGroove.love` stays committed so any device can download and play it without cloning or building), ✅ phase docs in a `docs/` folder, ✅ `ui/chrome.lua` split into `ui/chrome/`. Still to do: finish the rename to Pockimusi (window title, launcher, `.love`, folder and save path, with a one-time copy of old saves).
+- Housekeeping: ✅ README and licence, ✅ CI, ✅ release builds (`Pockimusi.love` stays committed so any device can download and play it without cloning or building), ✅ phase docs in a `docs/` folder, ✅ `ui/chrome.lua` split into `ui/chrome/`, ✅ the rename to Pockimusi (window title, launcher, `.love`, folder and save path, with a one-time copy of old saves).
 
 ---
 

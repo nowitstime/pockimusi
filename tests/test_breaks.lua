@@ -46,7 +46,7 @@ return {
     { "every break is whole bars of 1/16 steps; every kit's sounds exist", function()
         local M = H.loadMain()
         local B = require("src.breaks")
-        local f = assert(io.open("pocketgroove/src/breaks.lua", "r"))
+        local f = assert(io.open("pockimusi/src/breaks.lua", "r"))
         f:close()
         for _, brk in ipairs(B.LIST) do
             H.truthy(#brk.hits > 0, brk.id .. " has hits")
@@ -68,7 +68,7 @@ return {
     end },
 
     { "every line of a break has the same length (the source text)", function()
-        local f = assert(io.open("pocketgroove/src/breaks.lua", "r"))
+        local f = assert(io.open("pockimusi/src/breaks.lua", "r"))
         local text = f:read("*a")
         f:close()
         for body in text:gmatch("hits = grid%((%b{})%)") do

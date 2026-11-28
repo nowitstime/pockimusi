@@ -19,11 +19,11 @@ jobs:
       - name: Run Lua test suite
         run: luajit tests/run.lua
 
-      - name: Build PocketGroove.love
+      - name: Build Pockimusi.love
         run: python3 build.py
 
-      - name: Upload PocketGroove.love artifact
+      - name: Upload Pockimusi.love artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PocketGroove.love
-          path: pocketgroove/PocketGroove.love
+          name: Pockimusi.love
+          path: pockimusi/Pockimusi.love

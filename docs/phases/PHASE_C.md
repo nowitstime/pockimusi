@@ -117,11 +117,11 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 - Mode `NEW` (above `ERASE`): `L2 + R2 + SELECT`; `Modes:update(dt)` times the hold; fires once per hold at 1 s: releases live notes, then `Looper:freshSession()` clears every track's events and mutes, silences playback and pushes a `fresh` undo entry. Undo puts every track's notes and mutes back (notes recorded after the fresh start are kept after them).
 - Screen: red frame, `FRESH START` badge, a ring that fills over the second, then "FRESH SESSION / LET GO - UNDO WITH L2 + R2 + LEFT". The erase page and its hint mention `+ hold SELECT`.
 - **Logging fix:** the first device `log.txt` had none of the game's lines (not even the boot timing from A7): stdout is a pipe to `tee` there and the runtime didn't flush it. `main.lua` now sets line buffering first thing.
-- **Save folder:** `PocketGroove.sh` now exports `XDG_DATA_HOME="$GAMEDIR/conf"` just before starting LÖVE, so saves are in `ports/pocketgroove/conf/love/pocketgroove/` (`session_a.txt`, `session_b.txt`). Saves made before this went to the runtime's default folder and won't be found after the change (one fresh start).
+- **Save folder:** `PocketGroove.sh` now exports `XDG_DATA_HOME="$GAMEDIR/conf"` just before starting LÖVE, so saves are in `ports/pockimusi/conf/love/pockimusi/` (`session_a.txt`, `session_b.txt`). Saves made before this went to the runtime's default folder and won't be found after the change (one fresh start).
 
 **Tests:** a short hold does nothing and a 1 s hold clears all tracks once (not again while held), releasing latches nothing and keeps the track; tempo, key, instruments, sounds, effects and swing survive; undo brings back every note and mute; a playing note is silenced; `L2 + R2` erase still works without `SELECT`.
 
-**On the device:** copy both `PocketGroove.love` **and** `PocketGroove.sh`; check `log.txt` now shows the `[PocketGroove]` lines (save folder, sound generation, saves with their ms); check `conf/love/pocketgroove/` holds the two files; try the hold and its undo.
+**On the device:** copy both `PocketGroove.love` **and** `PocketGroove.sh`; check `log.txt` now shows the `[PocketGroove]` lines (save folder, sound generation, saves with their ms); check `conf/love/pockimusi/` holds the two files; try the hold and its undo.
 ---
 
 ## Exit checklist for Phase C

@@ -34,7 +34,7 @@ local Autosave = {
 }
 
 local function log(msg)
-    print("[PocketGroove] " .. msg)
+    print("[Pockimusi] " .. msg)
 end
 
 local function anyButtonDown()

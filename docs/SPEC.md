@@ -1,6 +1,6 @@
 # Pockimusi — Design & Technical Specification
 
-**Name:** Pockimusi (*POCK-ee-MOO-see*: pocket + music). Written **Pockimusi** in prose, **POCKIMUSI** on screen, `pockimusi` for ids. The app was first called PocketGroove; the code, launcher (`PocketGroove.sh`), `.love` file, `pocketgroove/` folder and save folder still use that name for now.
+**Name:** Pockimusi (*POCK-ee-MOO-see*: pocket + music). Written **Pockimusi** in prose, **POCKIMUSI** on screen, `pockimusi` for ids. The app was first called PocketGroove; the code, launcher (`Pockimusi.sh`), `.love` file, `pockimusi/` folder and save folder now use the new name, and the first launch copies old PocketGroove saves across (`src/migrate.lua`, plus the launcher on PortMaster).
 
 **Target hardware:** Anbernic RG35XX Plus (Allwinner H700, ARM64 Linux, 1 GB RAM, 640×480 4:3 IPS, no touchscreen, **no analog sticks**)
 **Engine:** LÖVE 11.5 via PortMaster (`gptokeyb` fallback), desktop PC for development
@@ -424,7 +424,7 @@ Event = {
 ## 10. Persistence ✅ (details: [PHASE_C.md](PHASE_C.md))
 
 - **Autosave** after you touched something (≥ 10 s apart, at a moment with no buttons held, or after 30 s regardless), and on quit / focus loss: tempo, key, scale, bars, click, master volume, active track, and each track's instrument, settings, grid, swing, volume, mute, effects and events. Not saved: undo history, record latch, playhead.
-- Files live in the port folder (`conf/love/pocketgroove/`, via `XDG_DATA_HOME` in `PocketGroove.sh`).
+- Files live in the port folder (`conf/love/pockimusi/`, via `XDG_DATA_HOME` in `Pockimusi.sh`).
 - Two alternating save slots with sequence numbers, so a power cut mid-write never loses the previous save. Plain Lua-style table text (`format = 1`, events v2), read back by a parser that never runs it as code; unreadable or newer files are ignored and the game still boots.
 - **Fresh session:** hold `L2 + R2 + SELECT` for about 1 s. Clears every track's notes and mutes; keeps tempo, key, scale, instruments, sounds and effects. Undoable with `L2 + R2 + LEFT`.
 - The song (song mode, §10.2) is saved in `song.txt`.
@@ -527,7 +527,7 @@ Internally the Clock page is still the `TRANSPORT` mode and the Fresh page is `N
 
 The tape deck dims while a settings page is open. The Pad has Grain's mint. Tracks are coloured by slot, so a Lead takes the colour of the slot it is put in.
 
-**Fonts** ✅ (`src/ui/fonts.lua`). Each font set pairs a *text* face for the small labels with a *display* face for titles and the big readouts (note and chord names, BPM). All are free (SIL Open Font License), in `pocketgroove/assets/fonts/` with their licences. Each face is sized so its capitals match the built-in font's and nudged so they start on the same row, so changing the set never moves the layout.
+**Fonts** ✅ (`src/ui/fonts.lua`). Each font set pairs a *text* face for the small labels with a *display* face for titles and the big readouts (note and chord names, BPM). All are free (SIL Open Font License), in `pockimusi/assets/fonts/` with their licences. Each face is sized so its capitals match the built-in font's and nudged so they start on the same row, so changing the set never moves the layout.
 
 | Set | Text | Display |
 | :-- | :-- | :-- |
@@ -545,10 +545,10 @@ The tape deck dims while a settings page is open. The Pad has Grain's mint. Trac
 ```text
 pockimusi/
  ├── SPEC.md  ROADMAP.md
- ├── PocketGroove.sh            # PortMaster launcher
- ├── build.py                   # packs pocketgroove/PocketGroove.love
+ ├── Pockimusi.sh               # PortMaster launcher
+ ├── build.py                   # packs pockimusi/Pockimusi.love
  ├── tests/                     # Lua tests: python3 tests/run.py (needs `pip install lupa`) or luajit tests/run.lua
- └── pocketgroove/
+ └── pockimusi/
       ├── main.lua  conf.lua  controls.gptk
       ├── assets/fonts/          # the font sets' faces and their licences (OFL)
       └── src/

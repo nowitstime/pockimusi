@@ -4,7 +4,7 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md) (the fingering re
 
 **Feel:** the four face buttons and the four neighbouring pairs form eight positions around the diamond. Rolling the thumb clockwise walks up the scale; a fast roll is a run; rocking between a button and its pair is a trill. Keep rolling past the top and you climb into the next octave.
 
-**Owns:** `pocketgroove/src/instruments/dial.lua`, `tests/test_dial.lua`, this file. Touches nothing else.
+**Owns:** `pockimusi/src/instruments/dial.lua`, `tests/test_dial.lua`, this file. Touches nothing else.
 
 ---
 
@@ -88,7 +88,7 @@ One per note, as on Bass: `action` (the button the note started on, or the clock
 
 ## Status
 
-DL1 to DL3 are built and tested (`pocketgroove/src/instruments/dial.lua`, `tests/test_dial.lua`, 12 tests). No shared file was touched. Left: the playtest above 📱.
+DL1 to DL3 are built and tested (`pockimusi/src/instruments/dial.lua`, `tests/test_dial.lua`, 12 tests). No shared file was touched. Left: the playtest above 📱.
 
 Decisions made while building (say if any is wrong):
 

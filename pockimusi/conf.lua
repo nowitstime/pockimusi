@@ -1,4 +1,4 @@
--- PocketGroove — LÖVE (Love2D 11.x) Configuration
+-- Pockimusi — LÖVE (Love2D 11.x) Configuration
 -- Target: Anbernic RG35XX Plus (640x480 4:3 IPS) & Desktop PC
 
 -- Windows with display scaling (125%, 150%...) stretches an app that doesn't
@@ -13,14 +13,14 @@ if jit and jit.os == "Windows" then
 end
 
 function love.conf(t)
-    t.identity = "pocketgroove"
+    t.identity = "pockimusi"
     t.appendidentity = true
     t.version = "11.5"
     t.console = false
 
     t.audio.mixwithsystem = true
 
-    t.window.title = "PocketGroove - 4-Track Handheld Groovebox"
+    t.window.title = "Pockimusi - 4-Track Handheld Groovebox"
     t.window.width = 640
     t.window.height = 480
     t.window.resizable = true
