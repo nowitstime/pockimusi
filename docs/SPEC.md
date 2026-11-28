@@ -315,7 +315,7 @@ Four slots, default **1 Drums · 2 Chord Harp · 3 Bass · 4 Pad**. One catalogu
 - ✅ Rows: `PATCH` (the sound pool, §6, starting on `SQUARE`), `FOLLOW`, `ARP RATE` (1/8, 1/16, 1/8T), `ARP PATTERN` (`CHORD`, `CHORD 2 OCT`, `7TH`, `7TH 2 OCT`, `SCALE`).
 - ✅ Bass ↔ Lead swaps keep the track's notes and grid (undoable like any swap).
 - ✅ Follow lookahead is under half a 1/32 for the Lead (a 1/16 for the Bass), so the arp step before a chord change keeps the old chord.
-- ❓ Arp latch; note length as a row; vibrato on long notes. 📐 Strumming stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)).
+- ❓ Arp latch; note length as a row; vibrato on long notes (decide in the Lead/Arp pass). Strumming is its own instrument, Strum (built in lab wave 1).
 
 ### 7.6 From lab wave 1 ✅ (design notes in [lab/](lab/README.md))
 
@@ -481,7 +481,9 @@ Turn it on in the menu (`SONG MODE`, saved with the session). The instrument pag
 
 Principles: show mode in the same place always; hints for the held modifier only; colour-code tracks consistently and add shape cues so colour is never the only signal.
 
-**One colour per page** ✅. While playing, the instrument's colour owns the stage. On a settings page the mode colour replaces it on the frame (with a soft glow), badge, footer, D-pad, face rings, shoulders and selection; the only track colour left is a small identity capsule. Mode colours avoid the track colours:
+**Colour belongs to the instruments** 🔧. Decided in the November screenshot review: colour is for instrument identity only. Settings pages (Track, Clock, Mix, Live FX, Menu) are grouped and set apart by a non-colour treatment (frame, material, glow, scenery), not by page colours. The **PLATE** look, the default, does this: its settings pages draw in moon silver over the instrument's dimmed scenery. The other looks in the menu's `LOOK` row are test looks while the style is being worked out.
+
+The older rule, **one colour per page**, is what the `CLASSIC` look still draws: while playing, the instrument's colour owns the stage; on a settings page the mode colour replaces it on the frame (with a soft glow), badge, footer, D-pad, face rings, shoulders and selection; the only track colour left is a small identity capsule. Its mode colours avoid the track colours:
 
 | Page | Colour | Motif |
 | :-- | :-- | :-- |

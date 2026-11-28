@@ -33,6 +33,8 @@ love pocketgroove
 
 # Run the headless test suite (requires LuaJIT)
 luajit tests/run.lua
+# ...or through Python (pip install lupa)
+python3 tests/run.py
 
 # Package pocketgroove/PocketGroove.love
 python3 build.py

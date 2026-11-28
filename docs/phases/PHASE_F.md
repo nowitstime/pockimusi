@@ -28,7 +28,7 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §3.2, §5, §7.5.
 | Swaps | Bass ↔ Lead keeps the track's notes and grid (still undoable) | Roadmap; they share one event format |
 | Colour | Tracks are coloured by slot, so a Lead takes its slot's colour; nothing to add | — |
 | Arp latch ❓ | Not built: hold only | Decide after playing it |
-| Strum ❓ | Not in this phase: stays a lab idea ([FUTURE_INSTRUMENTS.md](FUTURE_INSTRUMENTS.md)) | It is a different way of playing, not an arp mode |
+| Strum | Not in this phase; later built as its own instrument in lab wave 1 | It is a different way of playing, not an arp mode |
 
 ---
 
@@ -63,7 +63,7 @@ Built: F1 to F4. Two things changed while building:
 - **Follow lookahead.** The bass counts a chord that starts up to a 1/16 later; with that, the arp step just before every chord change played the next chord early. The Lead uses 59 ticks (under half a 1/32) instead, live and on playback.
 - **Late first note.** An arp note pressed a moment after its step still ends on time and records the step's normal length.
 
-The patches were written without hearing them and need the device.
+The patches were written without hearing them at first; they have been played on the device since. Refinements belong to the Lead/Arp pass.
 
 ## Open (settle by playing)
 
