@@ -285,6 +285,7 @@ local TITLE = "POCKIMUSI"
 local LETTER_H, LETTER_GAP = 58, 22           -- on screen, at the end of the zoom
 local TITLE_Y = 192
 local Z0, ZEND = 300, 14000                   -- the camera's zoom: whole galaxy, then the name
+local TILT = 0.55                             -- the galaxy's disk, seen tilted
 
 -- Laid out once: the title's stars and lines (screen space at the end of the
 -- zoom), the stars round them, and the galaxy (world space)
@@ -353,15 +354,14 @@ local function bootData()
     -- smooth arms and a dense core, drawn additively so overlaps glow; warm
     -- at the core, cooler out along the arms; seen tilted
     local function gauss() return (rnd() + rnd() + rnd() - 1.5) * 0.8 end
-    local TILT = 0.55
-    for _ = 1, 900 do
+    for _ = 1, 450 do
         local r = math.abs(gauss()) * 0.085
         local a = rnd() * 6.283
         B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * TILT, b = 0.35 + rnd() * 0.3,
                                   gal = true, cr = 1.0, cg = 0.86, cb = 0.66 }
     end
     for arm = 0, 1 do
-        for _ = 1, 1500 do
+        for _ = 1, 900 do
             local t = rnd()
             local r = 0.06 + t * 0.95
             local a = arm * math_pi + math.log(r) / 0.28
@@ -372,11 +372,32 @@ local function bootData()
                                       gal = true, cr = 0.72 + 0.28 * warm, cg = 0.8 + 0.08 * warm, cb = 1.0 - 0.3 * warm }
         end
     end
-    for _ = 1, 600 do
+    for _ = 1, 300 do
         local r = math.sqrt(rnd()) * 1.05
         local a = rnd() * 6.283
         B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * TILT, b = 0.1 + rnd() * 0.12,
                                   gal = true, cr = 0.7, cg = 0.75, cb = 1.0 }
+    end
+    -- the clouds: soft blobs of light along the arms and over the core; they
+    -- carry most of the galaxy's look, and swell and fade as the camera
+    -- flies through them
+    B.clouds = {}
+    local function cloud(x, y, size, a, r, g, b) B.clouds[#B.clouds + 1] = { x = x, y = y, size = size, a = a, r = r, g = g, b = b } end
+    cloud(0, 0, 1.15, 0.05, 0.62, 0.66, 1.0)                    -- the whole disk's haze
+    cloud(0, 0, 0.32, 0.12, 1.0, 0.8, 0.55)                     -- the core
+    cloud(0, 0, 0.14, 0.3, 1.0, 0.86, 0.66)
+    cloud(0, 0, 0.06, 0.45, 1.0, 0.94, 0.82)
+    for arm = 0, 1 do
+        for _ = 1, 120 do
+            local t = rnd()
+            local r = 0.08 + t * 0.92
+            local a = arm * math_pi + math.log(r) / 0.28
+            local w = (0.03 + 0.08 * t) * gauss()
+            local px, py = math_cos(a) * r - math_sin(a) * w, math_sin(a) * r + math_cos(a) * w
+            local warm = 1 - t
+            cloud(px, py * TILT, 0.05 + 0.09 * t + rnd() * 0.04, 0.05 + 0.05 * warm,
+                0.68 + 0.32 * warm, 0.72 + 0.12 * warm, 1.0 - 0.32 * warm)
+        end
     end
     -- where the camera is heading: a spot on an arm
     B.tx, B.ty = 0.42, -0.2
@@ -392,6 +413,24 @@ local function bootData()
     end
     BOOT = B
     return B
+end
+
+-- A soft round sprite (a gaussian blob), made once
+function Chrome:bootSprite()
+    if self.bootSpriteImg ~= nil then return self.bootSpriteImg or nil end
+    local ok, img = pcall(function()
+        local d = love.image.newImageData(64, 64)
+        for y = 0, 63 do
+            for x = 0, 63 do
+                local dx, dy = (x - 31.5) / 32, (y - 31.5) / 32
+                local a = math.exp(-(dx * dx + dy * dy) * 4.5)
+                d:setPixel(x, y, 1, 1, 1, a)
+            end
+        end
+        return love.graphics.newImage(d)
+    end)
+    self.bootSpriteImg = (ok and img) or false
+    return self.bootSpriteImg or nil
 end
 
 function Chrome:startBoot()
@@ -450,14 +489,19 @@ function Chrome:drawBoot()
     self:setColor(C.BG, out)
     lg.rectangle("fill", 0, 0, 640, 480)
 
-    -- a soft glow over the galaxy's core while it is in view
-    local far = (1 - s) ^ 2 * fadeIn * out
-    if far > 0.01 then
-        local gx, gy = toScreen(0, 0)
+    -- the clouds, drawn additively with a soft round sprite; a cloud whose
+    -- size on screen grows past ~250 px fades, so the camera passes through
+    local sprite = self:bootSprite()
+    if sprite then
         lg.setBlendMode("add")
-        for r = 10, 1, -1 do
-            lg.setColor(1.0, 0.85, 0.65, far * 0.022)
-            lg.circle("fill", gx, gy, r * 0.011 * z)
+        for _, c in ipairs(B.clouds) do
+            local x, y = toScreen(c.x, c.y)
+            local R = c.size * z
+            local fade = clamp(1 - (R - 250) / 450, 0, 1)
+            if fade > 0 and x > -R and x < 640 + R and y > -R and y < 480 + R then
+                lg.setColor(c.r, c.g, c.b, c.a * fade * fadeIn * out)
+                lg.draw(sprite, x, y, roll, R / 32, R * TILT / 32, 32, 32)
+            end
         end
         lg.setBlendMode("alpha")
     end
@@ -495,11 +539,13 @@ function Chrome:drawBoot()
     if #big > 0 then lg.points(big) end
     lg.setPointSize(1)
     -- a brief brightening at the vanishing point at full speed
-    if warp > 0.05 then
-        for r = 6, 1, -1 do
-            lg.setColor(0.85, 0.9, 1.0, warp * 0.05 * out)
-            lg.circle("fill", vx, vy, r * 14)
-        end
+    if warp > 0.05 and sprite then
+        lg.setBlendMode("add")
+        lg.setColor(0.8, 0.86, 1.0, warp * 0.22 * out)
+        lg.draw(sprite, vx, vy, 0, 90 / 32, 90 / 32, 32, 32)
+        lg.setColor(0.9, 0.94, 1.0, warp * 0.25 * out)
+        lg.draw(sprite, vx, vy, 0, 30 / 32, 30 / 32, 32, 32)
+        lg.setBlendMode("alpha")
     end
 
     -- the last field: the name's stars and the ones round them, all alike,
