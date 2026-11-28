@@ -263,91 +263,113 @@ end
 -- apart the ones left on screen turn out to be the stars of the name, and
 -- lines join them, letter by letter, into a constellation that spells it
 -- ----------------------------------------------------------------------------
-Chrome.BOOT_TIME = 4.4
-Chrome.BOOT_ZOOM_END = 1.9          -- the zoom arrives
-Chrome.BOOT_LINES = { 2.0, 3.2 }    -- the lines draw in over this window
+Chrome.BOOT_TIME = 4.2
+Chrome.BOOT_ZOOM = { 0.45, 1.75 }   -- the jump: from a held view of the galaxy to the stop
+Chrome.BOOT_LINES = { 1.95, 3.05 }  -- the lines draw in over this window
 
 -- The name as a constellation: each letter a list of strokes, each stroke a
--- list of stars in a unit box (x to the right, y down, height 1)
+-- list of stars in a unit box (x to the right, y down, height 1). The stars
+-- are then nudged off the grid and given uneven brightness, as real stars are.
 local GLYPHS = {
-    P = { { { 0, 1 }, { 0, 0 }, { 0.5, 0 }, { 0.66, 0.13 }, { 0.66, 0.37 }, { 0.5, 0.5 }, { 0, 0.5 } } },
-    O = { { { 0.17, 0 }, { 0.5, 0 }, { 0.68, 0.22 }, { 0.68, 0.78 }, { 0.5, 1 }, { 0.17, 1 }, { 0, 0.78 }, { 0, 0.22 }, { 0.17, 0 } } },
-    C = { { { 0.66, 0.16 }, { 0.5, 0 }, { 0.17, 0 }, { 0, 0.22 }, { 0, 0.78 }, { 0.17, 1 }, { 0.5, 1 }, { 0.66, 0.84 } } },
-    K = { { { 0, 0 }, { 0, 0.52 }, { 0, 1 } }, { { 0.64, 0 }, { 0, 0.52 } }, { { 0.24, 0.36 }, { 0.66, 1 } } },
-    I = { { { 0, 0 }, { 0, 0.5 }, { 0, 1 } } },
-    M = { { { 0, 1 }, { 0, 0 }, { 0.36, 0.56 }, { 0.72, 0 }, { 0.72, 1 } } },
-    U = { { { 0, 0 }, { 0, 0.78 }, { 0.17, 1 }, { 0.5, 1 }, { 0.66, 0.78 }, { 0.66, 0 } } },
-    S = { { { 0.66, 0.14 }, { 0.5, 0 }, { 0.17, 0 }, { 0, 0.16 }, { 0, 0.36 }, { 0.16, 0.5 }, { 0.5, 0.5 },
-            { 0.66, 0.64 }, { 0.66, 0.86 }, { 0.5, 1 }, { 0.17, 1 }, { 0, 0.86 } } },
+    P = { { { 0, 1 }, { 0.04, 0.48 }, { 0, 0 }, { 0.52, 0.04 }, { 0.66, 0.26 }, { 0.48, 0.5 }, { 0.04, 0.48 } } },
+    O = { { { 0.2, 0 }, { 0.6, 0.12 }, { 0.68, 0.62 }, { 0.42, 1 }, { 0.06, 0.82 }, { 0, 0.3 }, { 0.2, 0 } } },
+    C = { { { 0.66, 0.12 }, { 0.3, 0 }, { 0.02, 0.3 }, { 0.06, 0.78 }, { 0.36, 1 }, { 0.68, 0.86 } } },
+    K = { { { 0, 0 }, { 0.02, 0.52 }, { 0, 1 } }, { { 0.62, 0.02 }, { 0.02, 0.52 }, { 0.66, 1 } } },
+    I = { { { 0, 0 }, { 0.03, 0.46 }, { 0, 1 } } },
+    M = { { { 0, 1 }, { 0.04, 0 }, { 0.36, 0.6 }, { 0.68, 0.02 }, { 0.72, 1 } } },
+    U = { { { 0, 0 }, { 0.04, 0.72 }, { 0.32, 1 }, { 0.62, 0.74 }, { 0.66, 0 } } },
+    S = { { { 0.64, 0.1 }, { 0.3, 0 }, { 0.02, 0.22 }, { 0.32, 0.5 }, { 0.64, 0.74 }, { 0.36, 1 }, { 0, 0.88 } } },
 }
-local GLYPH_W = { P = 0.66, O = 0.68, C = 0.66, K = 0.66, I = 0, M = 0.72, U = 0.66, S = 0.66 }
+local GLYPH_W = { P = 0.66, O = 0.68, C = 0.68, K = 0.66, I = 0.03, M = 0.72, U = 0.66, S = 0.64 }
 local TITLE = "POCKIMUSI"
 local LETTER_H, LETTER_GAP = 58, 22           -- on screen, at the end of the zoom
-local TITLE_Y = 196
+local TITLE_Y = 192
+local Z0, ZEND = 300, 14000                   -- the camera's zoom: whole galaxy, then the name
 
--- Laid out once: the title's segments (screen space at the end of the zoom),
--- its unique stars, and the galaxy (world space)
+-- Laid out once: the title's stars and lines (screen space at the end of the
+-- zoom), the stars round them, and the galaxy (world space)
 local BOOT = nil
 local function bootData()
     if BOOT then return BOOT end
-    local B = { segs = {}, stars = {}, field = {} }
-    -- the title, centred
+    local B = { segs = {}, stars = {}, near = {}, field = {}, rings = { 0.32, 0.62, 0.95 } }
+    local seed = 23
+    local function rnd()
+        seed = (seed * 16807) % 2147483647
+        return seed / 2147483647
+    end
+    -- the title, centred, each star nudged and given a magnitude
     local total = 0
     for i = 1, #TITLE do
         total = total + GLYPH_W[TITLE:sub(i, i)] * LETTER_H + (i > 1 and LETTER_GAP or 0)
     end
     local x = 320 - total * 0.5
-    local seen = {}
-    local length = 0
+    local index, length = {}, 0
     for i = 1, #TITLE do
         local ch = TITLE:sub(i, i)
+        local base = (rnd() - 0.5) * 6                 -- letters don't sit on one line either
         for _, stroke in ipairs(GLYPHS[ch]) do
+            local prev
             for k = 1, #stroke do
-                local px, py = x + stroke[k][1] * LETTER_H, TITLE_Y + stroke[k][2] * LETTER_H
-                local key = math_floor(px + 0.5) .. ":" .. math_floor(py + 0.5)
-                if not seen[key] then
-                    seen[key] = true
-                    B.stars[#B.stars + 1] = { x = px, y = py, letter = i }
+                local key = i .. ":" .. stroke[k][1] .. ":" .. stroke[k][2]
+                local st = index[key]
+                if not st then
+                    st = { x = x + stroke[k][1] * LETTER_H + (rnd() - 0.5) * 6,
+                           y = TITLE_Y + base + stroke[k][2] * LETTER_H + (rnd() - 0.5) * 6,
+                           mag = 0.55 + rnd() * 0.45, letter = i, lit = math.huge }
+                    index[key] = st
+                    B.stars[#B.stars + 1] = st
                 end
-                if k > 1 then
-                    local qx, qy = x + stroke[k - 1][1] * LETTER_H, TITLE_Y + stroke[k - 1][2] * LETTER_H
-                    local len = math.sqrt((px - qx) ^ 2 + (py - qy) ^ 2)
-                    B.segs[#B.segs + 1] = { qx, qy, px, py, at = length, len = len }
+                if prev then
+                    local len = math.sqrt((st.x - prev.x) ^ 2 + (st.y - prev.y) ^ 2)
+                    B.segs[#B.segs + 1] = { a = prev, b = st, at = length, len = len }
+                    prev.lit = math_min(prev.lit, length)
+                    st.lit = math_min(st.lit, length + len)
                     length = length + len
+                else
+                    st.lit = math_min(st.lit, length)
                 end
+                prev = st
             end
         end
         x = x + GLYPH_W[ch] * LETTER_H + LETTER_GAP
     end
     B.length = length
-    -- the galaxy: a bright core and two arms, seen tilted
-    local seed = 11
-    local function rnd()
-        seed = (seed * 16807) % 2147483647
-        return seed / 2147483647
+    -- the stars round the name, looking just like its own until the lines come
+    for n = 1, 170 do
+        -- a third of them through the name's band, so it hides in the field
+        local sx, sy = rnd() * 640, (n % 3 == 0) and (TITLE_Y - 12 + rnd() * (LETTER_H + 24)) or rnd() * 480
+        local ok = true
+        for _, st in ipairs(B.stars) do
+            if math.abs(st.x - sx) < 9 and math.abs(st.y - sy) < 9 then ok = false break end
+        end
+        if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.3 + rnd() * 0.7 } end
     end
-    local function gauss() return (rnd() + rnd() + rnd() - 1.5) * 0.8 end
-    for _ = 1, 700 do
-        local r = math.abs(gauss()) * 0.16
+    -- the galaxy, drawn as a clean graphic: a tight core and two arms of
+    -- evenly spaced points along log spirals, seen tilted
+    for _ = 1, 160 do
+        local r = (rnd() ^ 2) * 0.13
         local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * 0.62, b = 0.6 + rnd() * 0.4 }
+        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * 0.62, b = 0.7 + rnd() * 0.3 }
     end
     for arm = 0, 1 do
-        for _ = 1, 1100 do
-            local r = 0.08 + rnd() ^ 0.8 * 0.95
-            local a = arm * math_pi + math.log(r) / 0.32 + gauss() * 0.35
-            local sc = 0.03 + r * 0.07
-            B.field[#B.field + 1] = { x = math_cos(a) * r + gauss() * sc, y = (math_sin(a) * r + gauss() * sc) * 0.62,
-                                      b = 0.35 + rnd() * 0.65 }
+        local n = 340
+        for i = 1, n do
+            local f = i / n
+            local r = 0.1 + f * 0.9
+            local a = arm * math_pi + math.log(r) / 0.3
+            local w = 0.012 + f * 0.03                   -- the arm widens outwards
+            local off = (rnd() - 0.5) * 2 * w
+            B.field[#B.field + 1] = { x = math_cos(a) * (r + off), y = math_sin(a) * (r + off) * 0.62,
+                                      b = 0.9 - f * 0.5 }
         end
     end
     -- where the camera is heading: a spot on an arm
     B.tx, B.ty = 0.42, -0.2
-    -- a local field round that spot at every scale, so stars keep streaming past
-    for _ = 1, 150 do
-        local d = 10 ^ (-2.1 + rnd() * 2.1)          -- 0.008 .. 1 world units away
+    -- stars at every scale round that spot, to stream past during the jump
+    for _ = 1, 260 do
+        local d = 10 ^ (-1.6 + rnd() * 1.6)          -- 0.025 .. 1 world units away
         local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = B.tx + math_cos(a) * d, y = B.ty + math_sin(a) * d * 0.8, b = 0.6 + rnd() * 0.4, near = true }
+        B.field[#B.field + 1] = { x = B.tx + math_cos(a) * d, y = B.ty + math_sin(a) * d * 0.8, b = 0.6 + rnd() * 0.4 }
     end
     for i, f in ipairs(B.field) do f.ph = (i * 0.618) % 6.283 end
     BOOT = B
@@ -381,107 +403,132 @@ function Chrome:drawBoot()
     local lg = love.graphics
     local B = bootData()
     local out = (e > self.BOOT_TIME - 0.5) and ((self.BOOT_TIME - e) / 0.5) or 1
-    local fadeIn = clamp(e / 0.35, 0, 1)
+    local fadeIn = clamp(e / 0.3, 0, 1)
 
-    -- the camera: log-zoom with a slow start and a slow arrival, drifting from
-    -- the galaxy's centre to the target, rolling a little and settling level
-    local zEnd = 14000
-    local z0 = 300
-    local u = clamp(e / self.BOOT_ZOOM_END, 0, 1)
-    local s = u * u * (3 - 2 * u)                                -- smoothstep
-    local s2 = s * s * (3 - 2 * s)                               -- softer still
-    local z = z0 * (zEnd / z0) ^ s2
-    -- the target's offset from the centre shrinks smoothly on screen
+    -- the jump: a held view, then a sharp acceleration and a sudden stop
+    local z0, zEnd = Z0, ZEND
+    local function progress(t)
+        local u = clamp((t - self.BOOT_ZOOM[1]) / (self.BOOT_ZOOM[2] - self.BOOT_ZOOM[1]), 0, 1)
+        -- slow in, very fast through the middle, a short brake at the end
+        local k = 9
+        local lo, hi = 1 / (1 + math.exp(k * 0.5)), 1 / (1 + math.exp(-k * 0.5))
+        return (1 / (1 + math.exp(-k * (u - 0.5))) - lo) / (hi - lo)
+    end
+    local s = progress(e)
+    local z = z0 * (zEnd / z0) ^ s
+    local zPrev = z0 * (zEnd / z0) ^ progress(e - 1 / 60)
+    local speed = z / zPrev - 1                                  -- 0 when still
     local camX = B.tx - (1 - s) * B.tx * z0 / z
     local camY = B.ty - (1 - s) * B.ty * z0 / z
-    local roll = (1 - s) * 0.5
+    local roll = (1 - s) * 0.35
     local cr, sr = math_cos(roll), math_sin(roll)
-    -- the speed of the zoom, for the streaks
-    local du = 0.012
-    local u2 = clamp((e - du) / self.BOOT_ZOOM_END, 0, 1)
-    local sp = u2 * u2 * (3 - 2 * u2); sp = sp * sp * (3 - 2 * sp)
-    local zPrev = z0 * (zEnd / z0) ^ sp
-    local streak = (z / zPrev - 1)                               -- 0 when still
+    local function toScreen(wx, wy)
+        wx, wy = wx - camX, wy - camY
+        return 320 + (wx * cr - wy * sr) * z, 240 + (wx * sr + wy * cr) * z
+    end
+    -- where the target sits on screen (the jump's vanishing point)
+    local vx, vy = toScreen(B.tx, B.ty)
 
     self:setColor(C.BG, out)
     lg.rectangle("fill", 0, 0, 640, 480)
-    -- a faint glow of the galaxy's core while far away
-    local glowA = (1 - s) * 0.14 * fadeIn * out
-    if glowA > 0.002 then
-        local gx, gy = 320 + (0 - camX) * z, 240 + (0 - camY) * z
-        for r = 16, 1, -1 do
-            lg.setColor(0.55, 0.5, 0.85, glowA * 0.35)
-            lg.circle("fill", gx, gy, r * 0.016 * z)
+
+    -- the galaxy's graphic: thin orbit ellipses and a crisp core, fading as we leave
+    local far = (1 - s) ^ 2 * fadeIn * out
+    if far > 0.01 then
+        local gx, gy = toScreen(0, 0)
+        lg.setLineWidth(1)
+        for i, r in ipairs(B.rings) do
+            lg.setColor(0.7, 0.75, 1.0, far * (0.16 - i * 0.03))
+            lg.push()
+            lg.translate(gx, gy)
+            lg.rotate(roll)
+            lg.ellipse("line", 0, 0, r * z, r * z * 0.62, 64)
+            lg.pop()
         end
+        for r = 8, 1, -1 do
+            lg.setColor(0.6, 0.55, 0.95, far * 0.05)
+            lg.circle("fill", gx, gy, r * 0.012 * z)
+        end
+        self:drawStarGlint(gx, gy, 9, C.TEXT, far)
     end
 
-    -- the stars: a point each, a streak when moving fast
+    -- the stars: points, and during the jump, long streaks back towards the
+    -- vanishing point (the faster, the longer)
+    local warp = clamp(speed * 9, 0, 1)
     local pts, big = {}, {}
     lg.setLineWidth(1)
     for _, f in ipairs(B.field) do
-        local wx, wy = f.x - camX, f.y - camY
-        local x = 320 + (wx * cr - wy * sr) * z
-        local y = 240 + (wx * sr + wy * cr) * z
-        if x > -20 and x < 660 and y > -20 and y < 500 then
-            local tw = 0.75 + 0.25 * math_sin(now * 2.3 + f.ph)
-            local a = f.b * tw * fadeIn * out
-            if f.b > 0.75 then big[#big + 1] = { x, y, 0.9, 0.93, 1.0, a }
-            else pts[#pts + 1] = { x, y, 0.86, 0.9, 1.0, a } end
-            if streak > 0.02 then
-                local k = math_min(0.16, streak * 0.5)
-                self:setColor(C.SILVER, a * 0.35)
-                lg.line(x, y, 320 + (x - 320) * (1 - k), 240 + (y - 240) * (1 - k))
+        local x, y = toScreen(f.x, f.y)
+        if x > -40 and x < 680 and y > -40 and y < 520 then
+            local a = f.b * (0.8 + 0.2 * math_sin(now * 2.3 + f.ph)) * fadeIn * out
+            if warp > 0.12 then
+                local k = math_min(0.85, speed * 6)
+                self:setColor(C.SILVER, a * (0.18 + warp * 0.32))
+                lg.line(x, y, vx + (x - vx) * (1 - k), vy + (y - vy) * (1 - k))
             end
+            if f.b > 0.8 then big[#big + 1] = { x, y, 0.92, 0.94, 1.0, a }
+            else pts[#pts + 1] = { x, y, 0.86, 0.9, 1.0, a } end
         end
     end
     lg.setColor(1, 1, 1, 1)          -- per-point colours are multiplied by this
-    lg.setPointSize(1.6)
+    lg.setPointSize(1.5)
     if #pts > 0 then lg.points(pts) end
-    lg.setPointSize(2.4)
+    lg.setPointSize(2.3)
     if #big > 0 then lg.points(big) end
     lg.setPointSize(1)
+    -- a brief brightening at the vanishing point at full speed
+    if warp > 0.05 then
+        for r = 6, 1, -1 do
+            lg.setColor(0.85, 0.9, 1.0, warp * 0.05 * out)
+            lg.circle("fill", vx, vy, r * 14)
+        end
+    end
 
-    -- the title's stars arrive with the zoom: as points far from their places
-    -- while the camera is still moving, then settled
-    local arrive = clamp((e - self.BOOT_ZOOM_END * 0.55) / (self.BOOT_ZOOM_END * 0.45), 0, 1)
-    local trackCols = { [1] = C.ORANGE, [4] = C.CYAN, [6] = C.VIOLET, [8] = C.MINT }
+    -- the last field: the name's stars and the ones round them, all alike,
+    -- arriving with the stop (they sit in world space at the target)
+    local arrive = clamp((s - 0.86) / 0.14, 0, 1)
+    local function place(px, py)
+        return toScreen((px - 320) / zEnd + B.tx, (py - 240) / zEnd + B.ty)
+    end
     local lineT = clamp((e - self.BOOT_LINES[1]) / (self.BOOT_LINES[2] - self.BOOT_LINES[1]), 0, 1)
     local drawn = lineT * B.length
-    -- where each title star is now: its final place seen through the camera
-    -- (they sit in world space at the target, scaled to the final zoom)
-    local function place(px, py)
-        local wx = (px - 320) / zEnd + B.tx - camX
-        local wy = (py - 240) / zEnd + B.ty - camY
-        return 320 + (wx * cr - wy * sr) * z, 240 + (wx * sr + wy * cr) * z
-    end
-    do
+    if arrive > 0 then
+        local starPts = {}
+        for _, st in ipairs(B.near) do
+            local x, y = place(st.x, st.y)
+            local tw = 0.8 + 0.2 * math_sin(now * 2 + st.x)
+            starPts[#starPts + 1] = { x, y, 0.88, 0.92, 1.0, st.mag * tw * arrive * out }
+        end
+        lg.setColor(1, 1, 1, 1)
+        lg.setPointSize(2)
+        lg.points(starPts)
+        lg.setPointSize(1)
         -- the lines, letter by letter
-        lg.setLineWidth(1.2)
+        lg.setLineWidth(1.1)
         for _, sg in ipairs(B.segs) do
             local k = clamp((drawn - sg.at) / sg.len, 0, 1)
             if k > 0 then
-                local ax, ay = place(sg[1], sg[2])
-                local bx, by = place(sg[3], sg[4])
-                self:setColor(C.SILVER, 0.7 * out)
+                local ax, ay = place(sg.a.x, sg.a.y)
+                local bx, by = place(sg.b.x, sg.b.y)
+                self:setColor(C.SILVER, 0.6 * out)
                 lg.line(ax, ay, ax + (bx - ax) * k, ay + (by - ay) * k)
             end
         end
         lg.setLineWidth(1)
-        -- the stars, brightening as the lines reach them
-        for i, st in ipairs(B.stars) do
+        -- the name's stars: plain points like the rest until a line reaches
+        -- them; then they brighten into glints (P, K, M, S in the tracks' colours)
+        local trackCols = { [1] = C.ORANGE, [4] = C.CYAN, [6] = C.VIOLET, [8] = C.MINT }
+        for _, st in ipairs(B.stars) do
             local x, y = place(st.x, st.y)
-            local lit = lineT > 0 and 1 or 0.55
-            local col = trackCols[st.letter] or C.TEXT
-            if arrive > 0.02 then
-                self:drawStarGlint(x, y, 1.5 + arrive * 3.5 + lit * 1.2, col, arrive * (0.55 + 0.45 * lit) * out)
+            local lit = clamp((drawn - st.lit) / 12, 0, 1)
+            if lit > 0 then
+                local col = trackCols[st.letter] or C.TEXT
+                self:drawStarGlint(x, y, 2 + st.mag * 3 * lit, col, (0.5 + 0.5 * lit) * out)
             else
-                local half = clamp((math.log(z / z0) / math.log(zEnd / z0) - 0.5) * 4, 0, 1)
-                if half > 0 then
-                    lg.setColor(0.9, 0.93, 1.0, 0.8 * half * out)
-                    lg.setPointSize(2)
-                    lg.points(x, y)
-                    lg.setPointSize(1)
-                end
+                lg.setColor(0.88, 0.92, 1.0, st.mag * arrive * out)
+                lg.setPointSize(2)
+                lg.points(x, y)
+                lg.setPointSize(1)
             end
         end
     end
@@ -492,10 +539,10 @@ function Chrome:drawBoot()
         local sub = "POCKET  -  MUSIC"
         lg.setFont(self.fontSmall)
         self:setColor(C.MUTED, subIn * out)
-        lg.print(sub, math_floor(320 - self.fontSmall:getWidth(sub) * 0.5), TITLE_Y + LETTER_H + 34)
+        lg.print(sub, math_floor(320 - self.fontSmall:getWidth(sub) * 0.5), TITLE_Y + LETTER_H + 38)
         self:setColor(C.SILVER, subIn * 0.4 * out)
-        lg.line(250, TITLE_Y + LETTER_H + 60, 390, TITLE_Y + LETTER_H + 60)
-        self:drawDiamond(320, TITLE_Y + LETTER_H + 60, 2.5, { C.SILVER[1], C.SILVER[2], C.SILVER[3], subIn * 0.8 * out })
+        lg.line(250, TITLE_Y + LETTER_H + 64, 390, TITLE_Y + LETTER_H + 64)
+        self:drawDiamond(320, TITLE_Y + LETTER_H + 64, 2.5, { C.SILVER[1], C.SILVER[2], C.SILVER[3], subIn * 0.8 * out })
     end
 end
 
