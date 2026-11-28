@@ -69,6 +69,9 @@ function Chrome:drawCenterStage()
     love.graphics.setLineWidth((mode == "NORMAL" and not Song.recording) and 1 or 2)
     love.graphics.rectangle("line", 8, 50, 624, 306, 6, 6)
     love.graphics.setLineWidth(1)
+    if self.drawStageOrnament and playMode then
+        self:drawStageOrnament(8, 50, 624, 272, Config.shade(instCol, 0.75), false)
+    end
 
     if not self.haloDrawn then
         -- Vertical hairline dividers separating Left Zone | Center | Right Zone
@@ -182,6 +185,10 @@ function Chrome:drawCenterStage()
         -- Style 2 compact group + instrument pill header (with L1 / R1 caps)
         self:drawInstrumentTabs(track, accent)
     else
+        local tw0 = self.fontMed:getWidth(titleStr)
+        if self.drawCartouche then
+            self:drawCartouche(320, 62, tw0, playMode and Config.shade(instCol, 0.8) or C.SILVER)
+        end
         self:setColor(playMode and C.TEXT or accent)
         love.graphics.setFont(self.fontMed)
         local tw = self.fontMed:getWidth(titleStr)

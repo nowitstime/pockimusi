@@ -345,6 +345,20 @@ return {
             H.hold("L2", "R2"); H.play(0.1); H.release("L2", "R2"); H.play(0.1)
             H.hold("L2", "R2", "SELECT"); H.play(0.1); H.release("L2", "R2", "SELECT"); H.play(0.1)
         end
+        -- the style tests draw too: ornament, loop ticks, motion, the boot screen
+        C2:setLook("PLATE")
+        for _, o in ipairs(C2.MOCK_OPTS.ORNAMENT) do
+            C2:setMockOpt("ORNAMENT", o); C2:setMockOpt("TICKS", "LOOP"); C2:setMockOpt("MOTION", "ON")
+            H.play(0.1)
+            H.hold("SELECT"); H.play(0.3); H.tap("B"); H.release("SELECT"); H.play(0.3)
+            H.hold("START"); H.play(0.3); H.release("START"); H.play(0.1)
+        end
+        C2:setMockOpt("BOOT", "ON"); C2.bootPreview = true; C2:startBoot()
+        H.play(1.2)
+        H.falsy(C2.bootDone, "the boot screen is still up")
+        H.play(1.6)
+        H.truthy(C2.bootDone, "and then gone")
+        C2:setMockOpt("MOTION", "OFF"); C2:setMockOpt("ORNAMENT", "OFF"); C2:setMockOpt("TICKS", "OFF"); C2:setMockOpt("BOOT", "OFF")
         C2:setLook("CLASSIC")
         local Cf2 = require("src.config")
         H.eq(Cf2.MODE_COLORS.TRACK, Cf2.COLORS.PINK, "classic again")

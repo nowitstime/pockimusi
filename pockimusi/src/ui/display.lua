@@ -62,8 +62,8 @@ function Display:load()
     if font then Fonts:setByName(font) end
     self.look = text:match("look=([%u%- ]+)\n")
     self.mockOpts = {}
-    for key in pairs({ DPAD = 1, LABELS = 1, EMBLEM = 1 }) do
-        self.mockOpts[key] = text:match(key:lower() .. "=(%u+)")
+    for key, value in text:gmatch("(%l+)=([%u%-]+)\n") do
+        self.mockOpts[key:upper()] = value
     end
 end
 
@@ -73,8 +73,12 @@ function Display:save()
     local ch = self.chrome
     local look = ch and ch.look or self.look or "PLATE"
     local opt = ch and ch.mockOpt or {}
-    pcall(fs.write, self.FILE, string.format("style=%s\nfullscreen=%d\nfont=%s\nlook=%s\ndpad=%s\nlabels=%s\nemblem=%s\n",
-        self.style, self.fullscreen and 1 or 0, Fonts.set, look, opt.DPAD or "STAR", opt.LABELS or "REVEAL", opt.EMBLEM or "CLEAN"))
+    local text = string.format("style=%s\nfullscreen=%d\nfont=%s\nlook=%s\n",
+        self.style, self.fullscreen and 1 or 0, Fonts.set, look)
+    for _, key in ipairs(ch and ch.MOCK_OPT_ORDER or {}) do
+        if opt[key] then text = text .. key:lower() .. "=" .. opt[key] .. "\n" end
+    end
+    pcall(fs.write, self.FILE, text)
 end
 
 -- Call once at boot, after Chrome:init()

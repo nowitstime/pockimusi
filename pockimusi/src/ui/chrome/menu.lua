@@ -66,6 +66,8 @@ local function plateFrame(self, title, right)
     love.graphics.polygon("fill", X - 1, Y + H + 1, X + CH, Y + H + 1, X - 1, Y + H - CH)
     love.graphics.polygon("fill", X + W + 1, Y + H + 1, X + W - CH, Y + H + 1, X + W + 1, Y + H - CH)
     self:mockGlowPoly(self.mockChamfer(X, Y, W, H, CH), edge, 0.8)
+    local o = self.mockOpt.ORNAMENT
+    if o == "CORNERS" or o == "FULL" then self:drawFrameCorners(X, Y, W, H, C.SILVER, 0.55) end
     -- title
     self:mockGlyph("MENU", X + 26, Y + 25, C.SILVER)
     -- spaced lettering reads well on a short title only
@@ -125,7 +127,8 @@ end
 
 -- Which heading each root row sits under on the PLATE look
 local SECTIONS = { GOTO = "PATTERNS", COPY = "PATTERNS", CLEAR = "PATTERNS", SONG = "PERFORM",
-                   FONTS = "DISPLAY", LOOK = "DISPLAY", OPT = "TEST: PLATE LOOK" }
+                   FONTS = "DISPLAY", LOOK = "DISPLAY", OPT = "TEST: PLATE LOOK",
+                   ORNAMENT = "TEST: STYLE", TICKS = "TEST: STYLE", MOTION = "TEST: STYLE", BOOT = "TEST: STYLE" }
 
 local function rootValue(self, item)
     if item.id == "SONG" then return Song:isOn() and "ON" or "OFF", Song:isOn() end
@@ -140,10 +143,24 @@ function Chrome:drawMenuRootPlate()
     local instCol = self:trackColor(Looper.activeTrack)
     local moon = self.MOCK_MOON
     frame(self, "MENU", currentLabel())
-    local rh, gap, y = 25, 4, Y + 60
+    local rh, gap = 25, 4
+    -- measure first, so the list can scroll to keep the cursor in view
+    local viewTop, viewBot = Y + 58, Y + H - 36
+    local my, curY, lastS = 0, 0, nil
+    for i, item in ipairs(Menu.ITEMS) do
+        local sec = SECTIONS[item.key or ""] or SECTIONS[item.id] or ""
+        if sec ~= lastS then my = my + 15; lastS = sec end
+        if i == Menu.row then curY = my end
+        my = my + rh + gap
+    end
+    local viewH = viewBot - viewTop
+    local scroll = clamp(curY + rh * 0.5 - viewH * 0.5, 0, math.max(0, my - viewH))
+    local Display = require("src.ui.display")
+    local clip = Display:pushClip(X, viewTop - 2, W, viewH + 4)
+    local y = viewTop + 2 - math_floor(scroll)
     local lastSec
     for i, item in ipairs(Menu.ITEMS) do
-        local sec = SECTIONS[item.id] or ""
+        local sec = SECTIONS[item.key or ""] or SECTIONS[item.id] or ""
         if sec ~= lastSec then
             love.graphics.setFont(self.fontTiny)
             local sw = self.fontTiny:getWidth(sec)
@@ -187,6 +204,10 @@ function Chrome:drawMenuRootPlate()
         end
         y = y + rh + gap
     end
+    Display:popClip(clip)
+    -- a small mark when there is more above or below
+    if scroll > 0 then self:mockChevron(X + W - 18, viewTop + 4, "UP", 3, C.SILVER, 0.7) end
+    if scroll < my - viewH - 1 then self:mockChevron(X + W - 18, viewBot - 4, "DOWN", 3, C.SILVER, 0.7) end
     local item = Menu.ITEMS[Menu.row]
     footer(self, (item and item.hint or "") .. "     -     UP / DOWN  MOVE   B  CHOOSE   A  BACK")
 end
@@ -200,6 +221,13 @@ function Chrome:drawMenuRoot()
     local gap = compact and 4 or 6
     local rh = compact and 32 or ((n > 5) and 50 or 62)
     local top = Y + 58
+    -- scroll when the rows don't fit, keeping the cursor in view
+    local viewH = (Y + H - 36) - top
+    local total = n * (rh + gap)
+    local scroll = clamp((Menu.row - 1) * (rh + gap) + rh * 0.5 - viewH * 0.5, 0, math.max(0, total - viewH))
+    top = top - math_floor(scroll)
+    local Display = require("src.ui.display")
+    local clip = Display:pushClip(X, Y + 56, W, viewH + 4)
     for i, item in ipairs(Menu.ITEMS) do
         local y = top + (i - 1) * (rh + gap)
         local cur = (i == Menu.row)
@@ -245,6 +273,7 @@ function Chrome:drawMenuRoot()
             self:menuTextRight("B  >", xr, y + rh * 0.5, self.fontSmall, col)
         end
     end
+    Display:popClip(clip)
     if compact then
         local item = Menu.ITEMS[Menu.row]
         footer(self, (item and item.hint or "") .. "     -     UP / DOWN  MOVE   B  CHOOSE   A  BACK")

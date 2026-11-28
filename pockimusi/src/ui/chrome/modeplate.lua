@@ -41,8 +41,15 @@ Chrome.MOCK_OPTS = {
     DPAD   = { "DIAL", "STAR" },
     LABELS = { "TABS", "ARC", "CHART", "LEGEND", "REVEAL", "GLYPH" },
     EMBLEM = { "OFF", "CLEAN", "ON" },
+    -- style tests (src/ui/chrome/ornament.lua)
+    ORNAMENT = { "OFF", "CORNERS", "CARTOUCHE", "FULL" },
+    TICKS    = { "OFF", "LOOP" },
+    MOTION   = { "OFF", "ON" },
+    BOOT     = { "OFF", "ON" },
 }
-Chrome.mockOpt = { DPAD = "STAR", LABELS = "REVEAL", EMBLEM = "CLEAN" }
+Chrome.MOCK_OPT_ORDER = { "DPAD", "LABELS", "EMBLEM", "ORNAMENT", "TICKS", "MOTION", "BOOT" }
+Chrome.mockOpt = { DPAD = "STAR", LABELS = "REVEAL", EMBLEM = "CLEAN",
+                   ORNAMENT = "OFF", TICKS = "OFF", MOTION = "OFF", BOOT = "OFF" }
 Chrome.MOCK_WING_QUIET = { 0.54, 0.58, 0.66, 1.0 }
 
 -- True when the current page draws a chamfered outer stage frame
@@ -337,6 +344,7 @@ function Chrome:mockModeBackdrop(def, instCol, mode)
         love.graphics.polygon("line", chamferPts(X + 3, Y + 3, W - 6, Hh - 6, CH - 2))
     end
     self:mockGlowPoly(chamferPts(X, Y, W, Hh, CH), edge, clean and 0.45 or 0.8)
+    if self.drawStageOrnament then self:drawStageOrnament(X, Y, W, 272, C.SILVER, true) end
 end
 
 -- A page glyph for the top-bar badge
@@ -648,6 +656,7 @@ function Chrome:drawMockTrackStage(def, state, track, instCol, t)
             love.graphics.polygon("line", chamferPts(X + 3, Y + 3, W - 6, Hh - 6, CH - 2))
         end
         self:mockGlowPoly(frame, self:mockEdge("TRACK"), clean and 0.45 or 0.8)
+        if self.drawStageOrnament then self:drawStageOrnament(X, Y, W, 272, C.SILVER, true) end
     elseif style == "B" then
         self:mockGlowPoly(frame, MOON, 0.6)
         self:setColor(shade(instCol, 0.6), 0.6)

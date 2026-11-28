@@ -47,6 +47,10 @@ local Menu = {
         { id = "OPT", key = "DPAD",   label = "PLATE: D-PAD",  hint = "DIAL OR STAR ON THE PLATE PAGES (TEST)" },
         { id = "OPT", key = "LABELS", label = "PLATE: LABELS", hint = "HOW THE D-PAD DIRECTIONS ARE NAMED (TEST)" },
         { id = "OPT", key = "EMBLEM", label = "PLATE: EMBLEM", hint = "A DECAL FOR EACH SETTINGS PAGE (TEST)" },
+        { id = "OPT", key = "ORNAMENT", label = "ORNAMENT", hint = "ENGRAVED CORNERS AND TITLE PLAQUE (TEST)" },
+        { id = "OPT", key = "TICKS",    label = "LOOP TICKS", hint = "A TOP EDGE THAT LIGHTS UP WITH THE LOOP (TEST)" },
+        { id = "OPT", key = "MOTION",   label = "MOTION", hint = "TRANSITIONS, RIPPLES, BEAT PULSE (TEST)" },
+        { id = "OPT", key = "BOOT",     label = "BOOT SCREEN", hint = "B TO PREVIEW, LEFT / RIGHT ON OR OFF (TEST)" },
     },
 
     open = false,
@@ -161,6 +165,11 @@ local function updateRoot(menu)
         menu:changeFonts(1)
     elseif item.id == "LOOK" then
         menu:changeLook(1)
+    elseif item.id == "OPT" and item.key == "BOOT" then
+        local Chrome = require("src.ui.chrome")
+        Chrome.bootPreview = true
+        Chrome:startBoot()
+        return menu:close()
     elseif item.id == "OPT" then
         menu:say(require("src.ui.chrome"):cycleMockOpt(item.key, 1))
     elseif item.id == "SONG" then
