@@ -4,7 +4,7 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md) (the fingering re
 
 **Feel:** a brass instrument. The left thumb picks the open note, as the lips do; the right thumb lowers it with valves; an index finger blows. Nothing sounds without breath. Changing a valve while blowing slurs.
 
-**Owns:** `pocketgroove/src/instruments/valves.lua`, `tests/test_valves.lua`, this file. Touches nothing else.
+**Owns:** `pockimusi/src/instruments/valves.lua`, `tests/test_valves.lua`, this file. Touches nothing else.
 
 ---
 

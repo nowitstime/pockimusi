@@ -82,7 +82,7 @@ for d, s in pairs(Song.DIR_SLOT) do Song.SLOT_DIR[s] = d end
 local FACE_TRACK = { B = 1, A = 2, Y = 3, X = 4 }
 
 local function log(msg)
-    print("[PocketGroove] " .. msg)
+    print("[Pockimusi] " .. msg)
 end
 
 -- Read a slot now, for a switch later. Returns data (nil for an empty slot)

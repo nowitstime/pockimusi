@@ -1,4 +1,4 @@
-# Pockimusi (PocketGroove)
+# Pockimusi
 
 A gamepad-first 4-track groovebox, chord lane, and song arranger built in [LÖVE](https://love2d.org/) for retro handhelds (RG35XX Plus / PortMaster), Steam Deck, and laptops with a controller.
 
@@ -29,12 +29,14 @@ A gamepad-first 4-track groovebox, chord lane, and song arranger built in [LÖVE
 ## Development
 ```bash
 # Run locally (requires LÖVE 11.x)
-love pocketgroove
+love pockimusi
 
 # Run the headless test suite (requires LuaJIT)
 luajit tests/run.lua
+# ...or through Python (pip install lupa)
+python3 tests/run.py
 
-# Package pocketgroove/PocketGroove.love
+# Package pockimusi/Pockimusi.love
 python3 build.py
 
 # Render headless UI screenshots (requires lupa + Pillow)
@@ -49,4 +51,4 @@ python3 tools/screenshot.py
 - [docs/feedback/](docs/feedback/) — per-instrument playtest logs
 
 ## License
-Licensed under the [Apache License 2.0](LICENSE). Bundled fonts under `pocketgroove/assets/fonts/` are licensed under the SIL Open Font License (see `OFL-*.txt`).
+Licensed under the [Apache License 2.0](LICENSE). Bundled fonts under `pockimusi/assets/fonts/` are licensed under the SIL Open Font License (see `OFL-*.txt`).

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render PocketGroove screens to PNG without LÖVE (rough preview).
+"""Render Pockimusi screens to PNG without LÖVE (rough preview).
 
 Boots the real game headless (LuaJIT via lupa, LÖVE faked by tests/helpers.lua),
 drives inputs for a named scene, records every love.graphics call made by
@@ -300,7 +300,7 @@ def main():
         lua = LuaRuntime()
         lua.globals().MEASURE = measure
         lua.execute(RECORDER)
-        lua.execute('package.path = "pocketgroove/?.lua;pocketgroove/?/init.lua;tests/?.lua;" .. package.path')
+        lua.execute('package.path = "pockimusi/?.lua;pockimusi/?/init.lua;tests/?.lua;" .. package.path')
         lua.execute('H = require("helpers"); H.graphicsOverride = GFX; H.loadMain(); H.play(0.1)')
         lua.execute(SCENES[name])
         lua.execute('love.draw()')

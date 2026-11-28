@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render PocketGroove sounds to .wav files to listen to them without the device.
+"""Render Pockimusi sounds to .wav files to listen to them without the device.
 
 Boots the real sound generators headless (LuaJIT via lupa, LÖVE faked by
 tests/helpers.lua with sample capture on) and writes 44.1 kHz 16-bit mono
@@ -29,7 +29,7 @@ OUT = os.path.join(ROOT, "renders")
 SR = 44100
 
 BOOT = r"""
-package.path = "pocketgroove/?.lua;pocketgroove/?/init.lua;tests/?.lua;" .. package.path
+package.path = "pockimusi/?.lua;pockimusi/?/init.lua;tests/?.lua;" .. package.path
 H = require("helpers")
 H.captureSamples = true
 M = H.fresh({ realSynth = true })

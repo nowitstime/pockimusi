@@ -256,7 +256,7 @@ function Synth:stepPregen(budget)
     end
     if coroutine.status(job.co) == "dead" then
         self.pregen = nil
-        print(string.format("[PocketGroove] pre-generated %d drum sounds and %d patches in the background (%.1fs)",
+        print(string.format("[Pockimusi] pre-generated %d drum sounds and %d patches in the background (%.1fs)",
             #job.drums, #job.queue, love.timer.getTime() - job.started))
     end
 end
@@ -308,7 +308,7 @@ function Synth:init()
     -- Boot cost, printed to the PortMaster log (log.txt) on the device. Only
     -- the core patches are generated here; the rest on first use.
     self.bootTimes = { drums = t1 - t0, patches = t2 - t1, total = t2 - t0 }
-    print(string.format("[PocketGroove] sound generation: drums %.2fs, patches %.2fs, total %.2fs",
+    print(string.format("[Pockimusi] sound generation: drums %.2fs, patches %.2fs, total %.2fs",
         t1 - t0, t2 - t1, t2 - t0))
 end
 

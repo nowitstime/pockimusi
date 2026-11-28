@@ -37,7 +37,7 @@ This differs from the ROADMAP's first draft on purpose:
 
 | # | Fix | Where | How |
 | :-- | :-- | :-- | :-- |
-| 1 | `build.py` packs a hard-coded file list; new files would be missing from the `.love` and crash on device | `build.py` | Pack every `*.lua` under `pocketgroove/` plus `conf.lua` and `controls.gptk` |
+| 1 | `build.py` packs a hard-coded file list; new files would be missing from the `.love` and crash on device | `build.py` | Pack every `*.lua` under `pockimusi/` plus `conf.lua` and `controls.gptk` |
 | 2 | Mix page level jumps 0.08 **every frame** while held | `main.lua` MIX block | Add `Input:repeatPressed(btn)` (fires on press, then every 0.08 s after a 0.35 s delay) and use it for `UP/DOWN` |
 | 3 | `START` tap toggles play after a 0.22–0.25 s hold that already opened Transport | `main.lua`, `input.lua` | Add `Input.startComboUsed`, set when Transport opens or any combo uses `START`; tap only when unused (same pattern as `SELECT`) |
 | 4 | Grain ignores the scale (fixed major pentatonic) | `instruments/grain.lua` | Use scale degrees 1, 2, 3, 5, 6, 8 via `Theory:getScaleDegreeSemis` |
@@ -55,7 +55,7 @@ This differs from the ROADMAP's first draft on purpose:
 
 **Runner:** `tests/run.py` uses [`lupa`](https://pypi.org/project/lupa/) (LuaJIT inside Python, `pip install lupa`) to run `tests/*.lua`. The test files are plain Lua, so `luajit tests/run.lua` works too where LuaJIT is installed.
 
-**Stubs:** `tests/stubs.lua` provides a fake `love` (`timer.getTime` under test control, `audio` and `sound` as no-ops) and a fake `Synth` that records triggers. `package.path` points at `pocketgroove/`.
+**Stubs:** `tests/stubs.lua` provides a fake `love` (`timer.getTime` under test control, `audio` and `sound` as no-ops) and a fake `Synth` that records triggers. `package.path` points at `pockimusi/`.
 
 **Characterisation tests**, written against *today's* behaviour before anything changes:
 

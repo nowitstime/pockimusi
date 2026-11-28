@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-build.py - PocketGroove Build Script
-Packages the pocketgroove sources into pocketgroove/PocketGroove.love
+build.py - Pockimusi Build Script
+Packages the pockimusi sources into pockimusi/Pockimusi.love
 """
 import os
 import zipfile
@@ -28,8 +28,8 @@ def collect_files(source_dir):
 
 def build():
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    source_dir = os.path.join(script_dir, "pocketgroove")
-    output_love = os.path.join(source_dir, "PocketGroove.love")
+    source_dir = os.path.join(script_dir, "pockimusi")
+    output_love = os.path.join(source_dir, "Pockimusi.love")
 
     files_to_pack = collect_files(source_dir)
 
@@ -44,7 +44,7 @@ def build():
             print(f"  + {rel_path} ({os.path.getsize(full_path)} bytes)")
 
     os.replace(temp_zip, output_love)
-    print(f"Successfully generated PocketGroove.love ({os.path.getsize(output_love)} bytes)")
+    print(f"Successfully generated Pockimusi.love ({os.path.getsize(output_love)} bytes)")
 
 if __name__ == "__main__":
     build()

@@ -25,7 +25,7 @@ Two things keep the later remake cheap:
 
 | Finding | What it suggests |
 | :-- | :-- |
-| It has been played on the RG35XX throughout; the checks just weren't logged | Tick off or delete the "device check pending" lines in the roadmap |
+| It has been played on the RG35XX throughout; the checks just weren't logged | ✅ The roadmap's "device check pending" lines are gone; findings go into the working sessions and the feedback files |
 | The most fun setup so far is a laptop with an Xbox controller | Bigger controls, a bigger screen and good speakers all add up (§7, §10) |
 | That clashes with the first idea: something for on the go | Treat them as two settings for one instrument; don't choose yet (§10) |
 | A built-in speaker matters; headphones sound better on the RG35XX but are less fun | A constraint for any future device: a good speaker needs physical volume |
@@ -68,7 +68,7 @@ The aim is the focus of the early version with today's features. This would resh
 ## 5. Learning it without help
 
 - **First-run prompts:** a fresh session shows "tap L2 to record" until the first take lands, then the next step, then nothing.
-- **Learn mode** (already ❓ in Phase I): a held button overlays the whole control map.
+- **Learn mode** 💤: a held button overlays the whole control map. Parked: there is no free button for it.
 - **Test unwatched:** hand it over with one sentence ("it's a looper, make a beat"), leave for five to ten minutes, then ask to be shown what was made. Note what was never found, not only what was asked.
 
 The target is not "no learning": depth is fine (Ableton is loved and not obvious). The target is that the first minute works alone.
@@ -88,6 +88,8 @@ Drums already use the shoulders for note repeat. Octave stays on the shoulders w
 
 ### 6.2 Chord Harp: colour back on the shoulders 👍
 
+> The Chord Harp needs a full revamp in its instrument pass; this idea goes into that pass rather than being built on its own.
+
 Colour changes chord by chord; octave is set once. This answers SPEC §3.3's open question about a momentary colour gesture.
 
 | Held | Chord colour |
@@ -105,7 +107,7 @@ Colour changes chord by chord; octave is set once. This answers SPEC §3.3's ope
 
 - **Works today:** record chords on the harp and mute that track (`R2` + its face button). Muting the chord source doesn't change the harmony (SPEC §5), so the followers still follow. Play this way for a few sessions first.
 - **Option A:** a silent patch for the harp. Cheap, but it uses one of the four tracks. ✅ Built: `SILENT` on the harp's `PATCH` row.
-- **Option B:** a chord lane outside the four tracks. Frees a slot, but adds a concept and needs somewhere to be recorded from.
+- **Option B:** a chord lane outside the four tracks. Frees a slot, but adds a concept and needs somewhere to be recorded from. ✅ Built as track C (Phase K).
 - **Also:** let the harp use the Pad and Lead patches, in case the problem is only the harp's sound. ✅ Built: the harp plays the whole sound pool (SPEC §6).
 
 ---
@@ -196,14 +198,14 @@ Form factor: something Steam Deck-shaped has full-size controls, a bigger screen
 - Transport setting rows, which would give replace / overdub and auto-stop a home (both blocked today by "no free button", SPEC §4).
 - Named session slots, before or alongside scenes.
 - More devices: resolution scaling.
-- Housekeeping: a README and licence, CI running `tests/run.py`, release builds (`PocketGroove.love` is a committed binary), finish the rename to Pockimusi (docs done; window title, launcher, `.love`, folder and save path still say PocketGroove, and moving the save folder needs a one-time copy of old saves), splitting `ui/chrome.lua`, phase docs in a `docs/` folder.
+- Housekeeping: ✅ README and licence, ✅ CI, ✅ release builds (`Pockimusi.love` stays committed so any device can download and play it without cloning or building), ✅ phase docs in a `docs/` folder, ✅ `ui/chrome.lua` split into `ui/chrome/`, ✅ the rename to Pockimusi (window title, launcher, `.love`, folder and save path, with a one-time copy of old saves).
 
 ---
 
 ## 12. Suggested order
 
 1. ~~Track page: control swap, effect rows, picker (§3)~~ ✅
-2. Harp colour on the shoulders (§6.2)
+2. Harp colour on the shoulders (§6.2), as part of the Chord Harp revamp
 3. Clarity pass and first-run prompts (§4, §5)
 4. Song building, once designed (§8)
 5. Audio engine v2, then hardware (§9, §10)

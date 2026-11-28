@@ -27,12 +27,12 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Build PocketGroove.love
+      - name: Build Pockimusi.love
         run: python3 build.py
 
       - name: Build love.js compatibility web bundle
         run: |
-          npx --yes love.js -c -t "Pockimusi" pocketgroove/PocketGroove.love dist-web
+          npx --yes love.js -c -t "Pockimusi" pockimusi/Pockimusi.love dist-web
 
       - name: Apply Pockimusi dark theme & controls shell
         run: python3 tools/web_theme.py dist-web
