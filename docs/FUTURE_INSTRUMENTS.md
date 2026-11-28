@@ -2,7 +2,9 @@
 
 Companion to [SPEC.md](SPEC.md) and [ROADMAP.md](ROADMAP.md). The roadmap covers the instruments already decided (Drums, Chord Harp, Bass, Pad, Lead/Arp). This file is the **lab**: ideas for other ways of playing, written up far enough to prototype. Nothing here is scheduled. An idea moves to the roadmap only after it has been played and has earned a slot (§7).
 
-Legend: 🧪 worth prototyping · 🧩 better as a setting or layer on an existing instrument · 💤 parked · ❓ needs a decision or a playtest
+> **Status:** the first wave is built and in the catalogue: Pick (as **Strum**), **Dial**, **Hand Drums**, **Slide**, plus **Valves**. Their write-ups below are the original ideas; the built versions are described in [SPEC.md](SPEC.md), [lab/](lab/README.md) and [feedback/](feedback/README.md).
+
+Legend: ✅ built · 🧪 worth prototyping · 🧩 better as a setting or layer on an existing instrument · 💤 parked · ❓ needs a decision or a playtest
 
 ---
 
@@ -63,10 +65,10 @@ So the diamond has **9 comfortable fingerings**, not the 15 that four buttons gi
 
 | Idea | You decide | Machine decides | Distinct feel | Size | Verdict |
 | :-- | :-- | :-- | :-- | :-- | :-- |
-| **Pick** | note with one hand, timing with the other | — | high | M | 🧪 first wave |
-| **Dial** | scale steps by rolling the thumb | octave carry | high | M | 🧪 first wave, after a button test |
-| **Hand Drums** | every hit, two-handed | — | medium–high | S | 🧪 first wave (cheapest) |
-| **Slide** | direction and speed of pitch | landing on the scale | high | S–M | 🧪 first wave |
+| **Pick** | note with one hand, timing with the other | — | high | M | ✅ built as Strum |
+| **Dial** | scale steps by rolling the thumb | octave carry | high | M | ✅ built |
+| **Hand Drums** | every hit, two-handed | — | medium–high | S | ✅ built |
+| **Slide** | direction and speed of pitch | landing on the scale | high | S–M | ✅ built |
 | **Map** | where to wander | voicing, voice leading | high | M–L | 🧪 second wave (after Phase D) |
 | **Motions** | note + which ornament | the ornament's notes and timing | high | L | 🧩 layer on Bass/Lead first |
 | **Tape** | which effect, when | what it does to each track | medium | L | 🧩 recordable punch-ins first |
@@ -302,7 +304,7 @@ Small pieces that several ideas need. None is required by the roadmap, so each i
 **Effect on the roadmap:** nothing changes yet. Two things to decide when the time comes:
 
 - ❓ **Phase F:** Bass and Lead are the same way of playing (the spec calls them "same class"). Consider one mono instrument where bass and lead are a patch and a register, with **Arp** as the separate instrument. That frees a library place for a lab winner.
-- ❓ **Library size:** with four slots, more than about six instruments mostly adds stepping. If two lab instruments win, something leaves or becomes a row on another instrument.
+- **Library size:** decided: thirteen instruments is fine. Some will be upgraded or swapped out during the instrument passes.
 
 ---
 

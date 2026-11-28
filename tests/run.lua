@@ -7,7 +7,7 @@
 --   luajit tests/run.lua looper   (only files whose name contains "looper")
 -- ============================================================================
 
-package.path = "pocketgroove/?.lua;pocketgroove/?/init.lua;tests/?.lua;" .. package.path
+package.path = "pockimusi/?.lua;pockimusi/?/init.lua;tests/?.lua;" .. package.path
 
 local FILES = {
     "test_save",
@@ -29,6 +29,7 @@ local FILES = {
     "test_session",
     "test_lane",
     "test_autosave",
+    "test_migrate",
     "test_menu",
     "test_song",
     "test_catalog",

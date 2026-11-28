@@ -22,7 +22,7 @@ local Patterns = {
 }
 
 local function log(msg)
-    print("[PocketGroove] " .. msg)
+    print("[Pockimusi] " .. msg)
 end
 
 function Patterns.fileName(slot)

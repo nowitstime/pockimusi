@@ -96,7 +96,7 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §3.2, §5, §7.4, 
 
 ## Status
 
-Built: E1 to E5. Nothing here has been listened to yet: the sound design (patch harmonics, levels, movement depth) was written without hearing it and needs the device.
+Built: E1 to E5, and played on the device since. The Pad is the instrument that needs the most work: a revamp (with a latch) is planned in its instrument pass.
 
 ## Open (settle by playing)
 

@@ -6,7 +6,7 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md). Independent of t
 
 **Why it matters beyond itself:** this is the software test for a hardware slider. If continuous pitch is not fun here, a physical slider will not be either.
 
-**Owns:** `pocketgroove/src/instruments/slide.lua`, `tests/test_slide.lua`, this file. Touches nothing else.
+**Owns:** `pockimusi/src/instruments/slide.lua`, `tests/test_slide.lua`, this file. Touches nothing else.
 
 ---
 

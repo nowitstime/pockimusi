@@ -189,7 +189,7 @@ SHELL_TOP = r"""
     <div class="pm-brand">
       <span class="pm-star">✦</span>
       <h1 class="pm-title">POCKIMUSI</h1>
-      <span class="pm-sub">PocketGroove · Browser Preview</span>
+      <span class="pm-sub">Pockimusi · Browser Preview</span>
     </div>
     <div class="pm-actions">
       <button class="pm-btn" type="button" onclick="pmFullscreen()">Fullscreen</button>

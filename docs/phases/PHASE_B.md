@@ -131,7 +131,7 @@ Today `hold(ev)` returns nothing and the note ends only when its button goes up.
 - **Device check:** feel of hold/legato/staccato, glide speeds, the three patches, CPU/frame rate with several bass notes and track effects on, and the `log.txt` boot time.
 
 
-**Status:** ✅ built (153 tests); ⬜ device look and feel.
+**Status:** ✅ built (153 tests); played on the device.
 
 - `Chrome:drawBassView`: the sounding note's name (mid-glide too; the D-pad's degree in the track colour when idle), `DEG · OCT · articulation` (or `READY`), patch and glide capsules, oscilloscope, pitch trace.
 - `Bass:sampleTrace` (every frame, from `updateVoices`) records the display voice's pitch and level into a 72-sample ring (1.2 s); `Bass:getDisplayVoice` = newest live note while it sounds, else the newest playback note. The oscilloscope's speed and height come from the same voice.

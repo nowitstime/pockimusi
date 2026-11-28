@@ -165,7 +165,7 @@ return {
     { "an id without a module is skipped", function()
         local M = H.fresh()
         for _, id in ipairs(M.Instruments.ORDER) do
-            local f = io.open("pocketgroove/src/instruments/" .. id .. ".lua", "r")
+            local f = io.open("pockimusi/src/instruments/" .. id .. ".lua", "r")
             if f then f:close() end
             H.eq(M.Instruments.byId[id] ~= nil, f ~= nil, id .. " is in the catalogue only if its file exists")
         end

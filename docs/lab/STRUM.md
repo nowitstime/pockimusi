@@ -4,7 +4,7 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md). Independent of t
 
 **Feel:** you set the note up silently with your thumbs, and nothing sounds until an index finger plucks it. Alternating the two shoulders gives fast tremolo picking and strums that one thumb cannot play.
 
-**Owns:** `pocketgroove/src/instruments/strum.lua`, `tests/test_strum.lua`, this file. Touches nothing else.
+**Owns:** `pockimusi/src/instruments/strum.lua`, `tests/test_strum.lua`, this file. Touches nothing else.
 
 ---
 
@@ -97,7 +97,7 @@ ST5 can be dropped without hurting the rest if the bow is not worth it.
 
 ## Status
 
-ST1 to ST5 are built and tested (`pocketgroove/src/instruments/strum.lua`, `tests/test_strum.lua`, 11 tests). No shared file changed. Left: the playtest above 📱.
+ST1 to ST5 are built and tested (`pockimusi/src/instruments/strum.lua`, `tests/test_strum.lua`, 11 tests). No shared file changed. Left: the playtest above 📱.
 
 - **Strings with `FOLLOW` on** are the D-pad degree plus the step, read through the chord the way Bass reads a degree (`Bass.pitchFor`): on the chord's root they are its own third, fifth and seventh; on another degree they walk the chord's scale (degree 5 + third = the chord's seventh). Degrees past 7 wrap into the next octave, so every degree and string has a pitch. With `FOLLOW` off the strings are the key's scale steps above the stored root.
 - **`REGISTER` is stored on each stroke** (`octave`, as on Bass): changing the row moves new strokes, not recorded ones.

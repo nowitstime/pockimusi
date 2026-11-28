@@ -4,7 +4,7 @@ Part of [lab wave 1](README.md). Needs: [L0](L0_FOUNDATION.md). Independent of t
 
 **Feel:** the D-pad stops being a modifier and becomes four more pads. Left and right thumbs alternate, which gives rolls, paradiddles and conga patterns that one thumb cannot play.
 
-**Owns:** `pocketgroove/src/instruments/hands.lua`, `tests/test_hands.lua`, this file. Touches nothing else.
+**Owns:** `pockimusi/src/instruments/hands.lua`, `tests/test_hands.lua`, this file. Touches nothing else.
 
 ---
 

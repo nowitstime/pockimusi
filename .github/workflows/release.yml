@@ -25,16 +25,16 @@ jobs:
       - name: Run Lua test suite
         run: luajit tests/run.lua
 
-      - name: Build PocketGroove.love
+      - name: Build Pockimusi.love
         run: python3 build.py
 
       - name: Package PortMaster zip & universal .love
         run: |
-          mkdir -p dist/portmaster/pocketgroove
-          cp pocketgroove/PocketGroove.love dist/PocketGroove.love
-          cp PocketGroove.sh dist/portmaster/
-          cp pocketgroove/PocketGroove.love pocketgroove/controls.gptk dist/portmaster/pocketgroove/
-          (cd dist/portmaster && zip -r ../PocketGroove-portmaster.zip .)
+          mkdir -p dist/portmaster/pockimusi
+          cp pockimusi/Pockimusi.love dist/Pockimusi.love
+          cp Pockimusi.sh dist/portmaster/
+          cp pockimusi/Pockimusi.love pockimusi/controls.gptk dist/portmaster/pockimusi/
+          (cd dist/portmaster && zip -r ../Pockimusi-portmaster.zip .)
 
       - name: Package Windows x64 (.exe + DLLs)
         run: |
@@ -43,44 +43,44 @@ jobs:
           mkdir -p dist/win64
           cp /tmp/win64/love-${LOVE_VERSION}-win64/*.dll dist/win64/
           cp /tmp/win64/love-${LOVE_VERSION}-win64/license.txt dist/win64/LOVE-LICENSE.txt
-          cat /tmp/win64/love-${LOVE_VERSION}-win64/love.exe pocketgroove/PocketGroove.love > dist/win64/PocketGroove.exe
+          cat /tmp/win64/love-${LOVE_VERSION}-win64/love.exe pockimusi/Pockimusi.love > dist/win64/Pockimusi.exe
           cp LICENSE README.md dist/win64/
-          (cd dist/win64 && zip -r ../PocketGroove-win64.zip .)
+          (cd dist/win64 && zip -r ../Pockimusi-win64.zip .)
 
       - name: Package Linux x86_64 AppImage (Desktop & Steam Deck)
         run: |
           curl -fSL "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-x86_64.AppImage" -o /tmp/love.AppImage
-          cat /tmp/love.AppImage pocketgroove/PocketGroove.love > dist/PocketGroove-linux-x86_64.AppImage
-          chmod +x dist/PocketGroove-linux-x86_64.AppImage
+          cat /tmp/love.AppImage pockimusi/Pockimusi.love > dist/Pockimusi-linux-x86_64.AppImage
+          chmod +x dist/Pockimusi-linux-x86_64.AppImage
 
       - name: Package macOS (.app zip)
         run: |
           curl -fSL "https://github.com/love2d/love/releases/download/${LOVE_VERSION}/love-${LOVE_VERSION}-macos.zip" -o /tmp/love-macos.zip
           mkdir -p /tmp/macos
           unzip -q /tmp/love-macos.zip -d /tmp/macos
-          mv /tmp/macos/love.app /tmp/macos/PocketGroove.app
-          cp pocketgroove/PocketGroove.love /tmp/macos/PocketGroove.app/Contents/Resources/PocketGroove.love
+          mv /tmp/macos/love.app /tmp/macos/Pockimusi.app
+          cp pockimusi/Pockimusi.love /tmp/macos/Pockimusi.app/Contents/Resources/Pockimusi.love
           python3 -c '
           import plistlib, pathlib
-          p = pathlib.Path("/tmp/macos/PocketGroove.app/Contents/Info.plist")
+          p = pathlib.Path("/tmp/macos/Pockimusi.app/Contents/Info.plist")
           data = plistlib.loads(p.read_bytes())
-          data["CFBundleName"] = "PocketGroove"
-          data["CFBundleIdentifier"] = "org.pockimusi.pocketgroove"
+          data["CFBundleName"] = "Pockimusi"
+          data["CFBundleIdentifier"] = "org.pockimusi.pockimusi"
           data.pop("UTExportedTypeDeclarations", None)
           p.write_bytes(plistlib.dumps(data))
           '
-          (cd /tmp/macos && zip -ry "$GITHUB_WORKSPACE/dist/PocketGroove-macos.zip" PocketGroove.app)
+          (cd /tmp/macos && zip -ry "$GITHUB_WORKSPACE/dist/Pockimusi-macos.zip" Pockimusi.app)
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-builds
           path: |
-            dist/PocketGroove.love
-            dist/PocketGroove-portmaster.zip
-            dist/PocketGroove-win64.zip
-            dist/PocketGroove-linux-x86_64.AppImage
-            dist/PocketGroove-macos.zip
+            dist/Pockimusi.love
+            dist/Pockimusi-portmaster.zip
+            dist/Pockimusi-win64.zip
+            dist/Pockimusi-linux-x86_64.AppImage
+            dist/Pockimusi-macos.zip
 
       - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
@@ -88,8 +88,8 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            dist/PocketGroove.love
-            dist/PocketGroove-portmaster.zip
-            dist/PocketGroove-win64.zip
-            dist/PocketGroove-linux-x86_64.AppImage
-            dist/PocketGroove-macos.zip
+            dist/Pockimusi.love
+            dist/Pockimusi-portmaster.zip
+            dist/Pockimusi-win64.zip
+            dist/Pockimusi-linux-x86_64.AppImage
+            dist/Pockimusi-macos.zip

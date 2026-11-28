@@ -1,5 +1,5 @@
 -- ============================================================================
--- PocketGroove — 4-Track Procedural Handheld Groovebox
+-- Pockimusi — 4-Track Procedural Handheld Groovebox
 -- Target Hardware: Anbernic RG35XX Plus (640x480 4:3 IPS) & Desktop PC
 -- Engine: LÖVE (Love2D 11.x) — Modular Pluggable Track/Instrument Architecture
 -- ============================================================================
@@ -18,6 +18,7 @@ local Display     = require("src.ui.display")
 local Autosave    = require("src.autosave")
 local Patterns    = require("src.patterns")
 local Song        = require("src.song")
+local Migrate     = require("src.migrate")
 
 local math_min = math.min
 
@@ -26,7 +27,8 @@ local math_min = math.min
 -- ============================================================================
 
 function love.load()
-    love.window.setTitle("PocketGroove - 4-Track Handheld Groovebox")
+    love.window.setTitle("Pockimusi - 4-Track Handheld Groovebox")
+    Migrate.run()              -- first boot under the new name: copy old PocketGroove saves
     Synth:init()
     Looper:init(Instruments)
     Looper:setNoteHandler(function(kind, ev, track)

@@ -88,7 +88,7 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 **Device check:** where the files land, how long a save takes (should be a few ms), and that a session survives a normal quit *and* holding the power button.
 
 
-**Status:** ✅ built (190 tests, new `tests/test_autosave.lua`); ⬜ device check.
+**Status:** ✅ built (190 tests, new `tests/test_autosave.lua`); used on the device.
 
 - `src/autosave.lua`: `Autosave:load()` at the end of `love.load`, `Autosave:update(dt)` every frame, `Autosave:saveNow()` from `love.quit` and `love.focus(false)`.
 - Files `session_a.txt` / `session_b.txt` hold `{seq=N,session={...}}` (the session text is wrapped as-is, so one encode per save). Boot sorts the readable files newest first and restores the first that `Session.restore` accepts; the next save goes to the other slot with `seq + 1`.
@@ -112,16 +112,16 @@ Part of [ROADMAP.md](ROADMAP.md). Design: [SPEC.md](SPEC.md) §10.
 **Tests:** a short press does nothing; a 1 s hold clears all four tracks once (not repeatedly while still held); settings, instruments and tempo survive; undo brings back every note and mute; existing erase / undo / clear combos still work.
 
 
-**Status:** ✅ built (195 tests); ⬜ device check.
+**Status:** ✅ built (195 tests); used on the device.
 
 - Mode `NEW` (above `ERASE`): `L2 + R2 + SELECT`; `Modes:update(dt)` times the hold; fires once per hold at 1 s: releases live notes, then `Looper:freshSession()` clears every track's events and mutes, silences playback and pushes a `fresh` undo entry. Undo puts every track's notes and mutes back (notes recorded after the fresh start are kept after them).
 - Screen: red frame, `FRESH START` badge, a ring that fills over the second, then "FRESH SESSION / LET GO - UNDO WITH L2 + R2 + LEFT". The erase page and its hint mention `+ hold SELECT`.
 - **Logging fix:** the first device `log.txt` had none of the game's lines (not even the boot timing from A7): stdout is a pipe to `tee` there and the runtime didn't flush it. `main.lua` now sets line buffering first thing.
-- **Save folder:** `PocketGroove.sh` now exports `XDG_DATA_HOME="$GAMEDIR/conf"` just before starting LÖVE, so saves are in `ports/pocketgroove/conf/love/pocketgroove/` (`session_a.txt`, `session_b.txt`). Saves made before this went to the runtime's default folder and won't be found after the change (one fresh start).
+- **Save folder:** `PocketGroove.sh` now exports `XDG_DATA_HOME="$GAMEDIR/conf"` just before starting LÖVE, so saves are in `ports/pockimusi/conf/love/pockimusi/` (`session_a.txt`, `session_b.txt`). Saves made before this went to the runtime's default folder and won't be found after the change (one fresh start).
 
 **Tests:** a short hold does nothing and a 1 s hold clears all tracks once (not again while held), releasing latches nothing and keeps the track; tempo, key, instruments, sounds, effects and swing survive; undo brings back every note and mute; a playing note is silenced; `L2 + R2` erase still works without `SELECT`.
 
-**On the device:** copy both `PocketGroove.love` **and** `PocketGroove.sh`; check `log.txt` now shows the `[PocketGroove]` lines (save folder, sound generation, saves with their ms); check `conf/love/pocketgroove/` holds the two files; try the hold and its undo.
+**On the device:** copy both `PocketGroove.love` **and** `PocketGroove.sh`; check `log.txt` now shows the `[PocketGroove]` lines (save folder, sound generation, saves with their ms); check `conf/love/pockimusi/` holds the two files; try the hold and its undo.
 ---
 
 ## Exit checklist for Phase C

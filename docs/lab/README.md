@@ -49,11 +49,11 @@ L0 exists so that an instrument never has to touch a shared file. It reserves a 
 | Drums (`instruments/drums.lua`) | Hooks for "is this pad pressed" | Overrides the hooks |
 | Build (`build.py`) | Already packs every `.lua` under `src/` | Nothing |
 
-**Each instrument stream owns exactly three files:** `pocketgroove/src/instruments/<id>.lua`, `tests/test_<id>.lua`, and its plan in this folder (for the Status section).
+**Each instrument stream owns exactly three files:** `pockimusi/src/instruments/<id>.lua`, `tests/test_<id>.lua`, and its plan in this folder (for the Status section).
 
 **If a stream finds it needs a shared change:** make it as its own small commit, add a line to the "Added later" list in L0_FOUNDATION.md, and keep it additive (a new hook with the old behaviour as the default), so the other streams merge without conflicts.
 
-**Branches:** each stream starts from the commit that finishes L0. Streams merge in any order. `pocketgroove/PocketGroove.love` is a built file: rebuild it (`python3 build.py`) once after merging, not in each stream.
+**Branches:** each stream starts from the commit that finishes L0. Streams merge in any order. `pockimusi/Pockimusi.love` is a built file: rebuild it (`python3 build.py`) once after merging, not in each stream.
 
 ---
 
