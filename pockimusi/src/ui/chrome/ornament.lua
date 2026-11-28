@@ -263,7 +263,7 @@ end
 -- apart the ones left on screen turn out to be the stars of the name, and
 -- lines join them, letter by letter, into a constellation that spells it
 -- ----------------------------------------------------------------------------
-Chrome.BOOT_TIME = 5.2
+Chrome.BOOT_TIME = 6.4
 Chrome.BOOT_ZOOM = { 0.6, 2.25 }    -- the flight: from a held view of the cloud to the stop
 Chrome.BOOT_LINES = { 2.45, 3.75 }  -- the lines draw in over this window
 
@@ -271,14 +271,14 @@ Chrome.BOOT_LINES = { 2.45, 3.75 }  -- the lines draw in over this window
 -- list of stars in a unit box (x to the right, y down, height 1). The stars
 -- are then nudged off the grid and given uneven brightness, as real stars are.
 local GLYPHS = {
-    P = { { { 0, 1 }, { 0.04, 0.48 }, { 0, 0 }, { 0.52, 0.04 }, { 0.66, 0.26 }, { 0.48, 0.5 }, { 0.04, 0.48 } } },
-    O = { { { 0.2, 0 }, { 0.6, 0.12 }, { 0.68, 0.62 }, { 0.42, 1 }, { 0.06, 0.82 }, { 0, 0.3 }, { 0.2, 0 } } },
-    C = { { { 0.66, 0.12 }, { 0.3, 0 }, { 0.02, 0.3 }, { 0.06, 0.78 }, { 0.36, 1 }, { 0.68, 0.86 } } },
-    K = { { { 0, 0 }, { 0.02, 0.52 }, { 0, 1 } }, { { 0.62, 0.02 }, { 0.02, 0.52 }, { 0.66, 1 } } },
-    I = { { { 0, 0 }, { 0.03, 0.46 }, { 0, 1 } } },
-    M = { { { 0, 1 }, { 0.04, 0 }, { 0.36, 0.6 }, { 0.68, 0.02 }, { 0.72, 1 } } },
-    U = { { { 0, 0 }, { 0.04, 0.72 }, { 0.32, 1 }, { 0.62, 0.74 }, { 0.66, 0 } } },
-    S = { { { 0.64, 0.1 }, { 0.3, 0 }, { 0.02, 0.22 }, { 0.32, 0.5 }, { 0.64, 0.74 }, { 0.36, 1 }, { 0, 0.88 } } },
+    P = { { { 0, 1 }, { 0.02, 0.5 }, { 0, 0 }, { 0.6, 0.12 }, { 0.5, 0.46 }, { 0.02, 0.5 } } },
+    O = { { { 0.26, 0 }, { 0.66, 0.2 }, { 0.58, 0.86 }, { 0.14, 1 }, { 0, 0.4 }, { 0.26, 0 } } },
+    C = { { { 0.66, 0.1 }, { 0.12, 0.12 }, { 0.04, 0.84 }, { 0.66, 0.94 } } },
+    K = { { { 0, 0 }, { 0.02, 0.52 }, { 0, 1 } }, { { 0.62, 0 }, { 0.02, 0.52 }, { 0.66, 1 } } },
+    I = { { { 0, 0 }, { 0.03, 1 } } },
+    M = { { { 0, 1 }, { 0.04, 0 }, { 0.36, 0.58 }, { 0.7, 0.02 }, { 0.72, 1 } } },
+    U = { { { 0, 0 }, { 0.08, 0.86 }, { 0.4, 1 }, { 0.66, 0.6 }, { 0.64, 0 } } },
+    S = { { { 0.66, 0.14 }, { 0.3, 0 }, { 0.02, 0.24 }, { 0.62, 0.7 }, { 0.34, 1 }, { 0, 0.84 } } },
 }
 local GLYPH_W = { P = 0.66, O = 0.68, C = 0.68, K = 0.66, I = 0.03, M = 0.72, U = 0.66, S = 0.64 }
 local TITLE = "POCKIMUSI"
@@ -311,16 +311,20 @@ local function bootData()
     local index, length = {}, 0
     for i = 1, #TITLE do
         local ch = TITLE:sub(i, i)
-        local base = (rnd() - 0.5) * 6
+        local base = (rnd() - 0.5) * 10
         for _, stroke in ipairs(GLYPHS[ch]) do
             local prev
             for k = 1, #stroke do
                 local key = i .. ":" .. stroke[k][1] .. ":" .. stroke[k][2]
                 local st = index[key]
                 if not st then
-                    st = { x = x + stroke[k][1] * LETTER_H + (rnd() - 0.5) * 6,
-                           y = TITLE_Y + base + stroke[k][2] * LETTER_H + (rnd() - 0.5) * 6,
+                    st = { x = x + stroke[k][1] * LETTER_H + (rnd() - 0.5) * 7,
+                           y = TITLE_Y + base + stroke[k][2] * LETTER_H + (rnd() - 0.5) * 9,
                            mag = 0.6 + rnd() * 0.4, letter = i, lit = math.huge }
+                    st.bright = rnd() < 0.75
+                    if st.bright then st.mag = 0.85 + rnd() * 0.15 end
+                    -- how it looks before a line reaches it: like the field's stars
+                    st.pre = (rnd() < 0.15) and (0.85 + rnd() * 0.15) or (0.3 + rnd() ^ 2 * 0.45)
                     index[key] = st
                     B.stars[#B.stars + 1] = st
                 end
@@ -350,7 +354,12 @@ local function bootData()
             for _, st in ipairs(B.stars) do
                 if math.abs(st.x - sx) < 12 and math.abs(st.y - sy) < 12 then ok = false break end
             end
-            if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.4 + rnd() ^ 2 * 0.6 } end
+            if ok then
+                -- most stars faint; about one in twelve bright (decoys for the name's)
+                local bright = rnd() < 0.085
+                B.near[#B.near + 1] = { x = sx, y = sy, bright = bright, tw = rnd() < 0.12,
+                                        mag = bright and (0.85 + rnd() * 0.15) or (0.3 + rnd() ^ 2 * 0.45) }
+            end
         end
     end
     -- the point cloud: a loose ellipsoid of particles with a few denser
@@ -474,43 +483,85 @@ function Chrome:drawBoot()
     local function place(px, py)
         return 320 + (px - 320) * scale, 240 + (py - 240) * scale
     end
-    local lineT = clamp((e - self.BOOT_LINES[1]) / (self.BOOT_LINES[2] - self.BOOT_LINES[1]), 0, 1)
+    local L1, L2 = self.BOOT_LINES[1], self.BOOT_LINES[2]
+    local lineT = clamp((e - L1) / (L2 - L1), 0, 1)
     local drawn = lineT * B.length
+    local rate = B.length / (L2 - L1)                             -- line length per second
+    -- once the name is drawn, the field dims a little so it stands out
+    local settle = clamp((e - L2) / 0.6, 0, 1)
+    local fieldDim = 1 - 0.4 * settle
+    -- a shimmer runs along the name from left to right, once
+    local waveX = -100 + (e - L2 - 0.35) * 520
     if arrive > 0 then
-        local starPts = {}
+        local faint, bright = {}, {}
         for _, st in ipairs(B.near) do
             local x, y = place(st.x, st.y)
-            local tw = 0.8 + 0.2 * math_sin(now * 2 + st.x)
-            starPts[#starPts + 1] = { x, y, 0.9, 0.94, 1.0, math_min(1, st.mag * 1.15) * tw * arrive * out }
+            local tw = st.tw and (0.55 + 0.45 * math_sin(now * 3.1 + st.x * 0.7)) or (0.88 + 0.12 * math_sin(now * 2 + st.x))
+            local a = st.mag * tw * arrive * fieldDim * out
+            if st.bright then bright[#bright + 1] = { x, y, 0.94, 0.96, 1.0, a }
+            else faint[#faint + 1] = { x, y, 0.86, 0.9, 1.0, a } end
         end
         for _, st in ipairs(B.stars) do
             if drawn < st.lit then
                 local x, y = place(st.x, st.y)
-                starPts[#starPts + 1] = { x, y, 0.88, 0.92, 1.0, st.mag * arrive * out }
+                local list = (st.pre > 0.8) and bright or faint
+                list[#list + 1] = { x, y, 0.94, 0.96, 1.0, st.pre * arrive * fieldDim * out }
             end
         end
         lg.setColor(1, 1, 1, 1)
-        lg.setPointSize(2.5)
-        lg.points(starPts)
+        lg.setPointSize(1.6)
+        if #faint > 0 then lg.points(faint) end
         lg.setPointSize(1)
-        -- the lines, letter by letter
-        lg.setLineWidth(1.1)
+        -- bright stars as small round dots with a faint halo
+        for _, b in ipairs(bright) do
+            lg.setColor(b[3], b[4], b[5], b[6] * 0.25)
+            lg.circle("fill", b[1], b[2], 2.6, 10)
+            lg.setColor(b[3], b[4], b[5], b[6])
+            lg.circle("fill", b[1], b[2], 1.4, 8)
+        end
+
+        -- the lines: a spark traces each one, leaving a fine silver hairline
         for _, sg in ipairs(B.segs) do
             local k = clamp((drawn - sg.at) / sg.len, 0, 1)
             if k > 0 then
                 local ax, ay = place(sg.a.x, sg.a.y)
                 local bx, by = place(sg.b.x, sg.b.y)
-                self:setColor(C.SILVER, 0.75 * out)
-                lg.line(ax, ay, ax + (bx - ax) * k, ay + (by - ay) * k)
+                local hx, hy = ax + (bx - ax) * k, ay + (by - ay) * k
+                lg.setLineWidth(1)
+                self:setColor(C.SILVER, 0.6 * out)
+                lg.line(ax, ay, hx, hy)
+                if k < 1 then
+                    -- the spark: a brighter tail and a glint at the head
+                    local tail = math_min(1, 16 / math.max(sg.len, 1))
+                    local tk = math.max(0, k - tail)
+                    lg.setLineWidth(2)
+                    self:setColor(C.TEXT, 0.9 * out)
+                    lg.line(ax + (bx - ax) * tk, ay + (by - ay) * tk, hx, hy)
+                    lg.setLineWidth(1)
+                    self:drawStarGlint(hx, hy, 4, C.TEXT, out)
+                end
             end
         end
         lg.setLineWidth(1)
-        -- a star brightens into a white glint as its line reaches it
+
+        -- the name's stars: as the spark reaches one it flares, a cross of
+        -- light that settles; then the shimmer passes over them
         for _, st in ipairs(B.stars) do
-            local lit = clamp((drawn - st.lit) / 12, 0, 1)
-            if lit > 0 then
+            if drawn >= st.lit then
                 local x, y = place(st.x, st.y)
-                self:drawStarGlint(x, y, 2 + st.mag * 2.5 * lit, C.TEXT, (0.5 + 0.5 * lit) * out)
+                local since = (drawn - st.lit) / rate + math.max(0, e - L2)
+                local flare = math.exp(-since * 5)
+                local wave = math.exp(-((x - waveX) / 36) ^ 2)
+                local base = 2 + st.mag * 2.2
+                local tw = 0.9 + 0.1 * math_sin(now * 2.6 + st.x)
+                self:drawStarGlint(x, y, base + flare * 4 + wave * 2.5, C.TEXT, math_min(1, (0.75 + 0.25 * st.mag) * tw + wave * 0.3) * out)
+                local spike = flare * 12 + wave * 6
+                if spike > 0.5 then
+                    lg.setLineWidth(1)
+                    self:setColor(C.TEXT, math_min(1, flare + wave * 0.5) * 0.55 * out)
+                    lg.line(x - spike, y, x + spike, y)
+                    lg.line(x, y - spike, x, y + spike)
+                end
             end
         end
     end
