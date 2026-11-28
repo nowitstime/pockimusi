@@ -315,7 +315,7 @@ local function bootData()
                 if not st then
                     st = { x = x + stroke[k][1] * LETTER_H + (rnd() - 0.5) * 6,
                            y = TITLE_Y + base + stroke[k][2] * LETTER_H + (rnd() - 0.5) * 6,
-                           mag = 0.55 + rnd() * 0.45, letter = i, lit = math.huge }
+                           mag = 0.4 + rnd() * 0.45, letter = i, lit = math.huge }
                     index[key] = st
                     B.stars[#B.stars + 1] = st
                 end
@@ -334,34 +334,49 @@ local function bootData()
         x = x + GLYPH_W[ch] * LETTER_H + LETTER_GAP
     end
     B.length = length
-    -- the stars round the name, looking just like its own until the lines come
-    for n = 1, 170 do
-        -- a third of them through the name's band, so it hides in the field
-        local sx, sy = rnd() * 640, (n % 3 == 0) and (TITLE_Y - 12 + rnd() * (LETTER_H + 24)) or rnd() * 480
-        local ok = true
-        for _, st in ipairs(B.stars) do
-            if math.abs(st.x - sx) < 9 and math.abs(st.y - sy) < 9 then ok = false break end
+    -- the stars round the name: an even field over the whole screen (one per
+    -- cell of a grid, placed at random inside it), so the name's stars, spaced
+    -- about as far apart, hide among them until the lines come
+    local cell = 26
+    for gy = 0, math_floor(480 / cell) do
+        for gx = 0, math_floor(640 / cell) do
+            local sx = gx * cell + 3 + rnd() * (cell - 6)
+            local sy = gy * cell + 3 + rnd() * (cell - 6)
+            local ok = true
+            for _, st in ipairs(B.stars) do
+                if math.abs(st.x - sx) < 12 and math.abs(st.y - sy) < 12 then ok = false break end
+            end
+            if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.25 + rnd() ^ 2 * 0.75 } end
         end
-        if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.3 + rnd() * 0.7 } end
     end
-    -- the galaxy, drawn as a clean graphic: a tight core and two arms of
-    -- evenly spaced points along log spirals, seen tilted
-    for _ = 1, 160 do
-        local r = (rnd() ^ 2) * 0.13
+    -- the galaxy as a particle graphic: thousands of fine points in two
+    -- smooth arms and a dense core, drawn additively so overlaps glow; warm
+    -- at the core, cooler out along the arms; seen tilted
+    local function gauss() return (rnd() + rnd() + rnd() - 1.5) * 0.8 end
+    local TILT = 0.55
+    for _ = 1, 900 do
+        local r = math.abs(gauss()) * 0.085
         local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * 0.62, b = 0.7 + rnd() * 0.3 }
+        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * TILT, b = 0.35 + rnd() * 0.3,
+                                  gal = true, cr = 1.0, cg = 0.86, cb = 0.66 }
     end
     for arm = 0, 1 do
-        local n = 340
-        for i = 1, n do
-            local f = i / n
-            local r = 0.1 + f * 0.9
-            local a = arm * math_pi + math.log(r) / 0.3
-            local w = 0.012 + f * 0.03                   -- the arm widens outwards
-            local off = (rnd() - 0.5) * 2 * w
-            B.field[#B.field + 1] = { x = math_cos(a) * (r + off), y = math_sin(a) * (r + off) * 0.62,
-                                      b = 0.9 - f * 0.5 }
+        for _ = 1, 1500 do
+            local t = rnd()
+            local r = 0.06 + t * 0.95
+            local a = arm * math_pi + math.log(r) / 0.28
+            local w = (0.035 + 0.1 * t) * gauss()
+            local px, py = math_cos(a) * r - math_sin(a) * w, math_sin(a) * r + math_cos(a) * w
+            local warm = 1 - t
+            B.field[#B.field + 1] = { x = px, y = py * TILT, b = 0.28 + rnd() * 0.32 * (1 - t * 0.5),
+                                      gal = true, cr = 0.72 + 0.28 * warm, cg = 0.8 + 0.08 * warm, cb = 1.0 - 0.3 * warm }
         end
+    end
+    for _ = 1, 600 do
+        local r = math.sqrt(rnd()) * 1.05
+        local a = rnd() * 6.283
+        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * TILT, b = 0.1 + rnd() * 0.12,
+                                  gal = true, cr = 0.7, cg = 0.75, cb = 1.0 }
     end
     -- where the camera is heading: a spot on an arm
     B.tx, B.ty = 0.42, -0.2
@@ -369,9 +384,12 @@ local function bootData()
     for _ = 1, 260 do
         local d = 10 ^ (-1.6 + rnd() * 1.6)          -- 0.025 .. 1 world units away
         local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = B.tx + math_cos(a) * d, y = B.ty + math_sin(a) * d * 0.8, b = 0.6 + rnd() * 0.4 }
+        B.field[#B.field + 1] = { x = B.tx + math_cos(a) * d, y = B.ty + math_sin(a) * d * 0.8, b = 0.6 + rnd() * 0.4, jump = true }
     end
-    for i, f in ipairs(B.field) do f.ph = (i * 0.618) % 6.283 end
+    for i, f in ipairs(B.field) do
+        f.ph = (i * 0.618) % 6.283
+        f.streak = not f.gal or (i % 4 == 0)       -- a quarter of the galaxy's points streak (lighter to draw)
+    end
     BOOT = B
     return B
 end
@@ -420,7 +438,7 @@ function Chrome:drawBoot()
     local speed = z / zPrev - 1                                  -- 0 when still
     local camX = B.tx - (1 - s) * B.tx * z0 / z
     local camY = B.ty - (1 - s) * B.ty * z0 / z
-    local roll = (1 - s) * 0.35
+    local roll = (1 - s) * (0.35 + 0.15 * math_min(e, self.BOOT_ZOOM[1]))
     local cr, sr = math_cos(roll), math_sin(roll)
     local function toScreen(wx, wy)
         wx, wy = wx - camX, wy - camY
@@ -432,45 +450,45 @@ function Chrome:drawBoot()
     self:setColor(C.BG, out)
     lg.rectangle("fill", 0, 0, 640, 480)
 
-    -- the galaxy's graphic: thin orbit ellipses and a crisp core, fading as we leave
+    -- a soft glow over the galaxy's core while it is in view
     local far = (1 - s) ^ 2 * fadeIn * out
     if far > 0.01 then
         local gx, gy = toScreen(0, 0)
-        lg.setLineWidth(1)
-        for i, r in ipairs(B.rings) do
-            lg.setColor(0.7, 0.75, 1.0, far * (0.16 - i * 0.03))
-            lg.push()
-            lg.translate(gx, gy)
-            lg.rotate(roll)
-            lg.ellipse("line", 0, 0, r * z, r * z * 0.62, 64)
-            lg.pop()
+        lg.setBlendMode("add")
+        for r = 10, 1, -1 do
+            lg.setColor(1.0, 0.85, 0.65, far * 0.022)
+            lg.circle("fill", gx, gy, r * 0.011 * z)
         end
-        for r = 8, 1, -1 do
-            lg.setColor(0.6, 0.55, 0.95, far * 0.05)
-            lg.circle("fill", gx, gy, r * 0.012 * z)
-        end
-        self:drawStarGlint(gx, gy, 9, C.TEXT, far)
+        lg.setBlendMode("alpha")
     end
 
     -- the stars: points, and during the jump, long streaks back towards the
     -- vanishing point (the faster, the longer)
     local warp = clamp(speed * 9, 0, 1)
-    local pts, big = {}, {}
+    local pts, big, gal = {}, {}, {}
     lg.setLineWidth(1)
     for _, f in ipairs(B.field) do
         local x, y = toScreen(f.x, f.y)
         if x > -40 and x < 680 and y > -40 and y < 520 then
             local a = f.b * (0.8 + 0.2 * math_sin(now * 2.3 + f.ph)) * fadeIn * out
-            if warp > 0.12 then
+            if f.jump then a = a * clamp((s - 0.08) / 0.2, 0, 1) end   -- these join only once the jump is under way
+            if warp > 0.12 and f.streak then
                 local k = math_min(0.85, speed * 6)
                 self:setColor(C.SILVER, a * (0.18 + warp * 0.32))
                 lg.line(x, y, vx + (x - vx) * (1 - k), vy + (y - vy) * (1 - k))
             end
-            if f.b > 0.8 then big[#big + 1] = { x, y, 0.92, 0.94, 1.0, a }
+            if f.gal then gal[#gal + 1] = { x, y, f.cr, f.cg, f.cb, a }
+            elseif f.b > 0.8 then big[#big + 1] = { x, y, 0.92, 0.94, 1.0, a }
             else pts[#pts + 1] = { x, y, 0.86, 0.9, 1.0, a } end
         end
     end
     lg.setColor(1, 1, 1, 1)          -- per-point colours are multiplied by this
+    if #gal > 0 then
+        lg.setBlendMode("add")
+        lg.setPointSize(1.3 + s * 1.2)
+        lg.points(gal)
+        lg.setBlendMode("alpha")
+    end
     lg.setPointSize(1.5)
     if #pts > 0 then lg.points(pts) end
     lg.setPointSize(2.3)
@@ -516,14 +534,12 @@ function Chrome:drawBoot()
         end
         lg.setLineWidth(1)
         -- the name's stars: plain points like the rest until a line reaches
-        -- them; then they brighten into glints (P, K, M, S in the tracks' colours)
-        local trackCols = { [1] = C.ORANGE, [4] = C.CYAN, [6] = C.VIOLET, [8] = C.MINT }
+        -- them; then they brighten into white glints
         for _, st in ipairs(B.stars) do
             local x, y = place(st.x, st.y)
             local lit = clamp((drawn - st.lit) / 12, 0, 1)
             if lit > 0 then
-                local col = trackCols[st.letter] or C.TEXT
-                self:drawStarGlint(x, y, 2 + st.mag * 3 * lit, col, (0.5 + 0.5 * lit) * out)
+                self:drawStarGlint(x, y, 2 + st.mag * 2.5 * lit, C.TEXT, (0.5 + 0.5 * lit) * out)
             else
                 lg.setColor(0.88, 0.92, 1.0, st.mag * arrive * out)
                 lg.setPointSize(2)
