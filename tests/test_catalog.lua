@@ -565,7 +565,14 @@ return {
 
         H.hold("L2", "R2"); H.play(0.1)
         local seen = frame()
-        H.truthy(seen["B - DOWNSTROKES   A - UPSTROKES   X - ALL STROKES"], "the page lists the map")
+        local function shown(part)
+            for text in pairs(seen) do
+                if type(text) == "string" and text:find(part, 1, true) then return true end
+            end
+            return false
+        end
+        H.truthy(shown("B - DOWNSTROKES") and shown("A - UPSTROKES") and shown("X - ALL STROKES"), "the page lists the map")
+        H.falsy(seen["Undo overdub"], "the rows are in capitals")
         H.tap("B")
         H.eq(L:countTrackAction(2, "R1"), 0, "B cleared the downstrokes")
         H.eq(L:countTrackAction(2, "L1"), 1, "upstrokes untouched")
@@ -604,7 +611,8 @@ return {
         H.record(L, 1, "B", 0.0); H.record(L, 1, "Y", 0.25); H.record(L, 1, "B", 0.5)
         H.hold("L2", "R2"); H.play(0.1)
         local seen = frame()
-        H.truthy(seen["Clear pad lane"] or seen["B / A / Y / X - Clear pad lane"], "the usual page")
+        H.truthy(seen["Clear pad lane"] or seen["B / A / Y / X - Clear pad lane"] or seen["CLEAR FULL TRACK"], "the usual page")
+        H.truthy(seen["CLR"] and seen["B"], "the face ring names the pads")
         H.tap("B")
         H.eq(L:countTrackAction(1, "B"), 0, "B's hits cleared")
         H.eq(L:countTrackAction(1, "Y"), 1, "Y's kept")

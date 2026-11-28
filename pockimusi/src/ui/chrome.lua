@@ -110,6 +110,7 @@ for _, part in ipairs({
     "drums",
     "trackpage",
     "modeplate",
+    "ornament",
     "picker",
     "transport",
     "footer",
@@ -128,11 +129,26 @@ for _, part in ipairs({
 end
 
 function Chrome:drawScreen()
+    if self.motionUpdate then self:motionUpdate() end
     self:drawTopBar()
+    -- a page that just opened rises and fades in (TEST: MOTION)
+    local rise, dark = 0, 0
+    if self.transitionState then rise, dark = self:transitionState() end
+    if rise ~= 0 then
+        love.graphics.push()
+        love.graphics.translate(0, rise)
+    end
     self:drawCenterStage()
+    if rise ~= 0 then love.graphics.pop() end
+    if dark > 0 then
+        self:setColor(Config.COLORS.BG, dark)
+        love.graphics.rectangle("fill", 8, 50, 624, 306)
+    end
+    if self.drawMotionOverlay then self:drawMotionOverlay() end
     self:drawTapeDeck()
     self:drawPickerShelf()
     self:drawMenu()
+    if self.drawBoot then self:drawBoot() end
 end
 
 -- Fitted to the window, black bars around it (src/ui/display.lua)

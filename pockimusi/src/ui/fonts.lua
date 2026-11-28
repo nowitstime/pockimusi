@@ -44,12 +44,19 @@ local Fonts = {
         ["Audiowide-Regular"]             = { scale = 0.94 },
         ["ZenDots-Regular"]               = { scale = 0.88 },
         ["Righteous-Regular"]             = { scale = 1.0 },
+        ["Cinzel-Regular"]                = { scale = 0.96 },
+        ["MarcellusSC-Regular"]           = { scale = 1.0 },
+        ["JuliusSansOne-Regular"]         = { scale = 0.95 },
     },
 
     SETS = {
         { name = "NEON",      text = "ChakraPetch-SemiBold",      display = "Audiowide-Regular" },
         { name = "STARLIGHT", text = "Tomorrow-SemiBold",         display = "ZenDots-Regular" },
         { name = "SOFT",      text = "AtkinsonHyperlegible-Bold", display = "Righteous-Regular" },
+        -- classical display faces (test): engraved capitals for titles and readouts
+        { name = "ENGRAVED",  text = "ChakraPetch-SemiBold",      display = "Cinzel-Regular" },
+        { name = "ASTROLABE", text = "AtkinsonHyperlegible-Bold", display = "MarcellusSC-Regular" },
+        { name = "OBSERVATORY", text = "Tomorrow-SemiBold",       display = "JuliusSansOne-Regular" },
         { name = "CLASSIC" },
     },
 
