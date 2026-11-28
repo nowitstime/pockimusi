@@ -263,9 +263,9 @@ end
 -- apart the ones left on screen turn out to be the stars of the name, and
 -- lines join them, letter by letter, into a constellation that spells it
 -- ----------------------------------------------------------------------------
-Chrome.BOOT_TIME = 4.2
-Chrome.BOOT_ZOOM = { 0.45, 1.75 }   -- the jump: from a held view of the galaxy to the stop
-Chrome.BOOT_LINES = { 1.95, 3.05 }  -- the lines draw in over this window
+Chrome.BOOT_TIME = 5.2
+Chrome.BOOT_ZOOM = { 0.6, 2.25 }    -- the flight: from a held view of the cloud to the stop
+Chrome.BOOT_LINES = { 2.45, 3.75 }  -- the lines draw in over this window
 
 -- The name as a constellation: each letter a list of strokes, each stroke a
 -- list of stars in a unit box (x to the right, y down, height 1). The stars
@@ -282,7 +282,7 @@ local GLYPHS = {
 }
 local GLYPH_W = { P = 0.66, O = 0.68, C = 0.68, K = 0.66, I = 0.03, M = 0.72, U = 0.66, S = 0.64 }
 local TITLE = "POCKIMUSI"
-local LETTER_H, LETTER_GAP = 58, 22           -- on screen, at the end of the zoom
+local LETTER_H, LETTER_GAP = 62, 20           -- on screen, at the end of the zoom
 local TITLE_Y = 192
 -- The camera, in 3D: a point cloud ahead, the starfield's plane far beyond it
 local FOCAL = 420                             -- perspective: screen pixels per unit at distance 1
@@ -320,7 +320,7 @@ local function bootData()
                 if not st then
                     st = { x = x + stroke[k][1] * LETTER_H + (rnd() - 0.5) * 6,
                            y = TITLE_Y + base + stroke[k][2] * LETTER_H + (rnd() - 0.5) * 6,
-                           mag = 0.4 + rnd() * 0.45, letter = i, lit = math.huge }
+                           mag = 0.6 + rnd() * 0.4, letter = i, lit = math.huge }
                     index[key] = st
                     B.stars[#B.stars + 1] = st
                 end
@@ -341,16 +341,16 @@ local function bootData()
     B.length = length
     -- the stars round the name: one per cell of a grid over the whole screen
     -- (out past the screen's edges, so it never shows a border while it grows)
-    local cell = 26
-    for gy = -10, math_floor(480 / cell) + 10 do
-        for gx = -13, math_floor(640 / cell) + 13 do
+    local cell = 36
+    for gy = -8, math_floor(480 / cell) + 8 do
+        for gx = -10, math_floor(640 / cell) + 10 do
             local sx = gx * cell + 3 + rnd() * (cell - 6)
             local sy = gy * cell + 3 + rnd() * (cell - 6)
             local ok = true
             for _, st in ipairs(B.stars) do
                 if math.abs(st.x - sx) < 12 and math.abs(st.y - sy) < 12 then ok = false break end
             end
-            if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.25 + rnd() ^ 2 * 0.75 } end
+            if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.4 + rnd() ^ 2 * 0.6 } end
         end
     end
     -- the point cloud: a loose ellipsoid of particles with a few denser
@@ -481,7 +481,7 @@ function Chrome:drawBoot()
         for _, st in ipairs(B.near) do
             local x, y = place(st.x, st.y)
             local tw = 0.8 + 0.2 * math_sin(now * 2 + st.x)
-            starPts[#starPts + 1] = { x, y, 0.88, 0.92, 1.0, st.mag * tw * arrive * out }
+            starPts[#starPts + 1] = { x, y, 0.9, 0.94, 1.0, math_min(1, st.mag * 1.15) * tw * arrive * out }
         end
         for _, st in ipairs(B.stars) do
             if drawn < st.lit then
@@ -490,7 +490,7 @@ function Chrome:drawBoot()
             end
         end
         lg.setColor(1, 1, 1, 1)
-        lg.setPointSize(2)
+        lg.setPointSize(2.5)
         lg.points(starPts)
         lg.setPointSize(1)
         -- the lines, letter by letter
@@ -500,7 +500,7 @@ function Chrome:drawBoot()
             if k > 0 then
                 local ax, ay = place(sg.a.x, sg.a.y)
                 local bx, by = place(sg.b.x, sg.b.y)
-                self:setColor(C.SILVER, 0.6 * out)
+                self:setColor(C.SILVER, 0.75 * out)
                 lg.line(ax, ay, ax + (bx - ax) * k, ay + (by - ay) * k)
             end
         end
