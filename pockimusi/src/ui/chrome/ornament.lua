@@ -502,7 +502,7 @@ function Chrome:drawBoot()
             else faint[#faint + 1] = { x, y, 0.86, 0.9, 1.0, a } end
         end
         for _, st in ipairs(B.stars) do
-            if drawn < st.lit then
+            if lineT <= 0 or drawn < st.lit then
                 local x, y = place(st.x, st.y)
                 local list = (st.pre > 0.8) and bright or faint
                 list[#list + 1] = { x, y, 0.94, 0.96, 1.0, st.pre * arrive * fieldDim * out }
@@ -523,7 +523,8 @@ function Chrome:drawBoot()
         -- the lines: a spark traces each one, leaving a fine silver hairline
         for _, sg in ipairs(B.segs) do
             local k = clamp((drawn - sg.at) / sg.len, 0, 1)
-            if k > 0 then
+            if lineT >= 1 or k > 0.999 then k = 1 end            -- finished (no spark left behind)
+            if lineT > 0 and k > 0 then
                 local ax, ay = place(sg.a.x, sg.a.y)
                 local bx, by = place(sg.b.x, sg.b.y)
                 local hx, hy = ax + (bx - ax) * k, ay + (by - ay) * k
@@ -547,7 +548,7 @@ function Chrome:drawBoot()
         -- the name's stars: as the spark reaches one it flares, a cross of
         -- light that settles; then the shimmer passes over them
         for _, st in ipairs(B.stars) do
-            if drawn >= st.lit then
+            if lineT > 0 and drawn >= st.lit then
                 local x, y = place(st.x, st.y)
                 local since = (drawn - st.lit) / rate + math.max(0, e - L2)
                 local flare = math.exp(-since * 5)
