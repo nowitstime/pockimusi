@@ -284,20 +284,24 @@ local GLYPH_W = { P = 0.66, O = 0.68, C = 0.68, K = 0.66, I = 0.03, M = 0.72, U 
 local TITLE = "POCKIMUSI"
 local LETTER_H, LETTER_GAP = 58, 22           -- on screen, at the end of the zoom
 local TITLE_Y = 192
-local Z0, ZEND = 300, 14000                   -- the camera's zoom: whole galaxy, then the name
-local TILT = 0.55                             -- the galaxy's disk, seen tilted
+-- The camera, in 3D: a point cloud ahead, the starfield's plane far beyond it
+local FOCAL = 420                             -- perspective: screen pixels per unit at distance 1
+local CAM_START, CAM_END = -6.8, 34           -- the camera's z: before the cloud, and where it stops
+local PLANE_Z = 40                            -- the final starfield's plane
+local PLANE_D = PLANE_Z - CAM_END             -- the plane's distance when the camera stops
 
--- Laid out once: the title's stars and lines (screen space at the end of the
--- zoom), the stars round them, and the galaxy (world space)
+-- Laid out once: the title's stars and lines (screen space at the stop), the
+-- stars round them, and the point cloud (world space)
 local BOOT = nil
 local function bootData()
     if BOOT then return BOOT end
-    local B = { segs = {}, stars = {}, near = {}, field = {}, rings = { 0.32, 0.62, 0.95 } }
+    local B = { segs = {}, stars = {}, near = {}, cloud = {} }
     local seed = 23
     local function rnd()
         seed = (seed * 16807) % 2147483647
         return seed / 2147483647
     end
+    local function gauss() return (rnd() + rnd() + rnd() - 1.5) * 0.8 end
     -- the title, centred, each star nudged and given a magnitude
     local total = 0
     for i = 1, #TITLE do
@@ -307,7 +311,7 @@ local function bootData()
     local index, length = {}, 0
     for i = 1, #TITLE do
         local ch = TITLE:sub(i, i)
-        local base = (rnd() - 0.5) * 6                 -- letters don't sit on one line either
+        local base = (rnd() - 0.5) * 6
         for _, stroke in ipairs(GLYPHS[ch]) do
             local prev
             for k = 1, #stroke do
@@ -335,12 +339,11 @@ local function bootData()
         x = x + GLYPH_W[ch] * LETTER_H + LETTER_GAP
     end
     B.length = length
-    -- the stars round the name: an even field over the whole screen (one per
-    -- cell of a grid, placed at random inside it), so the name's stars, spaced
-    -- about as far apart, hide among them until the lines come
+    -- the stars round the name: one per cell of a grid over the whole screen
+    -- (out past the screen's edges, so it never shows a border while it grows)
     local cell = 26
-    for gy = 0, math_floor(480 / cell) do
-        for gx = 0, math_floor(640 / cell) do
+    for gy = -10, math_floor(480 / cell) + 10 do
+        for gx = -13, math_floor(640 / cell) + 13 do
             local sx = gx * cell + 3 + rnd() * (cell - 6)
             local sy = gy * cell + 3 + rnd() * (cell - 6)
             local ok = true
@@ -350,87 +353,27 @@ local function bootData()
             if ok then B.near[#B.near + 1] = { x = sx, y = sy, mag = 0.25 + rnd() ^ 2 * 0.75 } end
         end
     end
-    -- the galaxy as a particle graphic: thousands of fine points in two
-    -- smooth arms and a dense core, drawn additively so overlaps glow; warm
-    -- at the core, cooler out along the arms; seen tilted
-    local function gauss() return (rnd() + rnd() + rnd() - 1.5) * 0.8 end
-    for _ = 1, 450 do
-        local r = math.abs(gauss()) * 0.085
-        local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * TILT, b = 0.35 + rnd() * 0.3,
-                                  gal = true, cr = 1.0, cg = 0.86, cb = 0.66 }
-    end
-    for arm = 0, 1 do
-        for _ = 1, 900 do
-            local t = rnd()
-            local r = 0.06 + t * 0.95
-            local a = arm * math_pi + math.log(r) / 0.28
-            local w = (0.035 + 0.1 * t) * gauss()
-            local px, py = math_cos(a) * r - math_sin(a) * w, math_sin(a) * r + math_cos(a) * w
-            local warm = 1 - t
-            B.field[#B.field + 1] = { x = px, y = py * TILT, b = 0.28 + rnd() * 0.32 * (1 - t * 0.5),
-                                      gal = true, cr = 0.72 + 0.28 * warm, cg = 0.8 + 0.08 * warm, cb = 1.0 - 0.3 * warm }
+    -- the point cloud: a loose ellipsoid of particles with a few denser
+    -- knots in it, round the origin, in front of the camera
+    local knots = {}
+    for k = 1, 7 do knots[k] = { gauss() * 1.6, gauss() * 0.9, gauss() * 1.6 } end
+    for i = 1, 2200 do
+        local px, py, pz
+        if i % 3 == 0 then
+            local kn = knots[(i % 7) + 1]
+            px, py, pz = kn[1] + gauss() * 0.45, kn[2] + gauss() * 0.3, kn[3] + gauss() * 0.45
+        else
+            px, py, pz = gauss() * 2.6, gauss() * 1.4, gauss() * 2.6
         end
+        B.cloud[i] = { px, py, pz, 0.35 + rnd() * 0.65, (i * 0.618) % 6.283 }
     end
-    for _ = 1, 300 do
-        local r = math.sqrt(rnd()) * 1.05
-        local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = math_cos(a) * r, y = math_sin(a) * r * TILT, b = 0.1 + rnd() * 0.12,
-                                  gal = true, cr = 0.7, cg = 0.75, cb = 1.0 }
-    end
-    -- the clouds: soft blobs of light along the arms and over the core; they
-    -- carry most of the galaxy's look, and swell and fade as the camera
-    -- flies through them
-    B.clouds = {}
-    local function cloud(x, y, size, a, r, g, b) B.clouds[#B.clouds + 1] = { x = x, y = y, size = size, a = a, r = r, g = g, b = b } end
-    cloud(0, 0, 1.15, 0.05, 0.62, 0.66, 1.0)                    -- the whole disk's haze
-    cloud(0, 0, 0.32, 0.12, 1.0, 0.8, 0.55)                     -- the core
-    cloud(0, 0, 0.14, 0.3, 1.0, 0.86, 0.66)
-    cloud(0, 0, 0.06, 0.45, 1.0, 0.94, 0.82)
-    for arm = 0, 1 do
-        for _ = 1, 120 do
-            local t = rnd()
-            local r = 0.08 + t * 0.92
-            local a = arm * math_pi + math.log(r) / 0.28
-            local w = (0.03 + 0.08 * t) * gauss()
-            local px, py = math_cos(a) * r - math_sin(a) * w, math_sin(a) * r + math_cos(a) * w
-            local warm = 1 - t
-            cloud(px, py * TILT, 0.05 + 0.09 * t + rnd() * 0.04, 0.05 + 0.05 * warm,
-                0.68 + 0.32 * warm, 0.72 + 0.12 * warm, 1.0 - 0.32 * warm)
-        end
-    end
-    -- where the camera is heading: a spot on an arm
-    B.tx, B.ty = 0.42, -0.2
-    -- stars at every scale round that spot, to stream past during the jump
-    for _ = 1, 260 do
-        local d = 10 ^ (-1.6 + rnd() * 1.6)          -- 0.025 .. 1 world units away
-        local a = rnd() * 6.283
-        B.field[#B.field + 1] = { x = B.tx + math_cos(a) * d, y = B.ty + math_sin(a) * d * 0.8, b = 0.6 + rnd() * 0.4, jump = true }
-    end
-    for i, f in ipairs(B.field) do
-        f.ph = (i * 0.618) % 6.283
-        f.streak = not f.gal or (i % 4 == 0)       -- a quarter of the galaxy's points streak (lighter to draw)
+    -- loose particles all the way from the cloud to the plane, to stream past
+    for i = 1, 500 do
+        local d = 1 + rnd() * (PLANE_Z - 6)
+        B.cloud[#B.cloud + 1] = { gauss() * 6, gauss() * 4.5, d, 0.4 + rnd() * 0.6, (i * 0.37) % 6.283, loose = true }
     end
     BOOT = B
     return B
-end
-
--- A soft round sprite (a gaussian blob), made once
-function Chrome:bootSprite()
-    if self.bootSpriteImg ~= nil then return self.bootSpriteImg or nil end
-    local ok, img = pcall(function()
-        local d = love.image.newImageData(64, 64)
-        for y = 0, 63 do
-            for x = 0, 63 do
-                local dx, dy = (x - 31.5) / 32, (y - 31.5) / 32
-                local a = math.exp(-(dx * dx + dy * dy) * 4.5)
-                d:setPixel(x, y, 1, 1, 1, a)
-            end
-        end
-        return love.graphics.newImage(d)
-    end)
-    self.bootSpriteImg = (ok and img) or false
-    return self.bootSpriteImg or nil
 end
 
 function Chrome:startBoot()
@@ -462,97 +405,74 @@ function Chrome:drawBoot()
     local out = (e > self.BOOT_TIME - 0.5) and ((self.BOOT_TIME - e) / 0.5) or 1
     local fadeIn = clamp(e / 0.3, 0, 1)
 
-    -- the jump: a held view, then a sharp acceleration and a sudden stop
-    local z0, zEnd = Z0, ZEND
+    -- the flight: a slow drift, a sharp acceleration through the cloud, and
+    -- a long brake onto the starfield
     local function progress(t)
         local u = clamp((t - self.BOOT_ZOOM[1]) / (self.BOOT_ZOOM[2] - self.BOOT_ZOOM[1]), 0, 1)
-        -- slow in, very fast through the middle, a short brake at the end
-        local k = 9
-        local lo, hi = 1 / (1 + math.exp(k * 0.5)), 1 / (1 + math.exp(-k * 0.5))
-        return (1 / (1 + math.exp(-k * (u - 0.5))) - lo) / (hi - lo)
+        return u
     end
-    local s = progress(e)
-    local z = z0 * (zEnd / z0) ^ s
-    local zPrev = z0 * (zEnd / z0) ^ progress(e - 1 / 60)
-    local speed = z / zPrev - 1                                  -- 0 when still
-    local camX = B.tx - (1 - s) * B.tx * z0 / z
-    local camY = B.ty - (1 - s) * B.ty * z0 / z
-    local roll = (1 - s) * (0.35 + 0.15 * math_min(e, self.BOOT_ZOOM[1]))
-    local cr, sr = math_cos(roll), math_sin(roll)
-    local function toScreen(wx, wy)
-        wx, wy = wx - camX, wy - camY
-        return 320 + (wx * cr - wy * sr) * z, 240 + (wx * sr + wy * cr) * z
+    local function camZ(t)
+        local drift = math_min(t, self.BOOT_ZOOM[1]) * 0.8          -- creeping in while held
+        local p = progress(t)
+        p = p * p * (3 - 2 * p)                                   -- slow start, slow stop
+        return CAM_START + drift + (CAM_END - CAM_START - self.BOOT_ZOOM[1] * 0.8) * p
     end
-    -- where the target sits on screen (the jump's vanishing point)
-    local vx, vy = toScreen(B.tx, B.ty)
+    local cz = camZ(e)
+    local czPrev = camZ(e - 1 / 30)
+    local speed = (cz - czPrev) * 30                              -- units per second
+    -- the cloud turns slowly about its vertical axis while we approach
+    local yaw = e * 0.35
+    local cy, sy = math_cos(yaw), math_sin(yaw)
 
     self:setColor(C.BG, out)
     lg.rectangle("fill", 0, 0, 640, 480)
 
-    -- the clouds, drawn additively with a soft round sprite; a cloud whose
-    -- size on screen grows past ~250 px fades, so the camera passes through
-    local sprite = self:bootSprite()
-    if sprite then
-        lg.setBlendMode("add")
-        for _, c in ipairs(B.clouds) do
-            local x, y = toScreen(c.x, c.y)
-            local R = c.size * z
-            local fade = clamp(1 - (R - 250) / 450, 0, 1)
-            if fade > 0 and x > -R and x < 640 + R and y > -R and y < 480 + R then
-                lg.setColor(c.r, c.g, c.b, c.a * fade * fadeIn * out)
-                lg.draw(sprite, x, y, roll, R / 32, R * TILT / 32, 32, 32)
-            end
-        end
-        lg.setBlendMode("alpha")
-    end
-
-    -- the stars: points, and during the jump, long streaks back towards the
-    -- vanishing point (the faster, the longer)
-    local warp = clamp(speed * 9, 0, 1)
-    local pts, big, gal = {}, {}, {}
+    -- the particles: crisp square points, brighter when nearer; while the
+    -- camera rushes, a streak to where each was a moment ago
+    local warp = clamp((speed - 6) / 30, 0, 1)
+    local pts = {}
+    local near = 0.25
     lg.setLineWidth(1)
-    for _, f in ipairs(B.field) do
-        local x, y = toScreen(f.x, f.y)
-        if x > -40 and x < 680 and y > -40 and y < 520 then
-            local a = f.b * (0.8 + 0.2 * math_sin(now * 2.3 + f.ph)) * fadeIn * out
-            if f.jump then a = a * clamp((s - 0.08) / 0.2, 0, 1) end   -- these join only once the jump is under way
-            if warp > 0.12 and f.streak then
-                local k = math_min(0.85, speed * 6)
-                self:setColor(C.SILVER, a * (0.18 + warp * 0.32))
-                lg.line(x, y, vx + (x - vx) * (1 - k), vy + (y - vy) * (1 - k))
+    for _, p in ipairs(B.cloud) do
+        local wx, wy, wz = p[1], p[2], p[3]
+        if not p.loose then
+            wx, wz = wx * cy - wz * sy, wx * sy + wz * cy
+        end
+        local d = wz - cz
+        if d > near then
+            local x, y = 320 + FOCAL * wx / d, 240 + FOCAL * wy / d
+            if x > -60 and x < 700 and y > -60 and y < 540 then
+                local depth = clamp(1.4 - d / 14, 0.25, 1)
+                local tw = 0.85 + 0.15 * math_sin(now * 3 + p[5])
+                local a = p[4] * depth * tw * fadeIn * out
+                -- loose particles appear only once the flight is under way
+                if p.loose then a = a * clamp((cz - CAM_START - 1.5) / 4, 0, 1) end
+                if a > 0.01 then
+                    if warp > 0.05 then
+                        local dPrev = wz - (cz - speed * 0.035 * (1 + warp))
+                        if dPrev > near then
+                            local x2, y2 = 320 + FOCAL * wx / dPrev, 240 + FOCAL * wy / dPrev
+                            lg.setColor(0.62, 0.86, 1.0, a * 0.32 * warp)
+                            lg.line(x, y, x2, y2)
+                        end
+                    end
+                    pts[#pts + 1] = { x, y, 0.7, 0.9, 1.0, a }
+                end
             end
-            if f.gal then gal[#gal + 1] = { x, y, f.cr, f.cg, f.cb, a }
-            elseif f.b > 0.8 then big[#big + 1] = { x, y, 0.92, 0.94, 1.0, a }
-            else pts[#pts + 1] = { x, y, 0.86, 0.9, 1.0, a } end
         end
     end
     lg.setColor(1, 1, 1, 1)          -- per-point colours are multiplied by this
-    if #gal > 0 then
-        lg.setBlendMode("add")
-        lg.setPointSize(1.3 + s * 1.2)
-        lg.points(gal)
-        lg.setBlendMode("alpha")
-    end
-    lg.setPointSize(1.5)
+    lg.setPointSize(2)
     if #pts > 0 then lg.points(pts) end
-    lg.setPointSize(2.3)
-    if #big > 0 then lg.points(big) end
     lg.setPointSize(1)
-    -- a brief brightening at the vanishing point at full speed
-    if warp > 0.05 and sprite then
-        lg.setBlendMode("add")
-        lg.setColor(0.8, 0.86, 1.0, warp * 0.22 * out)
-        lg.draw(sprite, vx, vy, 0, 90 / 32, 90 / 32, 32, 32)
-        lg.setColor(0.9, 0.94, 1.0, warp * 0.25 * out)
-        lg.draw(sprite, vx, vy, 0, 30 / 32, 30 / 32, 32, 32)
-        lg.setBlendMode("alpha")
-    end
 
-    -- the last field: the name's stars and the ones round them, all alike,
-    -- arriving with the stop (they sit in world space at the target)
-    local arrive = clamp((s - 0.86) / 0.14, 0, 1)
+    -- the starfield's plane: the name's stars and the ones round them, all
+    -- alike; they fill the screen as the camera brakes onto them
+    local dPlane = PLANE_Z - cz
+    local scale = PLANE_D / dPlane                                -- 1 at the stop
+    local arrive = clamp((scale - 0.3) / 0.6, 0, 1)
     local function place(px, py)
-        return toScreen((px - 320) / zEnd + B.tx, (py - 240) / zEnd + B.ty)
+        return 320 + (px - 320) * scale, 240 + (py - 240) * scale
     end
     local lineT = clamp((e - self.BOOT_LINES[1]) / (self.BOOT_LINES[2] - self.BOOT_LINES[1]), 0, 1)
     local drawn = lineT * B.length
@@ -562,6 +482,12 @@ function Chrome:drawBoot()
             local x, y = place(st.x, st.y)
             local tw = 0.8 + 0.2 * math_sin(now * 2 + st.x)
             starPts[#starPts + 1] = { x, y, 0.88, 0.92, 1.0, st.mag * tw * arrive * out }
+        end
+        for _, st in ipairs(B.stars) do
+            if drawn < st.lit then
+                local x, y = place(st.x, st.y)
+                starPts[#starPts + 1] = { x, y, 0.88, 0.92, 1.0, st.mag * arrive * out }
+            end
         end
         lg.setColor(1, 1, 1, 1)
         lg.setPointSize(2)
@@ -579,18 +505,12 @@ function Chrome:drawBoot()
             end
         end
         lg.setLineWidth(1)
-        -- the name's stars: plain points like the rest until a line reaches
-        -- them; then they brighten into white glints
+        -- a star brightens into a white glint as its line reaches it
         for _, st in ipairs(B.stars) do
-            local x, y = place(st.x, st.y)
             local lit = clamp((drawn - st.lit) / 12, 0, 1)
             if lit > 0 then
+                local x, y = place(st.x, st.y)
                 self:drawStarGlint(x, y, 2 + st.mag * 2.5 * lit, C.TEXT, (0.5 + 0.5 * lit) * out)
-            else
-                lg.setColor(0.88, 0.92, 1.0, st.mag * arrive * out)
-                lg.setPointSize(2)
-                lg.points(x, y)
-                lg.setPointSize(1)
             end
         end
     end
